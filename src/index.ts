@@ -27,6 +27,41 @@ function getVNDateString() {
 	return date.toISOString().split('T')[0];
 }
 
+// Helper to check if past order deadline (returns true if past deadline or past date)
+async function isPastDeadline(db: D1Database, orderDate: string): Promise<{ blocked: boolean; deadline?: string }> {
+	// Dynamically ensure settings table exists
+	await db.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+
+	// Fetch deadline setting
+	const result = await db.prepare('SELECT value FROM settings WHERE key = ?')
+		.bind('order_deadline')
+		.first<{ value: string }>();
+	const deadline = result?.value || '11:00'; // Default is 11:00
+
+	const [deadlineHour, deadlineMin] = deadline.split(':').map(Number);
+
+	// Get local Vietnam time (ICT, GMT+7)
+	const offset = 7 * 60;
+	const now = new Date(Date.now() + offset * 60 * 1000);
+	const todayStr = now.toISOString().split('T')[0];
+
+	// Past dates are always blocked
+	if (orderDate < todayStr) {
+		return { blocked: true, deadline: 'Đã qua ngày đặt' };
+	}
+
+	if (orderDate === todayStr) {
+		const currentHour = now.getUTCHours();
+		const currentMin = now.getUTCMinutes();
+
+		if (currentHour > deadlineHour || (currentHour === deadlineHour && currentMin >= deadlineMin)) {
+			return { blocked: true, deadline };
+		}
+	}
+
+	return { blocked: false, deadline };
+}
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
@@ -94,6 +129,38 @@ export default {
 				return jsonResponse(results);
 			}
 
+			// Cập nhật tên người dùng
+			// PATCH /api/users/:id
+			const userUpdateMatch = pathname.match(/^\/api\/users\/(\d+)$/);
+			if (userUpdateMatch && method === 'PATCH') {
+				const userId = parseInt(userUpdateMatch[1]);
+				const body = await request.json() as { name?: string };
+				const newName = body.name?.trim();
+
+				if (!newName) {
+					return jsonResponse({ error: 'Tên người dùng không được bỏ trống.' }, 400);
+				}
+
+				// Kiểm tra tên đã tồn tại chưa (trừ chính người dùng này)
+				const existing = await env.DB.prepare('SELECT id FROM users WHERE name = ? AND id != ?')
+					.bind(newName, userId)
+					.first<{ id: number }>();
+
+				if (existing) {
+					return jsonResponse({ error: `Tên "${newName}" đã được sử dụng bởi tài khoản khác.` }, 409);
+				}
+
+				const result = await env.DB.prepare('UPDATE users SET name = ? WHERE id = ?')
+					.bind(newName, userId)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật tên người dùng.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật tên thành công', name: newName });
+			}
+
 			// Lấy tổng nợ chưa thanh toán và chi tiết hóa đơn nợ của một người dùng
 			// GET /api/users/:id/unpaid
 			const userUnpaidMatch = pathname.match(/^\/api\/users\/(\d+)\/unpaid$/);
@@ -104,15 +171,15 @@ export default {
 				const totalResult = await env.DB.prepare(
 					'SELECT SUM(dish_price) as total_unpaid FROM orders WHERE user_id = ? AND paid = 0'
 				)
-				.bind(userId)
-				.first<{ total_unpaid: number | null }>();
+					.bind(userId)
+					.first<{ total_unpaid: number | null }>();
 
 				// Lấy danh sách các đơn hàng chưa thanh toán
 				const { results: unpaidOrders } = await env.DB.prepare(
 					'SELECT id, date, dish_name, dish_price, created_at FROM orders WHERE user_id = ? AND paid = 0 ORDER BY date DESC'
 				)
-				.bind(userId)
-				.all();
+					.bind(userId)
+					.all();
 
 				return jsonResponse({
 					userId,
@@ -122,33 +189,139 @@ export default {
 			}
 
 			// ==========================================
+			// 1.8 API CỬA HÀNG (SHOPS)
+			// ==========================================
+
+			// Lấy danh sách cửa hàng đang hoạt động
+			// GET /api/shops
+			if (pathname === '/api/shops' && method === 'GET') {
+				const { results } = await env.DB.prepare('SELECT * FROM shops WHERE active = 1 ORDER BY name ASC').all();
+				return jsonResponse(results);
+			}
+
+			// Thêm cửa hàng mới (hoặc cập nhật nếu trùng tên)
+			// POST /api/shops
+			if (pathname === '/api/shops' && method === 'POST') {
+				const body = await request.json() as { name?: string };
+				const name = body.name?.trim();
+
+				if (!name) {
+					return jsonResponse({ error: 'Tên cửa hàng không được bỏ trống.' }, 400);
+				}
+
+				const result = await env.DB.prepare(
+					'INSERT INTO shops (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET active = 1'
+				)
+					.bind(name)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật danh sách cửa hàng.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật danh sách cửa hàng thành công' });
+			}
+
+			// Ẩn cửa hàng (soft delete)
+			// DELETE /api/shops/:id
+			const shopDeleteMatch = pathname.match(/^\/api\/shops\/(\d+)$/);
+			if (shopDeleteMatch && method === 'DELETE') {
+				const shopId = parseInt(shopDeleteMatch[1]);
+				const result = await env.DB.prepare('UPDATE shops SET active = 0 WHERE id = ?')
+					.bind(shopId)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể ẩn cửa hàng.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Đã ẩn cửa hàng thành công.' });
+			}
+
+			// ==========================================
+			// 1.9 API CÀI ĐẶT (SETTINGS)
+			// ==========================================
+
+			// Lấy hạn chốt đặt cơm
+			// GET /api/settings
+			if (pathname === '/api/settings' && method === 'GET') {
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const result = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind('order_deadline')
+					.first<{ value: string }>();
+				const deadline = result?.value || '11:00';
+				return jsonResponse({ order_deadline: deadline });
+			}
+
+			// Cập nhật cài đặt hệ thống (chỉ admin ID 1)
+			// POST /api/settings
+			if (pathname === '/api/settings' && method === 'POST') {
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const body = await request.json() as { key?: string; value?: string; caller_id?: number };
+				const key = body.key?.trim();
+				const value = body.value?.trim();
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thay đổi cài đặt hệ thống.' }, 403);
+				}
+				if (!key || !value) {
+					return jsonResponse({ error: 'Thiếu thông tin cài đặt.' }, 400);
+				}
+
+				const result = await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(key, value)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật cài đặt.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật cài đặt thành công', key, value });
+			}
+
+			// ==========================================
 			// 2. API MÓN ĂN (DISHES)
 			// ==========================================
 
 			// Lấy thực đơn (danh sách món ăn đang bán)
-			// GET /api/dishes
+			// GET /api/dishes (hỗ trợ lọc theo ?shop_id=N)
 			if (pathname === '/api/dishes' && method === 'GET') {
-				const { results } = await env.DB.prepare('SELECT * FROM dishes WHERE active = 1 ORDER BY price ASC').all();
-				return jsonResponse(results);
+				const shopIdParam = url.searchParams.get('shop_id');
+				if (shopIdParam) {
+					const shopId = parseInt(shopIdParam);
+					const { results } = await env.DB.prepare(
+						'SELECT * FROM dishes WHERE active = 1 AND shop_id = ? ORDER BY price ASC'
+					)
+						.bind(shopId)
+						.all();
+					return jsonResponse(results);
+				} else {
+					const { results } = await env.DB.prepare('SELECT * FROM dishes WHERE active = 1 ORDER BY price ASC').all();
+					return jsonResponse(results);
+				}
 			}
 
 			// Thêm món ăn mới (hoặc cập nhật nếu trùng tên)
 			// POST /api/dishes
 			if (pathname === '/api/dishes' && method === 'POST') {
-				const body = await request.json() as { name?: string; price?: number };
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number };
 				const name = body.name?.trim();
 				const price = Number(body.price);
+				const shopId = Number(body.shop_id || 1);
 
 				if (!name || isNaN(price) || price <= 0) {
 					return jsonResponse({ error: 'Tên món ăn và giá (lớn hơn 0) không hợp lệ.' }, 400);
 				}
 
-				// Thêm mới hoặc cập nhật nếu trùng tên (đưa active về 1)
+				// Thêm mới hoặc cập nhật nếu trùng tên (đưa active về 1 và gán shop_id)
 				const result = await env.DB.prepare(
-					'INSERT INTO dishes (name, price) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET price = EXCLUDED.price, active = 1'
+					'INSERT INTO dishes (shop_id, name, price) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET shop_id = EXCLUDED.shop_id, price = EXCLUDED.price, active = 1'
 				)
-				.bind(name, price)
-				.run();
+					.bind(shopId, name, price)
+					.run();
 
 				if (!result.success) {
 					return jsonResponse({ error: 'Không thể cập nhật thực đơn.' }, 500);
@@ -198,8 +371,8 @@ export default {
 				const result = await env.DB.prepare(
 					'INSERT INTO toppings (name, price) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET price = EXCLUDED.price, active = 1'
 				)
-				.bind(name, price)
-				.run();
+					.bind(name, price)
+					.run();
 
 				if (!result.success) {
 					return jsonResponse({ error: 'Không thể cập nhật danh sách món thêm.' }, 500);
@@ -247,10 +420,10 @@ export default {
 					FROM orders o
 					JOIN users u ON o.user_id = u.id
 					WHERE o.date = ?
-					ORDER BY o.created_at ASC`
+					ORDER BY o.dish_name ASC, u.name ASC`
 				)
-				.bind(dateParam)
-				.all();
+					.bind(dateParam)
+					.all();
 
 				return jsonResponse(results);
 			}
@@ -266,6 +439,12 @@ export default {
 
 				if (!userId || !dishId) {
 					return jsonResponse({ error: 'Thiếu thông tin người dùng hoặc món ăn.' }, 400);
+				}
+
+				// Kiểm tra giờ chốt đặt cơm (bỏ qua đối với tài khoản admin ID 1)
+				const deadlineCheck = await isPastDeadline(env.DB, dateParam);
+				if (deadlineCheck.blocked && userId !== 1) {
+					return jsonResponse({ error: `Đã quá thời gian chốt đặt món ngày hôm nay (${deadlineCheck.deadline}).` }, 403);
 				}
 
 				// Lấy thông tin món ăn
@@ -285,8 +464,8 @@ export default {
 					const { results: toppings } = await env.DB.prepare(
 						`SELECT name, price FROM toppings WHERE id IN (${placeholders}) AND active = 1`
 					)
-					.bind(...toppingIds)
-					.all<{ name: string; price: number }>();
+						.bind(...toppingIds)
+						.all<{ name: string; price: number }>();
 
 					if (toppings.length > 0) {
 						const toppingsName = toppings.map(t => t.name).join(', ');
@@ -308,8 +487,8 @@ export default {
 						paid = 0,
 						created_at = CURRENT_TIMESTAMP`
 				)
-				.bind(dateParam, userId, dishId, finalName, finalPrice)
-				.run();
+					.bind(dateParam, userId, dishId, finalName, finalPrice)
+					.run();
 
 				if (!result.success) {
 					return jsonResponse({ error: 'Đặt món thất bại.' }, 500);
@@ -323,8 +502,27 @@ export default {
 			const orderPaidMatch = pathname.match(/^\/api\/orders\/(\d+)\/paid$/);
 			if (orderPaidMatch && method === 'PATCH') {
 				const orderId = parseInt(orderPaidMatch[1]);
-				const body = await request.json() as { paid?: boolean | number };
+				const body = await request.json() as { paid?: boolean | number; caller_id?: number };
 				const paidValue = body.paid ? 1 : 0;
+				const callerId = Number(body.caller_id);
+
+				if (!callerId) {
+					return jsonResponse({ error: 'Thiếu thông tin người thực hiện thao tác.' }, 400);
+				}
+
+				// Lấy đơn hàng hiện tại để kiểm tra chủ sở hữu
+				const order = await env.DB.prepare('SELECT user_id FROM orders WHERE id = ?')
+					.bind(orderId)
+					.first<{ user_id: number }>();
+
+				if (!order) {
+					return jsonResponse({ error: 'Không tìm thấy đơn hàng tương ứng.' }, 404);
+				}
+
+				// Kiểm tra phân quyền: Chỉ ID 1 (P.Dương) được sửa cho người khác. Người khác chỉ được tự sửa cho chính mình.
+				if (callerId !== 1 && callerId !== order.user_id) {
+					return jsonResponse({ error: 'Bạn không có quyền cập nhật trạng thái thanh toán cho đơn hàng này.' }, 403);
+				}
 
 				const result = await env.DB.prepare('UPDATE orders SET paid = ? WHERE id = ?')
 					.bind(paidValue, orderId)
@@ -338,10 +536,26 @@ export default {
 			}
 
 			// Hủy đặt cơm
-			// DELETE /api/orders/:id
+			// DELETE /api/orders/:id?caller_id=N
 			const orderDeleteMatch = pathname.match(/^\/api\/orders\/(\d+)$/);
 			if (orderDeleteMatch && method === 'DELETE') {
 				const orderId = parseInt(orderDeleteMatch[1]);
+				const callerId = Number(url.searchParams.get('caller_id'));
+
+				// Lấy thông tin đơn để kiểm tra ngày
+				const order = await env.DB.prepare('SELECT date, user_id FROM orders WHERE id = ?')
+					.bind(orderId)
+					.first<{ date: string; user_id: number }>();
+
+				if (!order) {
+					return jsonResponse({ error: 'Không tìm thấy đơn hàng tương ứng.' }, 404);
+				}
+
+				// Kiểm tra giờ chốt đặt cơm (bỏ qua đối với admin ID 1)
+				const deadlineCheck = await isPastDeadline(env.DB, order.date);
+				if (deadlineCheck.blocked && callerId !== 1) {
+					return jsonResponse({ error: `Đã quá thời gian chốt đặt món, không thể hủy đơn (${deadlineCheck.deadline}).` }, 403);
+				}
 
 				const result = await env.DB.prepare('DELETE FROM orders WHERE id = ?')
 					.bind(orderId)

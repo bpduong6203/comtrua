@@ -13,6 +13,32 @@
         <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
         <div id="toast-container" class="toast-container"></div>
 
+        <!-- RENAME USER MODAL -->
+        <div id="rename-modal" class="modal-overlay" style="display:none;" onclick="handleModalOverlayClick(event)">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
+                <div class="modal-header">
+                    <h3 id="rename-modal-title">✏️ Đổi Tên Tài Khoản</h3>
+                    <button class="modal-close-btn" onclick="closeRenameModal()" title="Đóng">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Nhập tên mới bạn muốn sử dụng. Tên phải là duy nhất trong hệ thống.</p>
+                    <form id="rename-form">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="rename-input">Tên mới</label>
+                            <input type="text" id="rename-input" class="input-ctrl" placeholder="Nhập tên mới..."
+                                required autocomplete="off">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary"
+                                style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeRenameModal()">Hủy</button>
+                            <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
+                                id="rename-submit-btn">Lưu Tên Mới</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
         <div id="auth-section" class="auth-container" style="display: none;">
             <div class="panel auth-panel">
@@ -21,12 +47,15 @@
                 <p>Nhập tên của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
 
                 <form id="login-form">
-                    <div class="form-group">
+                    <div class="form-group autocomplete-container" id="login-autocomplete-container">
                         <label for="login-name">Tên của bạn</label>
-                        <input type="text" id="login-name" class="input-ctrl" placeholder="Ví dụ: Tôi nhịn..." required
-                            autocomplete="off">
-                        <div class="autocomplete-hint">Nhập tên chính xác để hệ thống tính nợ và ghi nhận lịch sử đặt
-                            cơm.</div>
+                        <div class="input-wrapper">
+                            <input type="text" id="login-name" class="input-ctrl" placeholder="Nhập tên của bạn hoặc chọn gợi ý..." required
+                                autocomplete="off">
+                            <div class="input-clear-btn" id="login-name-clear" style="display: none;" onclick="clearLoginInput(event)">✕</div>
+                        </div>
+                        <div class="suggestions-box" id="login-suggestions" style="display: none;"></div>
+                        <div class="autocomplete-hint">Hệ thống gợi ý tên đã có. Nhấp vào tên để đăng nhập nhanh!</div>
                     </div>
                     <button type="submit" class="btn btn-primary">Bắt Đầu Đặt Cơm</button>
                 </form>
@@ -49,11 +78,29 @@
                     <p>Hệ thống đặt cơm trưa nội bộ văn phòng</p>
                 </div>
 
-                <div class="user-profile" id="user-profile-widget">
-                    <div class="avatar" id="user-avatar">?</div>
-                    <div class="user-info">
-                        <span class="user-name" id="profile-name">Đang tải...</span>
-                        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+                <div class="user-profile" id="user-profile-widget" onclick="toggleProfileDropdown(event)">
+                    <div class="profile-trigger" id="profile-trigger">
+                        <div class="avatar" id="user-avatar">?</div>
+                        <div class="user-info-brief">
+                            <span class="user-name" id="profile-name">Đang tải...</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                    </div>
+                    <div class="profile-dropdown-menu" id="profile-dropdown-menu" onclick="event.stopPropagation()">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar" id="dropdown-user-avatar">?</div>
+                            <div class="dropdown-user-details">
+                                <span class="dropdown-user-name" id="dropdown-profile-name">...</span>
+                                <span class="dropdown-user-role" id="dropdown-profile-role">Thành viên</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item-btn" onclick="openRenameModal(currentUser.id, currentUser.name); closeProfileDropdown();">
+                            <span class="icon">✏️</span> Đổi tên tài khoản
+                        </button>
+                        <button class="dropdown-item-btn logout" onclick="logout(); closeProfileDropdown();">
+                            <span class="icon">🚪</span> Đăng xuất
+                        </button>
                     </div>
                 </div>
             </header>
@@ -122,7 +169,10 @@
 
                     <!-- ORDERING FORM -->
                     <div class="panel">
-                        <h2 class="section-title">✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span></h2>
+                        <h2 class="section-title">
+                            ✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span>
+                            <span class="badge-deadline" id="deadline-badge" style="display: none;"></span>
+                        </h2>
 
                         <!-- Personal Order Status Alert -->
                         <div id="personal-order-status"
@@ -141,7 +191,15 @@
                             </div>
                         </div>
 
-                        <form id="order-form">
+                        <!-- Shop Selection Tabs -->
+                        <div class="shop-tabs-container">
+                            <label>Chọn cửa hàng:</label>
+                            <div class="shop-tabs" id="shop-tabs-container">
+                                <!-- Shop buttons loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <form id="order-form" style="margin-top: 1rem;">
                             <label>Chọn món ăn từ thực đơn hôm nay:</label>
                             <div class="menu-options-grid" id="dishes-options-container">
                                 <div class="empty-state">Đang tải thực đơn...</div>
@@ -172,6 +230,15 @@
                             📋 Danh Sách Đặt Cơm
                             <span class="badge" id="orders-list-badge">0</span>
                         </h2>
+
+                        <!-- Quick Summary Table -->
+                        <div id="orders-summary-widget" class="orders-summary-card" style="display: none;">
+                            <div class="summary-title">📊 Bảng Tổng Hợp Số Lượng Món</div>
+                            <div class="summary-grid" id="orders-summary-grid">
+                                <!-- Summary items loaded dynamically -->
+                            </div>
+                        </div>
+
                         <div class="order-list" id="daily-orders-list">
                             <div class="empty-state">Chưa có ai đặt cơm cho ngày này. Hãy là người đầu tiên!</div>
                         </div>
@@ -184,16 +251,25 @@
                         <div class="tab-header">
                             <button class="tab-btn active" id="tab-btn-dishes" onclick="switchAdminTab('dishes')">Quản
                                 Lý Thực Đơn</button>
+                            <button class="tab-btn" id="tab-btn-shops" onclick="switchAdminTab('shops')">Quản Lý
+                                Cửa Hàng</button>
                             <button class="tab-btn" id="tab-btn-toppings" onclick="switchAdminTab('toppings')">Quản Lý
                                 Topping</button>
                             <button class="tab-btn" id="tab-btn-users" onclick="switchAdminTab('users')">Quản Lý Thành
                                 Viên</button>
+                            <button class="tab-btn" id="tab-btn-settings" onclick="switchAdminTab('settings')" style="display: none;">⚙️ Cài Đặt</button>
                         </div>
 
                         <!-- Tab 1: Manage Dishes Menu -->
                         <div id="tab-content-dishes">
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Món Ăn Mới</h3>
                             <form id="add-dish-form">
+                                <div class="form-group">
+                                    <label for="dish-shop-select">Thuộc cửa hàng</label>
+                                    <select id="dish-shop-select" class="input-ctrl" required>
+                                        <!-- Shops loaded dynamically -->
+                                    </select>
+                                </div>
                                 <div class="form-group">
                                     <label for="dish-name">Tên món ăn</label>
                                     <input type="text" id="dish-name" class="input-ctrl"
@@ -212,6 +288,27 @@
                             <div id="admin-dishes-list"
                                 style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
                                 <!-- Dishes loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Tab 1.2: Manage Shops -->
+                        <div id="tab-content-shops" style="display: none;">
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Cửa Hàng Mới
+                            </h3>
+                            <form id="add-shop-form">
+                                <div class="form-group">
+                                    <label for="shop-new-name">Tên cửa hàng</label>
+                                    <input type="text" id="shop-new-name" class="input-ctrl"
+                                        placeholder="Ví dụ: Quán Cơm Gà" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Thêm Cửa Hàng</button>
+                            </form>
+
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🏪
+                                Danh sách cửa hàng hiện tại</h3>
+                            <div id="admin-shops-list"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                                <!-- Shops loaded dynamically -->
                             </div>
                         </div>
 
@@ -261,6 +358,19 @@
                                 <!-- Users loaded dynamically -->
                             </div>
                         </div>
+
+                        <!-- Tab 5: Settings -->
+                        <div id="tab-content-settings" style="display: none;">
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⚙️ Thiết Lập Hệ Thống</h3>
+                            <form id="settings-form">
+                                <div class="form-group">
+                                    <label for="settings-deadline">Giờ chốt đặt cơm hàng ngày</label>
+                                    <input type="time" id="settings-deadline" class="input-ctrl" required>
+                                    <div class="autocomplete-hint" style="margin-top: 0.5rem;">Sau giờ này, các thành viên (ngoại trừ quản trị viên) sẽ không thể đặt món, đổi món hoặc hủy đơn của ngày hôm nay.</div>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Lưu Cài Đặt</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -272,15 +382,19 @@
         // STATE DEFINITIONS
         // =======================================================
         let currentUser = null;
+        let shops = [];
         let dishes = [];
         let toppings = [];
         let users = [];
         let orders = [];
         let selectedDate = '';
+        let selectedShopId = 1; // Default to shop ID 1
         let selectedDishId = null;
         let selectedToppingIds = [];
         let currentAdminTab = 'dishes';
         let todayQrState = 'default'; // 'default', 'ordered', 'hidden'
+        let orderDeadline = '11:00'; // Default daily deadline
+        let allExistingUsers = [];   // Cached list of all active users for login autocomplete
 
         // =======================================================
         // DOM ELEMENTS
@@ -293,10 +407,19 @@
 
         const profileName = document.getElementById('profile-name');
         const userAvatar = document.getElementById('user-avatar');
+        
+        const profileDropdownMenu = document.getElementById('profile-dropdown-menu');
+        const dropdownProfileName = document.getElementById('dropdown-profile-name');
+        const dropdownProfileRole = document.getElementById('dropdown-profile-role');
+        const dropdownUserAvatar = document.getElementById('dropdown-user-avatar');
+
+        const loginSuggestions = document.getElementById('login-suggestions');
+        const loginNameClear = document.getElementById('login-name-clear');
 
         const orderDatePicker = document.getElementById('order-date-picker');
         const orderingDateTitle = document.getElementById('ordering-date-title');
 
+        const shopTabsContainer = document.getElementById('shop-tabs-container');
         const dishesOptionsContainer = document.getElementById('dishes-options-container');
         const toppingsSection = document.getElementById('toppings-section');
         const toppingsOptionsContainer = document.getElementById('toppings-options-container');
@@ -308,6 +431,8 @@
 
         const dailyOrdersList = document.getElementById('daily-orders-list');
         const ordersListBadge = document.getElementById('orders-list-badge');
+        const ordersSummaryWidget = document.getElementById('orders-summary-widget');
+        const ordersSummaryGrid = document.getElementById('orders-summary-grid');
 
         const statsTotalOrders = document.getElementById('stats-total-orders');
         const statsTotalDishesDesc = document.getElementById('stats-total-dishes-desc');
@@ -320,14 +445,21 @@
         const personalDebtTotal = document.getElementById('personal-debt-total');
         const personalDebtOrdersList = document.getElementById('personal-debt-orders-list');
 
+        const dishShopSelect = document.getElementById('dish-shop-select');
         const addDishForm = document.getElementById('add-dish-form');
         const adminDishesList = document.getElementById('admin-dishes-list');
+        const addShopForm = document.getElementById('add-shop-form');
+        const adminShopsList = document.getElementById('admin-shops-list');
         const addToppingForm = document.getElementById('add-topping-form');
         const adminToppingsList = document.getElementById('admin-toppings-list');
         const addUserForm = document.getElementById('add-user-form');
         const adminUsersList = document.getElementById('admin-users-list');
 
-
+        const tabBtnSettings = document.getElementById('tab-btn-settings');
+        const tabContentSettings = document.getElementById('tab-content-settings');
+        const settingsForm = document.getElementById('settings-form');
+        const settingsDeadlineInput = document.getElementById('settings-deadline');
+        const deadlineBadge = document.getElementById('deadline-badge');
 
         const todayOrderQrBox = document.getElementById('today-order-qr-box');
         const todayOrderQrImg = document.getElementById('today-order-qr-img');
@@ -428,13 +560,144 @@
             }
         }
 
-        // Get local date in ICT (YYYY-MM-DD)
+        // Get local date in ICT (Vietnam) as YYYY-MM-DD
         function getLocalVNDateString() {
-            const date = new Date();
-            // Format in UTC+7 (Vietnam Time)
-            const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
-            const vnDate = new Date(utc + (3600000 * 7));
-            return vnDate.toISOString().split('T')[0];
+            try {
+                return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Ho_Chi_Minh',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(new Date());
+            } catch (e) {
+                const date = new Date();
+                const offset = 7 * 60; // Vietnam is UTC+7
+                const vnDate = new Date(date.getTime() + (date.getTimezoneOffset() + offset) * 60000);
+                return vnDate.toISOString().split('T')[0];
+            }
+        }
+
+        // Get local time in ICT (Vietnam) as { hour, minute }
+        function getVNCurrentTime() {
+            try {
+                const timeStr = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Ho_Chi_Minh',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(new Date());
+                const [hour, minute] = timeStr.split(':').map(Number);
+                return { hour, minute };
+            } catch (e) {
+                const date = new Date();
+                const offset = 7 * 60; // Vietnam is UTC+7
+                const vnDate = new Date(date.getTime() + (date.getTimezoneOffset() + offset) * 60000);
+                return {
+                    hour: vnDate.getUTCHours(),
+                    minute: vnDate.getUTCMinutes()
+                };
+            }
+        }
+
+        // Get deadline locked/open status
+        function getDeadlineStatus() {
+            const todayStr = getLocalVNDateString();
+            
+            if (selectedDate < todayStr) {
+                return { locked: true };
+            }
+            
+            if (selectedDate === todayStr) {
+                const vnNow = getVNCurrentTime();
+                const [deadlineHour, deadlineMin] = orderDeadline.split(':').map(Number);
+                
+                if (vnNow.hour > deadlineHour || (vnNow.hour === deadlineHour && vnNow.minute >= deadlineMin)) {
+                    return { locked: true };
+                }
+            }
+            
+            return { locked: false };
+        }
+
+        function checkAndUpdateDeadlineUI() {
+            if (!currentUser) return;
+            const deadlineStatus = getDeadlineStatus();
+            const isAdmin = currentUser.id === 1;
+            const shouldLock = deadlineStatus.locked && !isAdmin;
+
+            // 1. Update the deadline badge
+            if (deadlineBadge) {
+                deadlineBadge.style.display = 'inline-flex';
+                deadlineBadge.className = 'badge-deadline'; // Reset classes
+                if (deadlineStatus.locked) {
+                    if (isAdmin) {
+                        deadlineBadge.classList.add('admin-bypass');
+                        deadlineBadge.innerHTML = `⚠️ Admin: Vượt Giờ Chốt (${orderDeadline})`;
+                    } else {
+                        deadlineBadge.classList.add('locked');
+                        deadlineBadge.innerHTML = `🔒 Đã Khóa Đặt Món (${orderDeadline})`;
+                    }
+                } else {
+                    deadlineBadge.classList.add('open');
+                    deadlineBadge.innerHTML = `🔓 Đang Nhận Đơn (Chốt: ${orderDeadline})`;
+                }
+            }
+
+            // 2. Update ordering form inputs & buttons
+            if (submitOrderBtn) {
+                if (shouldLock) {
+                    submitOrderBtn.disabled = true;
+                    submitOrderBtn.classList.add('disabled');
+                    submitOrderBtn.textContent = '🔒 Đã Quá Hạn Chốt Đặt Món';
+                } else {
+                    submitOrderBtn.disabled = false;
+                    submitOrderBtn.classList.remove('disabled');
+                    // Restore original text based on current orders state
+                    const myOrder = orders.find(o => o.user_id === currentUser.id);
+                    submitOrderBtn.textContent = myOrder ? 'Đổi Món Đặt Cơm' : 'Xác Nhận Đặt Món';
+                }
+            }
+
+            // Shop tab buttons
+            document.querySelectorAll('.shop-tab-btn').forEach(btn => {
+                if (shouldLock) {
+                    btn.disabled = true;
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.5';
+                } else {
+                    btn.disabled = false;
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                }
+            });
+
+            // Dishes options cards
+            document.querySelectorAll('.menu-option-card').forEach(card => {
+                if (shouldLock) {
+                    card.style.pointerEvents = 'none';
+                    card.style.opacity = '0.5';
+                    card.classList.add('disabled');
+                } else {
+                    card.style.pointerEvents = 'auto';
+                    card.style.opacity = '1';
+                    card.classList.remove('disabled');
+                }
+            });
+
+            // Toppings checkboxes
+            document.querySelectorAll('.topping-checkbox-label input').forEach(input => {
+                input.disabled = shouldLock;
+            });
+        }
+
+        // User Profile Dropdown handlers
+        function toggleProfileDropdown(event) {
+            if (event) event.stopPropagation();
+            profileDropdownMenu.classList.toggle('active');
+        }
+        
+        function closeProfileDropdown() {
+            profileDropdownMenu.classList.remove('active');
         }
 
         // =======================================================
@@ -467,9 +730,105 @@
             userQuickSelect.addEventListener('change', handleQuickSelectChange);
             orderForm.addEventListener('submit', handleOrderSubmit);
             addDishForm.addEventListener('submit', handleAddDishSubmit);
+            addShopForm.addEventListener('submit', handleAddShopSubmit);
             addToppingForm.addEventListener('submit', handleAddToppingSubmit);
             addUserForm.addEventListener('submit', handleAddUserSubmit);
+            settingsForm.addEventListener('submit', handleSettingsSubmit);
+
+            // Autocomplete suggestions listener
+            loginNameInput.addEventListener('input', () => {
+                const query = loginNameInput.value.trim();
+                
+                if (query.length > 0) {
+                    loginNameClear.style.display = 'flex';
+                } else {
+                    loginNameClear.style.display = 'none';
+                }
+                
+                if (!query) {
+                    loginSuggestions.style.display = 'none';
+                    loginSuggestions.innerHTML = '';
+                    return;
+                }
+                
+                const normalizedQuery = removeVietnameseTones(query).toLowerCase();
+                const matches = allExistingUsers.filter(user => {
+                    const normalizedName = removeVietnameseTones(user.name).toLowerCase();
+                    return normalizedName.includes(normalizedQuery);
+                });
+                
+                renderSuggestions(matches, query);
+            });
+
+            // Close dropdowns and suggestions on outside clicks
+            document.addEventListener('click', (e) => {
+                const profileWidget = document.getElementById('user-profile-widget');
+                if (profileWidget && !profileWidget.contains(e.target)) {
+                    closeProfileDropdown();
+                }
+
+                if (!loginSuggestions.contains(e.target) && e.target !== loginNameInput) {
+                    loginSuggestions.style.display = 'none';
+                }
+            });
+
+            // Periodically check deadline status (every 5 seconds) for real-time locking
+            setInterval(() => {
+                if (currentUser && selectedDate) {
+                    checkAndUpdateDeadlineUI();
+                }
+            }, 5000);
         });
+
+        // Function to clear login input field
+        function clearLoginInput(event) {
+            if (event) event.stopPropagation();
+            loginNameInput.value = '';
+            loginNameClear.style.display = 'none';
+            loginSuggestions.style.display = 'none';
+            loginSuggestions.innerHTML = '';
+            loginNameInput.focus();
+        }
+
+        function renderSuggestions(matches, query) {
+            loginSuggestions.innerHTML = '';
+            
+            if (matches.length === 0) {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item new-user-hint';
+                item.innerHTML = `✨ Click để đăng ký mới: "${query}"`;
+                item.addEventListener('click', () => {
+                    performLogin(query);
+                    loginSuggestions.style.display = 'none';
+                });
+                loginSuggestions.appendChild(item);
+                loginSuggestions.style.display = 'block';
+                return;
+            }
+            
+            matches.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                
+                const initial = user.name.charAt(0).toUpperCase();
+                
+                item.innerHTML = `
+                    <div class="suggestion-avatar">${initial}</div>
+                    <span class="suggestion-name">${user.name}</span>
+                    <span class="suggestion-badge">Thành viên</span>
+                `;
+                
+                item.addEventListener('click', () => {
+                    loginNameInput.value = user.name;
+                    performLogin(user.name);
+                    loginSuggestions.style.display = 'none';
+                });
+                
+                loginSuggestions.appendChild(item);
+            });
+            
+            loginSuggestions.style.display = 'block';
+        }
 
         function showLogin() {
             authSection.style.display = 'block';
@@ -485,12 +844,68 @@
             profileName.textContent = currentUser.name;
             userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
 
+            // Populate dropdown menu details
+            dropdownProfileName.textContent = currentUser.name;
+            dropdownUserAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+            if (currentUser.id === 1) {
+                dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
+                tabBtnSettings.style.display = 'block';
+            } else {
+                dropdownProfileRole.textContent = 'Thành viên';
+                tabBtnSettings.style.display = 'none';
+            }
+
             // Initial loads
-            await loadDishes();
+            await loadSettings(); // Load deadline settings first
+            await loadShops();
             await loadToppings();
             await loadUsers();
             await loadDailyOrders();
             await loadPersonalDebt();
+            await loadAllDishesForAdmin();
+        }
+
+        async function loadSettings() {
+            try {
+                const resp = await fetch('/api/settings');
+                const data = await resp.json();
+                if (resp.ok && data.order_deadline) {
+                    orderDeadline = data.order_deadline;
+                    settingsDeadlineInput.value = orderDeadline;
+                    checkAndUpdateDeadlineUI();
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải cài đặt:', err);
+            }
+        }
+
+        async function handleSettingsSubmit(e) {
+            e.preventDefault();
+            const value = settingsDeadlineInput.value;
+            if (!value) return;
+
+            try {
+                const resp = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: 'order_deadline',
+                        value: value,
+                        caller_id: currentUser.id
+                    })
+                });
+
+                const data = await resp.json();
+                if (resp.ok) {
+                    showToast('Đã lưu thiết lập hệ thống thành công!');
+                    orderDeadline = value;
+                    checkAndUpdateDeadlineUI();
+                } else {
+                    showToast(data.error || 'Lỗi khi lưu cài đặt.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            }
         }
 
         function formatDateDisplay(dateStr) {
@@ -507,6 +922,7 @@
                 const resp = await fetch('/api/users');
                 const data = await resp.json();
                 if (resp.ok) {
+                    allExistingUsers = data; // Cache active users for autocomplete suggestions
                     userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
                     data.forEach(user => {
                         const opt = document.createElement('option');
@@ -598,16 +1014,44 @@
         // =======================================================
         // LOADER FUNCTIONS (GET DATA)
         // =======================================================
+        async function loadShops() {
+            try {
+                const resp = await fetch('/api/shops');
+                shops = await resp.json();
+                if (resp.ok) {
+                    renderShopTabs();
+                    renderAdminShops();
+                    updateDishShopSelectOptions();
+                    // Load dishes for the currently selected shop
+                    await loadDishes();
+                }
+            } catch (err) {
+                showToast('Không thể tải danh sách cửa hàng.', 'error');
+            }
+        }
+
         async function loadDishes() {
             try {
-                const resp = await fetch('/api/dishes');
+                const resp = await fetch(`/api/dishes?shop_id=${selectedShopId}`);
                 dishes = await resp.json();
                 if (resp.ok) {
                     renderDishesOptions();
-                    renderAdminDishes();
                 }
             } catch (err) {
                 showToast('Không thể tải thực đơn.', 'error');
+            }
+        }
+
+        let allDishes = [];
+        async function loadAllDishesForAdmin() {
+            try {
+                const resp = await fetch('/api/dishes');
+                if (resp.ok) {
+                    allDishes = await resp.json();
+                    renderAdminDishes();
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải danh sách admin dishes:', err);
             }
         }
 
@@ -694,6 +1138,76 @@
 
                 dishesOptionsContainer.appendChild(card);
             });
+            checkAndUpdateDeadlineUI();
+        }
+
+        function renderShopTabs() {
+            shopTabsContainer.innerHTML = '';
+            if (shops.length === 0) {
+                shopTabsContainer.innerHTML = '<div class="empty-state" style="padding: 1rem;">Chưa có cửa hàng hoạt động.</div>';
+                return;
+            }
+
+            // Ensure active selectedShopId is valid
+            if (!shops.some(s => s.id === selectedShopId)) {
+                selectedShopId = shops[0].id;
+            }
+
+            shops.forEach(shop => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `shop-tab-btn ${selectedShopId === shop.id ? 'active' : ''}`;
+                btn.textContent = shop.name;
+                btn.addEventListener('click', async () => {
+                    selectedShopId = shop.id;
+                    document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedDishId = null;
+                    selectedToppingIds = [];
+                    updateOrderSummaryPrice();
+                    await loadDishes();
+                });
+                shopTabsContainer.appendChild(btn);
+            });
+            checkAndUpdateDeadlineUI();
+        }
+
+        function renderAdminShops() {
+            adminShopsList.innerHTML = '';
+            if (shops.length === 0) {
+                adminShopsList.innerHTML = '<div class="empty-state">Chưa có cửa hàng nào.</div>';
+                return;
+            }
+
+            shops.forEach(shop => {
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.padding = '0.5rem 0.75rem';
+                item.innerHTML = `
+                        <div style="font-weight:600; font-size:0.9rem;">
+                            🏪 ${shop.name}
+                        </div>
+                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteShop(${shop.id})" title="Xóa cửa hàng">
+                            🗑️
+                        </button>
+                    `;
+                adminShopsList.appendChild(item);
+            });
+        }
+
+        function updateDishShopSelectOptions() {
+            dishShopSelect.innerHTML = '';
+            if (shops.length === 0) {
+                dishShopSelect.innerHTML = '<option value="">-- Không có cửa hàng --</option>';
+                return;
+            }
+
+            shops.forEach(shop => {
+                const opt = document.createElement('option');
+                opt.value = shop.id;
+                opt.textContent = shop.name;
+                dishShopSelect.appendChild(opt);
+            });
         }
 
         function renderToppingsOptions() {
@@ -715,6 +1229,7 @@
                     `;
                 toppingsOptionsContainer.appendChild(label);
             });
+            checkAndUpdateDeadlineUI();
         }
 
         function handleToppingChange(checkbox, toppingId) {
@@ -790,15 +1305,43 @@
                 updateOrderSummaryPrice();
             }
 
+            // Populate the Quick Summary grid and toggle its visibility
             if (orders.length === 0) {
+                ordersSummaryWidget.style.display = 'none';
                 dailyOrdersList.innerHTML = '<div class="empty-state">Chưa có ai đặt cơm cho ngày này. Hãy là người đầu tiên!</div>';
                 return;
             }
 
+            ordersSummaryWidget.style.display = 'block';
+            ordersSummaryGrid.innerHTML = '';
+
+            const dishSummary = {};
+            orders.forEach(o => {
+                dishSummary[o.dish_name] = (dishSummary[o.dish_name] || 0) + 1;
+            });
+
+            for (const dishName in dishSummary) {
+                const item = document.createElement('div');
+                item.className = 'summary-item';
+                item.innerHTML = `
+                    <span class="summary-item-name" title="${dishName}">${dishName}</span>
+                    <span class="summary-item-count">x${dishSummary[dishName]}</span>
+                `;
+                ordersSummaryGrid.appendChild(item);
+            }
+
+            // Render order items list
+            const deadlineStatus = getDeadlineStatus();
+            const isAdmin = currentUser && currentUser.id === 1;
+
             orders.forEach(order => {
                 const isMe = order.user_id === currentUser.id;
+                const canToggle = isMe || currentUser.id === 1;
                 const item = document.createElement('div');
                 item.className = 'order-item';
+
+                // Show delete button only if it's their own order and either not locked or they are the admin
+                const showDeleteBtn = isMe && (!deadlineStatus.locked || isAdmin);
 
                 item.innerHTML = `
                         <div class="order-user">
@@ -812,10 +1355,10 @@
                         </div>
                         <div class="order-actions">
                             <label class="switch">
-                                <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="toggleOrderPaid(${order.id}, this.checked)">
+                                <input type="checkbox" ${order.paid ? 'checked' : ''} ${canToggle ? '' : 'disabled'} onchange="toggleOrderPaid(${order.id}, this.checked)">
                                 <span class="slider"><span class="slider-text"></span></span>
                             </label>
-                            ${isMe ? `
+                            ${showDeleteBtn ? `
                                 <button class="btn-delete" onclick="deleteMyOrder(${order.id})" title="Hủy đặt cơm">
                                     🗑️
                                 </button>
@@ -825,6 +1368,7 @@
 
                 dailyOrdersList.appendChild(item);
             });
+            checkAndUpdateDeadlineUI();
         }
 
         function calculateStats() {
@@ -844,7 +1388,6 @@
             let unpaidSum = 0;
             let unpaidCount = 0;
 
-            // Group by dish names to see popularity
             const dishCounts = {};
             orders.forEach(o => {
                 dishCounts[o.dish_name] = (dishCounts[o.dish_name] || 0) + 1;
@@ -858,7 +1401,6 @@
                 }
             });
 
-            // Get most popular dish
             let popularDish = '';
             let maxCount = 0;
             for (const dish in dishCounts) {
@@ -894,7 +1436,6 @@
                     personalDebtOrdersList.appendChild(item);
                 });
 
-                // Update dynamic VietQR for all unpaid debts
                 const cleanName = removeVietnameseTones(currentUser.name).replace(/\s+/g, '');
                 const description = `ComTrua ${cleanName} Tra`;
                 const encodedDesc = encodeURIComponent(description);
@@ -920,18 +1461,22 @@
 
         function renderAdminDishes() {
             adminDishesList.innerHTML = '';
-            if (dishes.length === 0) {
+            if (allDishes.length === 0) {
                 adminDishesList.innerHTML = '<div class="empty-state">Chưa có món ăn nào trong thực đơn.</div>';
                 return;
             }
 
-            dishes.forEach(dish => {
+            allDishes.forEach(dish => {
+                const shop = shops.find(s => s.id === dish.shop_id);
+                const shopName = shop ? shop.name : 'Không rõ';
                 const item = document.createElement('div');
                 item.className = 'order-item';
                 item.style.padding = '0.5rem 0.75rem';
                 item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
-                            ${dish.name} <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
+                            ${dish.name}
+                            <span style="color:#a5b4fc; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
+                            <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
                         </div>
                         <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteDish(${dish.id})" title="Xóa món ăn">
                             🗑️
@@ -956,16 +1501,23 @@
                         <div style="font-weight:600; font-size:0.9rem;">
                             👤 ${user.name}
                         </div>
+                        <button class="btn-edit" onclick="openRenameModal(${user.id}, '${user.name.replace(/'/g, "\\'")}')"
+                            title="Đổi tên thành viên">
+                            ✏️
+                        </button>
                     `;
                 adminUsersList.appendChild(item);
             });
         }
 
-        // =======================================================
-        // ACTION HANDLERS (MUTATE STATE & POST TO API)
-        // =======================================================
         async function handleOrderSubmit(e) {
             e.preventDefault();
+            const deadlineStatus = getDeadlineStatus();
+            const isAdmin = currentUser && currentUser.id === 1;
+            if (deadlineStatus.locked && !isAdmin) {
+                showToast('Đã quá thời gian chốt đặt món hôm nay.', 'error');
+                return;
+            }
             if (!selectedDishId) {
                 showToast('Vui lòng click chọn một món ăn trên thực đơn!', 'error');
                 return;
@@ -1003,7 +1555,7 @@
                 const resp = await fetch(`/api/orders/${orderId}/paid`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paid: isPaid })
+                    body: JSON.stringify({ paid: isPaid, caller_id: currentUser.id })
                 });
 
                 if (resp.ok) {
@@ -1011,7 +1563,8 @@
                     loadDailyOrders();
                     loadPersonalDebt();
                 } else {
-                    showToast('Không thể cập nhật thanh toán.', 'error');
+                    const data = await resp.json();
+                    showToast(data.error || 'Không thể cập nhật thanh toán.', 'error');
                 }
             } catch (err) {
                 showToast('Lỗi kết nối.', 'error');
@@ -1019,10 +1572,16 @@
         }
 
         async function deleteMyOrder(orderId) {
+            const deadlineStatus = getDeadlineStatus();
+            const isAdmin = currentUser && currentUser.id === 1;
+            if (deadlineStatus.locked && !isAdmin) {
+                showToast('Đã quá thời gian chốt đặt món, không thể hủy đơn hôm nay.', 'error');
+                return;
+            }
             if (!confirm('Bạn có chắc chắn muốn hủy đơn đặt cơm trưa này không?')) return;
 
             try {
-                const resp = await fetch(`/api/orders/${orderId}`, {
+                const resp = await fetch(`/api/orders/${orderId}?caller_id=${currentUser.id}`, {
                     method: 'DELETE'
                 });
 
@@ -1042,24 +1601,27 @@
             e.preventDefault();
             const nameInput = document.getElementById('dish-name');
             const priceInput = document.getElementById('dish-price');
+            const shopSelect = document.getElementById('dish-shop-select');
 
             const name = nameInput.value.trim();
             const price = parseInt(priceInput.value);
+            const shopId = parseInt(shopSelect.value);
 
-            if (!name || isNaN(price) || price <= 0) return;
+            if (!name || isNaN(price) || price <= 0 || isNaN(shopId)) return;
 
             try {
                 const resp = await fetch('/api/dishes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, price })
+                    body: JSON.stringify({ name, price, shop_id: shopId })
                 });
 
                 if (resp.ok) {
                     showToast('Đã cập nhật thực đơn món ăn!');
                     nameInput.value = '';
                     priceInput.value = '';
-                    loadDishes();
+                    await loadDishes();
+                    await loadAllDishesForAdmin();
                 } else {
                     const data = await resp.json();
                     showToast(data.error || 'Lỗi thêm món ăn.', 'error');
@@ -1105,9 +1667,57 @@
 
                 if (resp.ok) {
                     showToast('Đã ẩn món ăn khỏi thực đơn!');
-                    loadDishes();
+                    await loadDishes();
+                    await loadAllDishesForAdmin();
                 } else {
                     showToast('Không thể ẩn món ăn.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function handleAddShopSubmit(e) {
+            e.preventDefault();
+            const shopNewNameInput = document.getElementById('shop-new-name');
+            const name = shopNewNameInput.value.trim();
+            if (!name) return;
+
+            try {
+                const resp = await fetch('/api/shops', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (resp.ok) {
+                    showToast(`Đã thêm cửa hàng mới: ${name}!`);
+                    shopNewNameInput.value = '';
+                    await loadShops();
+                    await loadAllDishesForAdmin();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.error || 'Lỗi thêm cửa hàng.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function deleteShop(shopId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa cửa hàng này không? Món ăn thuộc cửa hàng này sẽ ẩn trên thực đơn đặt món.')) return;
+
+            try {
+                const resp = await fetch(`/api/shops/${shopId}`, {
+                    method: 'DELETE'
+                });
+
+                if (resp.ok) {
+                    showToast('Đã xóa cửa hàng!');
+                    await loadShops();
+                    await loadAllDishesForAdmin();
+                } else {
+                    showToast('Không thể xóa cửa hàng.', 'error');
                 }
             } catch (err) {
                 showToast('Lỗi kết nối.', 'error');
@@ -1187,9 +1797,6 @@
             });
         }
 
-        // =======================================================
-        // INTERACTION & NAVIGATION HELPERS
-        // =======================================================
         function changeDateOffset(offset) {
             const currentDate = new Date(selectedDate);
             currentDate.setDate(currentDate.getDate() + offset);
@@ -1209,13 +1816,94 @@
         function switchAdminTab(tabName) {
             currentAdminTab = tabName;
             document.getElementById('tab-btn-dishes').classList.toggle('active', tabName === 'dishes');
+            document.getElementById('tab-btn-shops').classList.toggle('active', tabName === 'shops');
             document.getElementById('tab-btn-toppings').classList.toggle('active', tabName === 'toppings');
             document.getElementById('tab-btn-users').classList.toggle('active', tabName === 'users');
+            document.getElementById('tab-btn-settings').classList.toggle('active', tabName === 'settings');
 
             document.getElementById('tab-content-dishes').style.display = tabName === 'dishes' ? 'block' : 'none';
+            document.getElementById('tab-content-shops').style.display = tabName === 'shops' ? 'block' : 'none';
             document.getElementById('tab-content-toppings').style.display = tabName === 'toppings' ? 'block' : 'none';
             document.getElementById('tab-content-users').style.display = tabName === 'users' ? 'block' : 'none';
+            document.getElementById('tab-content-settings').style.display = tabName === 'settings' ? 'block' : 'none';
         }
+
+        // =======================================================
+        // RENAME USER MODAL
+        // =======================================================
+        let renameTargetUserId = null;
+
+        function openRenameModal(userId, currentName) {
+            renameTargetUserId = userId;
+            const modal = document.getElementById('rename-modal');
+            const input = document.getElementById('rename-input');
+            input.value = currentName;
+            modal.style.display = 'flex';
+            // Delay focus so transition plays first
+            setTimeout(() => input.focus(), 80);
+        }
+
+        function closeRenameModal() {
+            document.getElementById('rename-modal').style.display = 'none';
+            renameTargetUserId = null;
+        }
+
+        function handleModalOverlayClick(e) {
+            // Close when clicking on the dark overlay but not the panel itself
+            if (e.target.id === 'rename-modal') {
+                closeRenameModal();
+            }
+        }
+
+        // Close on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeRenameModal();
+        });
+
+        document.getElementById('rename-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!renameTargetUserId) return;
+
+            const input = document.getElementById('rename-input');
+            const newName = input.value.trim();
+            if (!newName) return;
+
+            const btn = document.getElementById('rename-submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Đang lưu...';
+
+            try {
+                const resp = await fetch(`/api/users/${renameTargetUserId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast(`Đã đổi tên thành "${newName}" thành công!`);
+
+                    // Nếu đang đổi tên chính mình, cập nhật local state và UI
+                    if (renameTargetUserId === currentUser.id) {
+                        currentUser.name = newName;
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        profileName.textContent = newName;
+                        userAvatar.textContent = newName.charAt(0).toUpperCase();
+                    }
+
+                    closeRenameModal();
+                    await loadUsers();
+                } else {
+                    showToast(data.error || 'Đổi tên thất bại.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Lưu Tên Mới';
+            }
+        });
     </script>
 </body>
 
