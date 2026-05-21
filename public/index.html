@@ -1,32 +1,1222 @@
 <!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+<html lang="vi">
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ComTrua - Ứng Dụng Đặt Cơm Trưa Nội Bộ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
+        <div id="auth-section" class="auth-container" style="display: none;">
+            <div class="panel auth-panel">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🍱</div>
+                <h2>Đăng Nhập Đặt Cơm</h2>
+                <p>Nhập tên của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-name">Tên của bạn</label>
+                        <input type="text" id="login-name" class="input-ctrl" placeholder="Ví dụ: Tôi nhịn..." required
+                            autocomplete="off">
+                        <div class="autocomplete-hint">Nhập tên chính xác để hệ thống tính nợ và ghi nhận lịch sử đặt
+                            cơm.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Bắt Đầu Đặt Cơm</button>
+                </form>
+
+                <div style="margin-top: 1.5rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
+                    <label>Hoặc chọn nhanh từ danh sách thành viên:</label>
+                    <select id="user-quick-select" class="input-ctrl" style="margin-top: 0.5rem;">
+                        <option value="">-- Chọn thành viên có sẵn --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. MAIN APP SECTION -->
+        <div id="main-section" style="display: none;">
+            <!-- HEADER -->
+            <header>
+                <div class="logo-area">
+                    <h1>🍱 ComTrua</h1>
+                    <p>Hệ thống đặt cơm trưa nội bộ văn phòng</p>
+                </div>
+
+                <div class="user-profile" id="user-profile-widget">
+                    <div class="avatar" id="user-avatar">?</div>
+                    <div class="user-info">
+                        <span class="user-name" id="profile-name">Đang tải...</span>
+                        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- STATS PANELS -->
+            <div class="stats-grid">
+                <div class="stat-card total">
+                    <span class="stat-label">Tổng Phần Ăn Hôm Nay</span>
+                    <span class="stat-value" id="stats-total-orders">0 suất</span>
+                    <span class="stat-sub" id="stats-total-dishes-desc">Chưa có ai đặt</span>
+                </div>
+                <div class="stat-card paid">
+                    <span class="stat-label">Đã Thanh Toán</span>
+                    <span class="stat-value" id="stats-paid-amount">0 đ</span>
+                    <span class="stat-sub" id="stats-paid-count">0 người</span>
+                </div>
+                <div class="stat-card unpaid">
+                    <span class="stat-label">Chưa Thanh Toán</span>
+                    <span class="stat-value" id="stats-unpaid-amount">0 đ</span>
+                    <span class="stat-sub" id="stats-unpaid-count">0 người</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- LEFT COLUMN (ORDERING FORM & DAILY ORDERS LIST) -->
+                <div>
+                    <!-- PERSONAL DEBT STATUS -->
+                    <div class="personal-debt-card" id="personal-debt-widget" style="display: none;">
+                        <div class="debt-header">
+                            <span class="debt-title">💸 Số tiền bạn chưa thanh toán (tất cả các ngày):</span>
+                            <span class="debt-amount" id="personal-debt-total">0 đ</span>
+                        </div>
+                        <div class="debt-list" id="personal-debt-orders-list">
+                            <div class="empty-state">Bạn đã thanh toán đầy đủ các hóa đơn!</div>
+                        </div>
+                        <div style="margin-top: 1rem; text-align: center;">
+                            <button type="button" class="btn btn-secondary"
+                                style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 8px;"
+                                id="toggle-debt-qr-btn" onclick="toggleDebtQR()">
+                                🔍 Xem Mã QR Thanh Toán Nợ
+                            </button>
+                        </div>
+                        <div id="debt-qr-box" class="qr-payment-box compact" style="display: none;">
+                            <div class="qr-title">📲 Quét VietQR Trả Tất Cả Nợ</div>
+                            <img id="debt-qr-img" src="" alt="VietQR Thanh Toán Nợ">
+                            <div class="qr-payment-amount" id="debt-qr-amount">0 đ</div>
+                            <div class="qr-payment-info">
+                                Ngân hàng: <strong>Vietcombank (VCB)</strong><br>
+                                Số tài khoản: <strong>1025267307</strong><br>
+                                Nội dung: <strong id="debt-qr-desc">...</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATE SELECTION -->
+                    <div class="panel"
+                        style="padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                        <div class="date-selector">
+                            <button class="date-btn" onclick="changeDateOffset(-1)">◀ Hôm trước</button>
+                            <input type="date" id="order-date-picker">
+                            <button class="date-btn" onclick="changeDateOffset(1)">Hôm sau ▶</button>
+                        </div>
+                        <button class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.9rem;"
+                            onclick="setSelectedToToday()">Quay lại Hôm Nay</button>
+                    </div>
+
+                    <!-- ORDERING FORM -->
+                    <div class="panel">
+                        <h2 class="section-title">✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span></h2>
+
+                        <!-- Personal Order Status Alert -->
+                        <div id="personal-order-status"
+                            style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; border-radius: 10px; font-weight: 500; font-size: 0.95rem; display: none;">
+                        </div>
+
+                        <!-- Today's Order QR Box -->
+                        <div id="today-order-qr-box" class="qr-payment-box" style="display: none;">
+                            <div class="qr-title">📲 Quét VietQR Thanh Toán Đơn Hôm Nay</div>
+                            <img id="today-order-qr-img" src="" alt="VietQR Thanh Toán Đơn">
+                            <div class="qr-payment-amount" id="today-order-qr-amount">0 đ</div>
+                            <div class="qr-payment-info">
+                                Ngân hàng: <strong>Vietcombank (VCB)</strong><br>
+                                Số tài khoản: <strong>1025267307</strong><br>
+                                Nội dung: <strong id="today-order-qr-desc">...</strong>
+                            </div>
+                        </div>
+
+                        <form id="order-form">
+                            <label>Chọn món ăn từ thực đơn hôm nay:</label>
+                            <div class="menu-options-grid" id="dishes-options-container">
+                                <div class="empty-state">Đang tải thực đơn...</div>
+                            </div>
+
+                            <div id="toppings-section"
+                                style="margin-top: 1.5rem; margin-bottom: 1.5rem; display: none;">
+                                <label>Chọn món thêm (Topping):</label>
+                                <div id="toppings-options-container" class="toppings-options-grid">
+                                    <!-- Toppings checkboxes loaded dynamically -->
+                                </div>
+                            </div>
+
+                            <div id="order-summary-price"
+                                style="margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 700; color: #a5b4fc; text-align: right; display: none;">
+                                Tổng cộng: <span id="temp-total-price">0 đ</span>
+                            </div>
+
+
+                            <button type="submit" class="btn btn-primary" id="submit-order-btn">Xác Nhận Đặt
+                                Món</button>
+                        </form>
+                    </div>
+
+                    <!-- TODAY'S ORDERS LIST -->
+                    <div class="panel">
+                        <h2 class="section-title">
+                            📋 Danh Sách Đặt Cơm
+                            <span class="badge" id="orders-list-badge">0</span>
+                        </h2>
+                        <div class="order-list" id="daily-orders-list">
+                            <div class="empty-state">Chưa có ai đặt cơm cho ngày này. Hãy là người đầu tiên!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN (ADMIN PANELS & MANAGE MENU) -->
+                <div>
+                    <div class="panel">
+                        <div class="tab-header">
+                            <button class="tab-btn active" id="tab-btn-dishes" onclick="switchAdminTab('dishes')">Quản
+                                Lý Thực Đơn</button>
+                            <button class="tab-btn" id="tab-btn-toppings" onclick="switchAdminTab('toppings')">Quản Lý
+                                Topping</button>
+                            <button class="tab-btn" id="tab-btn-users" onclick="switchAdminTab('users')">Quản Lý Thành
+                                Viên</button>
+                        </div>
+
+                        <!-- Tab 1: Manage Dishes Menu -->
+                        <div id="tab-content-dishes">
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Món Ăn Mới</h3>
+                            <form id="add-dish-form">
+                                <div class="form-group">
+                                    <label for="dish-name">Tên món ăn</label>
+                                    <input type="text" id="dish-name" class="input-ctrl"
+                                        placeholder="Ví dụ: Cơm Ba Chỉ Rang Cháy Cạnh" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dish-price">Giá tiền (VND)</label>
+                                    <input type="number" id="dish-price" class="input-ctrl" placeholder="Ví dụ: 35000"
+                                        min="1000" step="1000" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Thêm Món Ăn</button>
+                            </form>
+
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🍽️
+                                Thực đơn hiện tại</h3>
+                            <div id="admin-dishes-list"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                                <!-- Dishes loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Tab 1.5: Manage Toppings -->
+                        <div id="tab-content-toppings" style="display: none;">
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Topping Mới
+                            </h3>
+                            <form id="add-topping-form">
+                                <div class="form-group">
+                                    <label for="topping-name">Tên topping</label>
+                                    <input type="text" id="topping-name" class="input-ctrl"
+                                        placeholder="Ví dụ: Trứng ốp la" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="topping-price">Giá tiền (VND)</label>
+                                    <input type="number" id="topping-price" class="input-ctrl" placeholder="Ví dụ: 5000"
+                                        min="0" step="1000" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Thêm Topping</button>
+                            </form>
+
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🥚
+                                Danh sách topping hiện tại</h3>
+                            <div id="admin-toppings-list"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                                <!-- Toppings loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Manage Users -->
+                        <div id="tab-content-users" style="display: none;">
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Thành Viên Mới
+                            </h3>
+                            <form id="add-user-form">
+                                <div class="form-group">
+                                    <label for="user-new-name">Họ và Tên</label>
+                                    <input type="text" id="user-new-name" class="input-ctrl"
+                                        placeholder="Ví dụ: Minh Khôi" required>
+                                </div>
+                                <button type="submit" class="btn btn-secondary">Đăng Ký Thành Viên</button>
+                            </form>
+
+                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">👥
+                                Danh sách thành viên</h3>
+                            <div id="admin-users-list"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                                <!-- Users loaded dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =======================================================
+        // STATE DEFINITIONS
+        // =======================================================
+        let currentUser = null;
+        let dishes = [];
+        let toppings = [];
+        let users = [];
+        let orders = [];
+        let selectedDate = '';
+        let selectedDishId = null;
+        let selectedToppingIds = [];
+        let currentAdminTab = 'dishes';
+        let todayQrState = 'default'; // 'default', 'ordered', 'hidden'
+
+        // =======================================================
+        // DOM ELEMENTS
+        // =======================================================
+        const authSection = document.getElementById('auth-section');
+        const mainSection = document.getElementById('main-section');
+        const loginForm = document.getElementById('login-form');
+        const loginNameInput = document.getElementById('login-name');
+        const userQuickSelect = document.getElementById('user-quick-select');
+
+        const profileName = document.getElementById('profile-name');
+        const userAvatar = document.getElementById('user-avatar');
+
+        const orderDatePicker = document.getElementById('order-date-picker');
+        const orderingDateTitle = document.getElementById('ordering-date-title');
+
+        const dishesOptionsContainer = document.getElementById('dishes-options-container');
+        const toppingsSection = document.getElementById('toppings-section');
+        const toppingsOptionsContainer = document.getElementById('toppings-options-container');
+        const orderSummaryPrice = document.getElementById('order-summary-price');
+        const tempTotalPrice = document.getElementById('temp-total-price');
+        const orderForm = document.getElementById('order-form');
+        const personalOrderStatus = document.getElementById('personal-order-status');
+        const submitOrderBtn = document.getElementById('submit-order-btn');
+
+        const dailyOrdersList = document.getElementById('daily-orders-list');
+        const ordersListBadge = document.getElementById('orders-list-badge');
+
+        const statsTotalOrders = document.getElementById('stats-total-orders');
+        const statsTotalDishesDesc = document.getElementById('stats-total-dishes-desc');
+        const statsPaidAmount = document.getElementById('stats-paid-amount');
+        const statsPaidCount = document.getElementById('stats-paid-count');
+        const statsUnpaidAmount = document.getElementById('stats-unpaid-amount');
+        const statsUnpaidCount = document.getElementById('stats-unpaid-count');
+
+        const personalDebtWidget = document.getElementById('personal-debt-widget');
+        const personalDebtTotal = document.getElementById('personal-debt-total');
+        const personalDebtOrdersList = document.getElementById('personal-debt-orders-list');
+
+        const addDishForm = document.getElementById('add-dish-form');
+        const adminDishesList = document.getElementById('admin-dishes-list');
+        const addToppingForm = document.getElementById('add-topping-form');
+        const adminToppingsList = document.getElementById('admin-toppings-list');
+        const addUserForm = document.getElementById('add-user-form');
+        const adminUsersList = document.getElementById('admin-users-list');
+
+
+
+        const todayOrderQrBox = document.getElementById('today-order-qr-box');
+        const todayOrderQrImg = document.getElementById('today-order-qr-img');
+        const todayOrderQrAmount = document.getElementById('today-order-qr-amount');
+        const todayOrderQrDesc = document.getElementById('today-order-qr-desc');
+
+        const debtQrBox = document.getElementById('debt-qr-box');
+        const debtQrImg = document.getElementById('debt-qr-img');
+        const debtQrAmount = document.getElementById('debt-qr-amount');
+        const debtQrDesc = document.getElementById('debt-qr-desc');
+        const toggleDebtQrBtn = document.getElementById('toggle-debt-qr-btn');
+
+        // =======================================================
+        // HELPER FUNCTIONS (TOASTS, FORMATTING)
+        // =======================================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            let icon = '✨';
+            if (type === 'error') icon = '❌';
+
+            toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        }
+
+        // Standardize Vietnamese name to unsigned ASCII for QR transfer details
+        function removeVietnameseTones(str) {
+            if (!str) return '';
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+            str = str.replace(/đ/g, "d");
+            str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+            str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+            str = str.replace(/Ì|Í|Ị|B|Ĩ/g, "I");
+            str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+            str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+            str = str.replace(/Ỳ|Ý|Y|Ỷ|Ỹ/g, "Y");
+            str = str.replace(/Đ/g, "D");
+            // Remove special characters except alphanumeric and spaces
+            str = str.replace(/[^A-Za-z0-9 ]/g, "");
+            return str;
+        }
+
+        // Updates the today's order QR code component.
+        // Optimized to avoid unnecessary DOM updates and image reloading.
+        function updateTodayOrderQR(state, amount = 0) {
+            if (!currentUser) return;
+
+            todayQrState = state;
+            const cleanName = removeVietnameseTones(currentUser.name).replace(/\s+/g, '');
+            let qrUrl = '';
+            let amountText = '';
+            let description = `ComTrua ${cleanName}`;
+            let displayStyle = 'flex';
+
+            if (state === 'ordered') {
+                const encodedDesc = encodeURIComponent(description);
+                qrUrl = `https://img.vietqr.io/image/VCB-1025267307-compact2.png?amount=${amount}&addInfo=${encodedDesc}`;
+                amountText = formatCurrency(amount);
+            } else if (state === 'default') {
+                const encodedDesc = encodeURIComponent(description);
+                qrUrl = `https://img.vietqr.io/image/VCB-1025267307-compact2.png?addInfo=${encodedDesc}`;
+                amountText = 'Mã mặc định (tự nhập số tiền)';
+            } else {
+                displayStyle = 'none';
+            }
+
+            // Update DOM elements only if they have changed (optimization to avoid re-renders)
+            if (todayOrderQrBox.style.display !== displayStyle) {
+                todayOrderQrBox.style.display = displayStyle;
+            }
+
+            if (displayStyle === 'flex') {
+                if (todayOrderQrImg.getAttribute('src') !== qrUrl) {
+                    todayOrderQrImg.src = qrUrl;
+                }
+                if (todayOrderQrAmount.textContent !== amountText) {
+                    todayOrderQrAmount.textContent = amountText;
+                }
+                if (todayOrderQrDesc.textContent !== description) {
+                    todayOrderQrDesc.textContent = description;
+                }
+            }
+        }
+
+        // Get local date in ICT (YYYY-MM-DD)
+        function getLocalVNDateString() {
+            const date = new Date();
+            // Format in UTC+7 (Vietnam Time)
+            const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+            const vnDate = new Date(utc + (3600000 * 7));
+            return vnDate.toISOString().split('T')[0];
+        }
+
+        // =======================================================
+        // INITIALIZATION
+        // =======================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            // Set default date to today
+            selectedDate = getLocalVNDateString();
+            orderDatePicker.value = selectedDate;
+            orderingDateTitle.textContent = formatDateDisplay(selectedDate);
+
+            // Check stored user
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                showDashboard();
+            } else {
+                showLogin();
+            }
+
+            // Handle date picker changes
+            orderDatePicker.addEventListener('change', (e) => {
+                selectedDate = e.target.value;
+                orderingDateTitle.textContent = formatDateDisplay(selectedDate);
+                loadDailyOrders();
+            });
+
+            // Listen to Forms
+            loginForm.addEventListener('submit', handleLoginSubmit);
+            userQuickSelect.addEventListener('change', handleQuickSelectChange);
+            orderForm.addEventListener('submit', handleOrderSubmit);
+            addDishForm.addEventListener('submit', handleAddDishSubmit);
+            addToppingForm.addEventListener('submit', handleAddToppingSubmit);
+            addUserForm.addEventListener('submit', handleAddUserSubmit);
+        });
+
+        function showLogin() {
+            authSection.style.display = 'block';
+            mainSection.style.display = 'none';
+            loadUsersListForLogin();
+        }
+
+        async function showDashboard() {
+            authSection.style.display = 'none';
+            mainSection.style.display = 'block';
+
+            // Update header widget
+            profileName.textContent = currentUser.name;
+            userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+
+            // Initial loads
+            await loadDishes();
+            await loadToppings();
+            await loadUsers();
+            await loadDailyOrders();
+            await loadPersonalDebt();
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // =======================================================
+        // USER MANAGEMENT & AUTHENTICATION
+        // =======================================================
+        async function loadUsersListForLogin() {
+            try {
+                const resp = await fetch('/api/users');
+                const data = await resp.json();
+                if (resp.ok) {
+                    userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
+                    data.forEach(user => {
+                        const opt = document.createElement('option');
+                        opt.value = user.name;
+                        opt.textContent = user.name;
+                        userQuickSelect.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải danh sách thành viên:', err);
+            }
+        }
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            const name = loginNameInput.value.trim();
+            if (!name) return;
+
+            // Check if user already exists
+            await performLogin(name);
+        }
+
+        async function handleQuickSelectChange(e) {
+            const name = e.target.value;
+            if (!name) return;
+            await performLogin(name);
+        }
+
+        async function performLogin(name) {
+            try {
+                const resp = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    currentUser = data.user;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showToast(`Chào mừng ${currentUser.name} quay trở lại!`);
+                    showDashboard();
+                } else {
+                    // User confirmation for creating new account
+                    if (resp.status === 403) {
+                        showToast(data.error, 'error');
+                    } else {
+                        if (confirm(`Tên "${name}" chưa tồn tại trong danh sách. Bạn muốn đăng ký tài khoản mới này không?`)) {
+                            registerNewUser(name);
+                        }
+                    }
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            }
+        }
+
+        async function registerNewUser(name) {
+            try {
+                const resp = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    currentUser = data.user;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showToast(`Đăng ký thành công! Chào mừng ${currentUser.name}!`);
+                    showDashboard();
+                } else {
+                    showToast(data.error || 'Đăng ký thất bại.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            loginNameInput.value = '';
+            userQuickSelect.value = '';
+            showToast('Đã đăng xuất tài khoản.');
+            showLogin();
+        }
+
+        // =======================================================
+        // LOADER FUNCTIONS (GET DATA)
+        // =======================================================
+        async function loadDishes() {
+            try {
+                const resp = await fetch('/api/dishes');
+                dishes = await resp.json();
+                if (resp.ok) {
+                    renderDishesOptions();
+                    renderAdminDishes();
+                }
+            } catch (err) {
+                showToast('Không thể tải thực đơn.', 'error');
+            }
+        }
+
+        async function loadToppings() {
+            try {
+                const resp = await fetch('/api/toppings');
+                toppings = await resp.json();
+                if (resp.ok) {
+                    renderToppingsOptions();
+                    renderAdminToppings();
+                }
+            } catch (err) {
+                showToast('Không thể tải danh sách topping.', 'error');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const resp = await fetch('/api/users');
+                users = await resp.json();
+                if (resp.ok) {
+                    renderAdminUsers();
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải danh sách người dùng:', err);
+            }
+        }
+
+        async function loadDailyOrders() {
+            try {
+                const resp = await fetch(`/api/orders?date=${selectedDate}`);
+                orders = await resp.json();
+                if (resp.ok) {
+                    renderDailyOrders();
+                    calculateStats();
+                }
+            } catch (err) {
+                showToast('Không thể tải danh sách đặt cơm ngày này.', 'error');
+            }
+        }
+
+        async function loadPersonalDebt() {
+            if (!currentUser) return;
+            try {
+                const resp = await fetch(`/api/users/${currentUser.id}/unpaid`);
+                const data = await resp.json();
+                if (resp.ok) {
+                    renderPersonalDebt(data);
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải tổng nợ cá nhân:', err);
+            }
+        }
+
+        // =======================================================
+        // RENDER FUNCTIONS (BUILD INTERFACE)
+        // =======================================================
+        function renderDishesOptions() {
+            dishesOptionsContainer.innerHTML = '';
+
+            if (dishes.length === 0) {
+                dishesOptionsContainer.innerHTML = '<div class="empty-state">Thực đơn trống. Vui lòng thêm món ăn bên cột Admin!</div>';
+                return;
+            }
+
+            dishes.forEach(dish => {
+                const card = document.createElement('div');
+                card.className = `menu-option-card ${selectedDishId === dish.id ? 'selected' : ''}`;
+                card.dataset.id = dish.id;
+
+                card.innerHTML = `
+                        <div class="menu-option-name">${dish.name}</div>
+                        <div class="menu-option-price">${formatCurrency(dish.price)}</div>
+                    `;
+
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.menu-option-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedDishId = dish.id;
+                    selectedToppingIds = [];
+                    renderToppingsOptions();
+                    updateOrderSummaryPrice();
+                });
+
+                dishesOptionsContainer.appendChild(card);
+            });
+        }
+
+        function renderToppingsOptions() {
+            toppingsOptionsContainer.innerHTML = '';
+            if (toppings.length === 0) {
+                toppingsOptionsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">Không có món thêm nào.</div>';
+                return;
+            }
+
+            toppings.forEach(topping => {
+                const label = document.createElement('label');
+                label.className = 'topping-checkbox-label';
+
+                const isChecked = selectedToppingIds.includes(topping.id);
+
+                label.innerHTML = `
+                        <input type="checkbox" value="${topping.id}" ${isChecked ? 'checked' : ''} onchange="handleToppingChange(this, ${topping.id})">
+                        <span>${topping.name} (+${formatCurrency(topping.price)})</span>
+                    `;
+                toppingsOptionsContainer.appendChild(label);
+            });
+        }
+
+        function handleToppingChange(checkbox, toppingId) {
+            if (checkbox.checked) {
+                if (!selectedToppingIds.includes(toppingId)) {
+                    selectedToppingIds.push(toppingId);
+                }
+            } else {
+                selectedToppingIds = selectedToppingIds.filter(id => id !== toppingId);
+            }
+            updateOrderSummaryPrice();
+        }
+
+        function updateOrderSummaryPrice() {
+            if (!selectedDishId) {
+                toppingsSection.style.display = 'none';
+                orderSummaryPrice.style.display = 'none';
+                return;
+            }
+
+            toppingsSection.style.display = 'block';
+            orderSummaryPrice.style.display = 'block';
+
+            const selectedDish = dishes.find(d => d.id === selectedDishId);
+            if (!selectedDish) return;
+
+            let total = selectedDish.price;
+            selectedToppingIds.forEach(toppingId => {
+                const topping = toppings.find(t => t.id === toppingId);
+                if (topping) {
+                    total += topping.price;
+                }
+            });
+
+            tempTotalPrice.textContent = formatCurrency(total);
+        }
+
+        function renderDailyOrders() {
+            dailyOrdersList.innerHTML = '';
+            ordersListBadge.textContent = orders.length;
+
+            // Check if current user has ordered on this date
+            const myOrder = orders.find(o => o.user_id === currentUser.id);
+
+            if (myOrder) {
+                personalOrderStatus.style.display = 'block';
+                personalOrderStatus.style.backgroundColor = myOrder.paid ? 'var(--color-success-bg)' : 'var(--color-pending-bg)';
+                personalOrderStatus.style.color = myOrder.paid ? 'var(--color-success)' : 'var(--color-pending)';
+                personalOrderStatus.innerHTML = `
+                        🎉 Bạn đã đặt cơm hôm nay: <strong>${myOrder.dish_name}</strong> (${formatCurrency(myOrder.dish_price)}) 
+                        - <span style="font-weight:700">${myOrder.paid ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN'}</span>
+                    `;
+                submitOrderBtn.textContent = 'Đổi Món Đặt Cơm';
+
+                // Mark selected option
+                selectedDishId = myOrder.dish_id;
+                renderDishesOptions();
+                updateOrderSummaryPrice();
+
+                // Display today's order QR code
+                if (!myOrder.paid) {
+                    updateTodayOrderQR('ordered', myOrder.dish_price);
+                } else {
+                    updateTodayOrderQR('hidden');
+                }
+            } else {
+                personalOrderStatus.style.display = 'none';
+                updateTodayOrderQR('default');
+                submitOrderBtn.textContent = 'Xác Nhận Đặt Món';
+                selectedDishId = null;
+                selectedToppingIds = [];
+                renderDishesOptions();
+                updateOrderSummaryPrice();
+            }
+
+            if (orders.length === 0) {
+                dailyOrdersList.innerHTML = '<div class="empty-state">Chưa có ai đặt cơm cho ngày này. Hãy là người đầu tiên!</div>';
+                return;
+            }
+
+            orders.forEach(order => {
+                const isMe = order.user_id === currentUser.id;
+                const item = document.createElement('div');
+                item.className = 'order-item';
+
+                item.innerHTML = `
+                        <div class="order-user">
+                            <div class="order-user-name">
+                                ${order.user_name}
+                                ${isMe ? '<span class="badge-me">Bạn</span>' : ''}
+                            </div>
+                            <div class="order-dish-desc">
+                                ${order.dish_name} • <span class="order-dish-price">${formatCurrency(order.dish_price)}</span>
+                            </div>
+                        </div>
+                        <div class="order-actions">
+                            <label class="switch">
+                                <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="toggleOrderPaid(${order.id}, this.checked)">
+                                <span class="slider"><span class="slider-text"></span></span>
+                            </label>
+                            ${isMe ? `
+                                <button class="btn-delete" onclick="deleteMyOrder(${order.id})" title="Hủy đặt cơm">
+                                    🗑️
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+
+                dailyOrdersList.appendChild(item);
+            });
+        }
+
+        function calculateStats() {
+            if (orders.length === 0) {
+                statsTotalOrders.textContent = '0 suất';
+                statsTotalDishesDesc.textContent = 'Chưa có ai đặt cơm';
+                statsPaidAmount.textContent = '0 đ';
+                statsPaidCount.textContent = '0 người';
+                statsUnpaidAmount.textContent = '0 đ';
+                statsUnpaidCount.textContent = '0 người';
+                return;
+            }
+
+            let totalOrders = orders.length;
+            let paidSum = 0;
+            let paidCount = 0;
+            let unpaidSum = 0;
+            let unpaidCount = 0;
+
+            // Group by dish names to see popularity
+            const dishCounts = {};
+            orders.forEach(o => {
+                dishCounts[o.dish_name] = (dishCounts[o.dish_name] || 0) + 1;
+
+                if (o.paid) {
+                    paidSum += o.dish_price;
+                    paidCount++;
+                } else {
+                    unpaidSum += o.dish_price;
+                    unpaidCount++;
+                }
+            });
+
+            // Get most popular dish
+            let popularDish = '';
+            let maxCount = 0;
+            for (const dish in dishCounts) {
+                if (dishCounts[dish] > maxCount) {
+                    maxCount = dishCounts[dish];
+                    popularDish = dish;
+                }
+            }
+
+            statsTotalOrders.textContent = `${totalOrders} suất`;
+            statsTotalDishesDesc.textContent = popularDish ? `Ưa thích nhất: ${popularDish} (${maxCount})` : '';
+
+            statsPaidAmount.textContent = formatCurrency(paidSum);
+            statsPaidCount.textContent = `${paidCount} người đã trả`;
+
+            statsUnpaidAmount.textContent = formatCurrency(unpaidSum);
+            statsUnpaidCount.textContent = `${unpaidCount} người chưa trả`;
+        }
+
+        function renderPersonalDebt(data) {
+            if (data.totalUnpaid > 0) {
+                personalDebtWidget.style.display = 'block';
+                personalDebtTotal.textContent = formatCurrency(data.totalUnpaid);
+
+                personalDebtOrdersList.innerHTML = '';
+                data.unpaidOrders.forEach(o => {
+                    const item = document.createElement('div');
+                    item.className = 'debt-list-item';
+                    item.innerHTML = `
+                            <span>📅 Ngày ${formatDateDisplay(o.date)} (${o.dish_name})</span>
+                            <span style="font-weight:700; color:#f59e0b">${formatCurrency(o.dish_price)}</span>
+                        `;
+                    personalDebtOrdersList.appendChild(item);
+                });
+
+                // Update dynamic VietQR for all unpaid debts
+                const cleanName = removeVietnameseTones(currentUser.name).replace(/\s+/g, '');
+                const description = `ComTrua ${cleanName} Tra`;
+                const encodedDesc = encodeURIComponent(description);
+                debtQrImg.src = `https://img.vietqr.io/image/VCB-1025267307-compact2.png?amount=${data.totalUnpaid}&addInfo=${encodedDesc}`;
+                debtQrAmount.textContent = formatCurrency(data.totalUnpaid);
+                debtQrDesc.textContent = description;
+            } else {
+                personalDebtWidget.style.display = 'none';
+                debtQrBox.style.display = 'none';
+                toggleDebtQrBtn.textContent = '🔍 Xem Mã QR Thanh Toán Nợ';
+            }
+        }
+
+        function toggleDebtQR() {
+            if (debtQrBox.style.display === 'none') {
+                debtQrBox.style.display = 'flex';
+                toggleDebtQrBtn.textContent = '🙈 Ẩn Mã QR Thanh Toán';
+            } else {
+                debtQrBox.style.display = 'none';
+                toggleDebtQrBtn.textContent = '🔍 Xem Mã QR Thanh Toán Nợ';
+            }
+        }
+
+        function renderAdminDishes() {
+            adminDishesList.innerHTML = '';
+            if (dishes.length === 0) {
+                adminDishesList.innerHTML = '<div class="empty-state">Chưa có món ăn nào trong thực đơn.</div>';
+                return;
+            }
+
+            dishes.forEach(dish => {
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.padding = '0.5rem 0.75rem';
+                item.innerHTML = `
+                        <div style="font-weight:600; font-size:0.9rem;">
+                            ${dish.name} <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
+                        </div>
+                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteDish(${dish.id})" title="Xóa món ăn">
+                            🗑️
+                        </button>
+                    `;
+                adminDishesList.appendChild(item);
+            });
+        }
+
+        function renderAdminUsers() {
+            adminUsersList.innerHTML = '';
+            if (users.length === 0) {
+                adminUsersList.innerHTML = '<div class="empty-state">Chưa có thành viên nào.</div>';
+                return;
+            }
+
+            users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.padding = '0.5rem 0.75rem';
+                item.innerHTML = `
+                        <div style="font-weight:600; font-size:0.9rem;">
+                            👤 ${user.name}
+                        </div>
+                    `;
+                adminUsersList.appendChild(item);
+            });
+        }
+
+        // =======================================================
+        // ACTION HANDLERS (MUTATE STATE & POST TO API)
+        // =======================================================
+        async function handleOrderSubmit(e) {
+            e.preventDefault();
+            if (!selectedDishId) {
+                showToast('Vui lòng click chọn một món ăn trên thực đơn!', 'error');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        dish_id: selectedDishId,
+                        date: selectedDate,
+                        topping_ids: selectedToppingIds
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast('Ghi nhận đặt cơm thành công!');
+                    selectedToppingIds = [];
+                    loadDailyOrders();
+                    loadPersonalDebt();
+                } else {
+                    showToast(data.error || 'Lỗi khi đặt cơm.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            }
+        }
+
+        async function toggleOrderPaid(orderId, isPaid) {
+            try {
+                const resp = await fetch(`/api/orders/${orderId}/paid`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paid: isPaid })
+                });
+
+                if (resp.ok) {
+                    showToast(isPaid ? 'Đã thu tiền thành công!' : 'Đã hủy đánh dấu thanh toán.');
+                    loadDailyOrders();
+                    loadPersonalDebt();
+                } else {
+                    showToast('Không thể cập nhật thanh toán.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function deleteMyOrder(orderId) {
+            if (!confirm('Bạn có chắc chắn muốn hủy đơn đặt cơm trưa này không?')) return;
+
+            try {
+                const resp = await fetch(`/api/orders/${orderId}`, {
+                    method: 'DELETE'
+                });
+
+                if (resp.ok) {
+                    showToast('Đã hủy suất cơm của bạn!');
+                    loadDailyOrders();
+                    loadPersonalDebt();
+                } else {
+                    showToast('Không thể hủy đặt cơm.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function handleAddDishSubmit(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('dish-name');
+            const priceInput = document.getElementById('dish-price');
+
+            const name = nameInput.value.trim();
+            const price = parseInt(priceInput.value);
+
+            if (!name || isNaN(price) || price <= 0) return;
+
+            try {
+                const resp = await fetch('/api/dishes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, price })
+                });
+
+                if (resp.ok) {
+                    showToast('Đã cập nhật thực đơn món ăn!');
+                    nameInput.value = '';
+                    priceInput.value = '';
+                    loadDishes();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.error || 'Lỗi thêm món ăn.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function handleAddUserSubmit(e) {
+            e.preventDefault();
+            const newNameInput = document.getElementById('user-new-name');
+            const name = newNameInput.value.trim();
+            if (!name) return;
+
+            try {
+                const resp = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (resp.ok) {
+                    showToast(`Đã thêm thành viên mới: ${name}!`);
+                    newNameInput.value = '';
+                    loadUsers();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.error || 'Lỗi thêm thành viên.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function deleteDish(dishId) {
+            if (!confirm('Bạn có chắc chắn muốn ẩn món ăn này khỏi thực đơn không? (Các đơn hàng cũ vẫn được giữ nguyên)')) return;
+
+            try {
+                const resp = await fetch(`/api/dishes/${dishId}`, {
+                    method: 'DELETE'
+                });
+
+                if (resp.ok) {
+                    showToast('Đã ẩn món ăn khỏi thực đơn!');
+                    loadDishes();
+                } else {
+                    showToast('Không thể ẩn món ăn.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function handleAddToppingSubmit(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('topping-name');
+            const priceInput = document.getElementById('topping-price');
+
+            const name = nameInput.value.trim();
+            const price = parseInt(priceInput.value);
+
+            if (!name || isNaN(price) || price < 0) return;
+
+            try {
+                const resp = await fetch('/api/toppings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, price })
+                });
+
+                if (resp.ok) {
+                    showToast('Đã cập nhật danh sách topping!');
+                    nameInput.value = '';
+                    priceInput.value = '';
+                    loadToppings();
+                } else {
+                    const data = await resp.json();
+                    showToast(data.error || 'Lỗi thêm topping.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        async function deleteTopping(toppingId) {
+            if (!confirm('Bạn có chắc chắn muốn ẩn topping này không?')) return;
+
+            try {
+                const resp = await fetch(`/api/toppings/${toppingId}`, {
+                    method: 'DELETE'
+                });
+
+                if (resp.ok) {
+                    showToast('Đã ẩn topping thành công!');
+                    loadToppings();
+                } else {
+                    showToast('Không thể ẩn topping.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối.', 'error');
+            }
+        }
+
+        function renderAdminToppings() {
+            adminToppingsList.innerHTML = '';
+            if (toppings.length === 0) {
+                adminToppingsList.innerHTML = '<div class="empty-state">Chưa có topping nào trong danh sách.</div>';
+                return;
+            }
+
+            toppings.forEach(topping => {
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.padding = '0.5rem 0.75rem';
+                item.innerHTML = `
+                        <div style="font-weight:600; font-size:0.9rem;">
+                            🥚 ${topping.name} <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(topping.price)})</span>
+                        </div>
+                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteTopping(${topping.id})" title="Xóa topping">
+                            🗑️
+                        </button>
+                    `;
+                adminToppingsList.appendChild(item);
+            });
+        }
+
+        // =======================================================
+        // INTERACTION & NAVIGATION HELPERS
+        // =======================================================
+        function changeDateOffset(offset) {
+            const currentDate = new Date(selectedDate);
+            currentDate.setDate(currentDate.getDate() + offset);
+            selectedDate = currentDate.toISOString().split('T')[0];
+            orderDatePicker.value = selectedDate;
+            orderingDateTitle.textContent = formatDateDisplay(selectedDate);
+            loadDailyOrders();
+        }
+
+        function setSelectedToToday() {
+            selectedDate = getLocalVNDateString();
+            orderDatePicker.value = selectedDate;
+            orderingDateTitle.textContent = formatDateDisplay(selectedDate);
+            loadDailyOrders();
+        }
+
+        function switchAdminTab(tabName) {
+            currentAdminTab = tabName;
+            document.getElementById('tab-btn-dishes').classList.toggle('active', tabName === 'dishes');
+            document.getElementById('tab-btn-toppings').classList.toggle('active', tabName === 'toppings');
+            document.getElementById('tab-btn-users').classList.toggle('active', tabName === 'users');
+
+            document.getElementById('tab-content-dishes').style.display = tabName === 'dishes' ? 'block' : 'none';
+            document.getElementById('tab-content-toppings').style.display = tabName === 'toppings' ? 'block' : 'none';
+            document.getElementById('tab-content-users').style.display = tabName === 'users' ? 'block' : 'none';
+        }
+    </script>
+</body>
+
 </html>
