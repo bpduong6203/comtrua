@@ -39,6 +39,95 @@
             </div>
         </div>
 
+        <!-- EDIT SHOP MODAL -->
+        <div id="edit-shop-modal" class="modal-overlay" style="display:none;" onclick="handleEditShopModalOverlayClick(event)">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-shop-modal-title">
+                <div class="modal-header">
+                    <h3 id="edit-shop-modal-title">✏️ Chỉnh Sửa Cửa Hàng</h3>
+                    <button class="modal-close-btn" onclick="closeEditShopModal()" title="Đóng">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Thay đổi tên cửa hàng. Tên này sẽ xuất hiện trên thực đơn và danh sách chọn cửa hàng.</p>
+                    <form id="edit-shop-form">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="edit-shop-input">Tên cửa hàng mới</label>
+                            <input type="text" id="edit-shop-input" class="input-ctrl" placeholder="Nhập tên cửa hàng mới..." required autocomplete="off">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary"
+                                style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeEditShopModal()">Hủy</button>
+                            <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
+                                id="edit-shop-submit-btn">Lưu Cửa Hàng</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDIT DISH MODAL -->
+        <div id="edit-dish-modal" class="modal-overlay" style="display:none;" onclick="handleEditDishModalOverlayClick(event)">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-dish-modal-title">
+                <div class="modal-header">
+                    <h3 id="edit-dish-modal-title">✏️ Chỉnh Sửa Món Ăn</h3>
+                    <button class="modal-close-btn" onclick="closeEditDishModal()" title="Đóng">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Thay đổi thông tin chi tiết của món ăn này.</p>
+                    <form id="edit-dish-form">
+                        <div class="form-group">
+                            <label for="edit-dish-name-input">Tên món ăn mới</label>
+                            <input type="text" id="edit-dish-name-input" class="input-ctrl" placeholder="Nhập tên món ăn mới..." required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-dish-price-input">Giá món ăn mới (VND)</label>
+                            <input type="number" id="edit-dish-price-input" class="input-ctrl" min="1000" step="500" required placeholder="Nhập giá mới...">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-dish-shop-select">Thuộc cửa hàng</label>
+                            <select id="edit-dish-shop-select" class="input-ctrl" required>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary"
+                                style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeEditDishModal()">Hủy</button>
+                            <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
+                                id="edit-dish-submit-btn">Lưu Món Ăn</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDIT TOPPING MODAL -->
+        <div id="edit-topping-modal" class="modal-overlay" style="display:none;" onclick="handleEditToppingModalOverlayClick(event)">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-topping-modal-title">
+                <div class="modal-header">
+                    <h3 id="edit-topping-modal-title">✏️ Chỉnh Sửa Topping</h3>
+                    <button class="modal-close-btn" onclick="closeEditToppingModal()" title="Đóng">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Thay đổi thông tin chi tiết của topping/món thêm này.</p>
+                    <form id="edit-topping-form">
+                        <div class="form-group">
+                            <label for="edit-topping-name-input">Tên Topping mới</label>
+                            <input type="text" id="edit-topping-name-input" class="input-ctrl" placeholder="Nhập tên topping mới..." required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-topping-price-input">Giá Topping mới (VND)</label>
+                            <input type="number" id="edit-topping-price-input" class="input-ctrl" min="0" step="500" required placeholder="Nhập giá mới...">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary"
+                                style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeEditToppingModal()">Hủy</button>
+                            <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
+                                id="edit-topping-submit-btn">Lưu Topping</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
         <div id="auth-section" class="auth-container" style="display: none;">
             <div class="panel auth-panel">
@@ -255,26 +344,28 @@
 
                         <!-- Tab 1: Manage Dishes Menu -->
                         <div id="tab-content-dishes">
-                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Món Ăn Mới</h3>
-                            <form id="add-dish-form">
-                                <div class="form-group">
-                                    <label for="dish-shop-select">Thuộc cửa hàng</label>
-                                    <select id="dish-shop-select" class="input-ctrl" required>
-                                        <!-- Shops loaded dynamically -->
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="dish-name">Tên món ăn</label>
-                                    <input type="text" id="dish-name" class="input-ctrl"
-                                        placeholder="Ví dụ: Cơm Ba Chỉ Rang Cháy Cạnh" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="dish-price">Giá tiền (VND)</label>
-                                    <input type="number" id="dish-price" class="input-ctrl" placeholder="Ví dụ: 35000"
-                                        min="1000" step="1000" required>
-                                </div>
-                                <button type="submit" class="btn btn-secondary">Thêm Món Ăn</button>
-                            </form>
+                            <div id="add-dish-section">
+                                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Món Ăn Mới</h3>
+                                <form id="add-dish-form">
+                                    <div class="form-group">
+                                        <label for="dish-shop-select">Thuộc cửa hàng</label>
+                                        <select id="dish-shop-select" class="input-ctrl" required>
+                                            <!-- Shops loaded dynamically -->
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="dish-name">Tên món ăn</label>
+                                        <input type="text" id="dish-name" class="input-ctrl"
+                                            placeholder="Ví dụ: Cơm Ba Chỉ Rang Cháy Cạnh" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="dish-price">Giá tiền (VND)</label>
+                                        <input type="number" id="dish-price" class="input-ctrl" placeholder="Ví dụ: 35000"
+                                            min="1000" step="1000" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">Thêm Món Ăn</button>
+                                </form>
+                            </div>
 
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🍽️
                                 Thực đơn hiện tại</h3>
@@ -286,16 +377,18 @@
 
                         <!-- Tab 1.2: Manage Shops -->
                         <div id="tab-content-shops" style="display: none;">
-                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Cửa Hàng Mới
-                            </h3>
-                            <form id="add-shop-form">
-                                <div class="form-group">
-                                    <label for="shop-new-name">Tên cửa hàng</label>
-                                    <input type="text" id="shop-new-name" class="input-ctrl"
-                                        placeholder="Ví dụ: Quán Cơm Gà" required>
-                                </div>
-                                <button type="submit" class="btn btn-secondary">Thêm Cửa Hàng</button>
-                            </form>
+                            <div id="add-shop-section">
+                                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Cửa Hàng Mới
+                                </h3>
+                                <form id="add-shop-form">
+                                    <div class="form-group">
+                                        <label for="shop-new-name">Tên cửa hàng</label>
+                                        <input type="text" id="shop-new-name" class="input-ctrl"
+                                            placeholder="Ví dụ: Quán Cơm Gà" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">Thêm Cửa Hàng</button>
+                                </form>
+                            </div>
 
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🏪
                                 Danh sách cửa hàng hiện tại</h3>
@@ -307,21 +400,23 @@
 
                         <!-- Tab 1.5: Manage Toppings -->
                         <div id="tab-content-toppings" style="display: none;">
-                            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Topping Mới
-                            </h3>
-                            <form id="add-topping-form">
-                                <div class="form-group">
-                                    <label for="topping-name">Tên topping</label>
-                                    <input type="text" id="topping-name" class="input-ctrl"
-                                        placeholder="Ví dụ: Trứng ốp la" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="topping-price">Giá tiền (VND)</label>
-                                    <input type="number" id="topping-price" class="input-ctrl" placeholder="Ví dụ: 5000"
-                                        min="0" step="1000" required>
-                                </div>
-                                <button type="submit" class="btn btn-secondary">Thêm Topping</button>
-                            </form>
+                            <div id="add-topping-section">
+                                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Topping Mới
+                                </h3>
+                                <form id="add-topping-form">
+                                    <div class="form-group">
+                                        <label for="topping-name">Tên topping</label>
+                                        <input type="text" id="topping-name" class="input-ctrl"
+                                            placeholder="Ví dụ: Trứng ốp la" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="topping-price">Giá tiền (VND)</label>
+                                        <input type="number" id="topping-price" class="input-ctrl" placeholder="Ví dụ: 5000"
+                                            min="0" step="1000" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">Thêm Topping</button>
+                                </form>
+                            </div>
 
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem;">🥚
                                 Danh sách topping hiện tại</h3>
@@ -858,10 +953,16 @@
                 dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
                 tabBtnSettings.style.display = 'block';
                 tabBtnUsers.style.display = 'block';
+                document.getElementById('add-dish-section').style.display = 'block';
+                document.getElementById('add-shop-section').style.display = 'block';
+                document.getElementById('add-topping-section').style.display = 'block';
             } else {
                 dropdownProfileRole.textContent = 'Thành viên';
                 tabBtnSettings.style.display = 'none';
                 tabBtnUsers.style.display = 'none';
+                document.getElementById('add-dish-section').style.display = 'none';
+                document.getElementById('add-shop-section').style.display = 'none';
+                document.getElementById('add-topping-section').style.display = 'none';
                 if (currentAdminTab === 'users' || currentAdminTab === 'settings') {
                     switchAdminTab('dishes');
                 }
@@ -1199,13 +1300,24 @@
                 const item = document.createElement('div');
                 item.className = 'order-item';
                 item.style.padding = '0.5rem 0.75rem';
+                
+                const isAdmin = currentUser && currentUser.id === 1;
+                const controlsHtml = isAdmin ? `
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-edit" onclick="openEditShopModal(${shop.id}, '${shop.name.replace(/'/g, "\\'")}')" title="Sửa cửa hàng">
+                            ✏️
+                        </button>
+                        <button class="btn-delete" onclick="deleteShop(${shop.id})" title="Xóa cửa hàng">
+                            🗑️
+                        </button>
+                    </div>
+                ` : '';
+
                 item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
                             🏪 ${shop.name}
                         </div>
-                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteShop(${shop.id})" title="Xóa cửa hàng">
-                            🗑️
-                        </button>
+                        ${controlsHtml}
                     `;
                 adminShopsList.appendChild(item);
             });
@@ -1488,15 +1600,26 @@
                 const item = document.createElement('div');
                 item.className = 'order-item';
                 item.style.padding = '0.5rem 0.75rem';
+
+                const isAdmin = currentUser && currentUser.id === 1;
+                const controlsHtml = isAdmin ? `
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-edit" onclick="openEditDishModal(${dish.id}, '${dish.name.replace(/'/g, "\\'")}', ${dish.price}, ${dish.shop_id})" title="Sửa món ăn">
+                            ✏️
+                        </button>
+                        <button class="btn-delete" onclick="deleteDish(${dish.id})" title="Xóa món ăn">
+                            🗑️
+                        </button>
+                    </div>
+                ` : '';
+
                 item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
                             ${dish.name}
                             <span style="color:#a5b4fc; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
                             <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
                         </div>
-                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteDish(${dish.id})" title="Xóa món ăn">
-                            🗑️
-                        </button>
+                        ${controlsHtml}
                     `;
                 adminDishesList.appendChild(item);
             });
@@ -1629,7 +1752,7 @@
                 const resp = await fetch('/api/dishes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, price, shop_id: shopId })
+                    body: JSON.stringify({ name, price, shop_id: shopId, caller_id: currentUser.id })
                 });
 
                 if (resp.ok) {
@@ -1677,7 +1800,7 @@
             if (!confirm('Bạn có chắc chắn muốn ẩn món ăn này khỏi thực đơn không? (Các đơn hàng cũ vẫn được giữ nguyên)')) return;
 
             try {
-                const resp = await fetch(`/api/dishes/${dishId}`, {
+                const resp = await fetch(`/api/dishes/${dishId}?caller_id=${currentUser.id}`, {
                     method: 'DELETE'
                 });
 
@@ -1703,7 +1826,7 @@
                 const resp = await fetch('/api/shops', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify({ name, caller_id: currentUser.id })
                 });
 
                 if (resp.ok) {
@@ -1724,7 +1847,7 @@
             if (!confirm('Bạn có chắc chắn muốn xóa cửa hàng này không? Món ăn thuộc cửa hàng này sẽ ẩn trên thực đơn đặt món.')) return;
 
             try {
-                const resp = await fetch(`/api/shops/${shopId}`, {
+                const resp = await fetch(`/api/shops/${shopId}?caller_id=${currentUser.id}`, {
                     method: 'DELETE'
                 });
 
@@ -1754,7 +1877,7 @@
                 const resp = await fetch('/api/toppings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, price })
+                    body: JSON.stringify({ name, price, caller_id: currentUser.id })
                 });
 
                 if (resp.ok) {
@@ -1775,7 +1898,7 @@
             if (!confirm('Bạn có chắc chắn muốn ẩn topping này không?')) return;
 
             try {
-                const resp = await fetch(`/api/toppings/${toppingId}`, {
+                const resp = await fetch(`/api/toppings/${toppingId}?caller_id=${currentUser.id}`, {
                     method: 'DELETE'
                 });
 
@@ -1801,13 +1924,24 @@
                 const item = document.createElement('div');
                 item.className = 'order-item';
                 item.style.padding = '0.5rem 0.75rem';
+
+                const isAdmin = currentUser && currentUser.id === 1;
+                const controlsHtml = isAdmin ? `
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-edit" onclick="openEditToppingModal(${topping.id}, '${topping.name.replace(/'/g, "\\'")}', ${topping.price})" title="Sửa topping">
+                            ✏️
+                        </button>
+                        <button class="btn-delete" onclick="deleteTopping(${topping.id})" title="Xóa topping">
+                            🗑️
+                        </button>
+                    </div>
+                ` : '';
+
                 item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
                             🥚 ${topping.name} <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(topping.price)})</span>
                         </div>
-                        <button class="btn-delete" style="width:26px; height:26px; border-radius:6px; font-size:0.75rem;" onclick="deleteTopping(${topping.id})" title="Xóa topping">
-                            🗑️
-                        </button>
+                        ${controlsHtml}
                     `;
                 adminToppingsList.appendChild(item);
             });
@@ -1876,7 +2010,12 @@
 
         // Close on ESC key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeRenameModal();
+            if (e.key === 'Escape') {
+                closeRenameModal();
+                closeEditShopModal();
+                closeEditDishModal();
+                closeEditToppingModal();
+            }
         });
 
         document.getElementById('rename-form').addEventListener('submit', async (e) => {
@@ -1921,6 +2060,230 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Lưu Tên Mới';
+            }
+        });
+
+        // =======================================================
+        // EDIT SHOP MODAL JS
+        // =======================================================
+        let editShopTargetId = null;
+
+        function openEditShopModal(shopId, currentName) {
+            editShopTargetId = shopId;
+            const modal = document.getElementById('edit-shop-modal');
+            const input = document.getElementById('edit-shop-input');
+            input.value = currentName;
+            modal.style.display = 'flex';
+            setTimeout(() => input.focus(), 80);
+        }
+
+        function closeEditShopModal() {
+            document.getElementById('edit-shop-modal').style.display = 'none';
+            editShopTargetId = null;
+        }
+
+        function handleEditShopModalOverlayClick(e) {
+            if (e.target.id === 'edit-shop-modal') {
+                closeEditShopModal();
+            }
+        }
+
+        document.getElementById('edit-shop-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!editShopTargetId) return;
+
+            const input = document.getElementById('edit-shop-input');
+            const newName = input.value.trim();
+            if (!newName) return;
+
+            const btn = document.getElementById('edit-shop-submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Đang lưu...';
+
+            try {
+                const resp = await fetch(`/api/shops/${editShopTargetId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, caller_id: currentUser.id })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast(`Đã sửa tên cửa hàng thành công!`);
+                    closeEditShopModal();
+                    await loadShops();
+                } else {
+                    showToast(data.error || 'Sửa cửa hàng thất bại.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Lưu Cửa Hàng';
+            }
+        });
+
+        // =======================================================
+        // EDIT DISH MODAL JS
+        // =======================================================
+        let editDishTargetId = null;
+
+        function openEditDishModal(dishId, currentName, currentPrice, currentShopId) {
+            editDishTargetId = dishId;
+            const modal = document.getElementById('edit-dish-modal');
+            const nameInput = document.getElementById('edit-dish-name-input');
+            const priceInput = document.getElementById('edit-dish-price-input');
+            const shopSelect = document.getElementById('edit-dish-shop-select');
+
+            nameInput.value = currentName;
+            priceInput.value = currentPrice;
+
+            // Populate the shop selector for editing
+            shopSelect.innerHTML = '';
+            shops.forEach(shop => {
+                const opt = document.createElement('option');
+                opt.value = shop.id;
+                opt.textContent = shop.name;
+                if (shop.id === currentShopId) {
+                    opt.selected = true;
+                }
+                shopSelect.appendChild(opt);
+            });
+
+            modal.style.display = 'flex';
+            setTimeout(() => nameInput.focus(), 80);
+        }
+
+        function closeEditDishModal() {
+            document.getElementById('edit-dish-modal').style.display = 'none';
+            editDishTargetId = null;
+        }
+
+        function handleEditDishModalOverlayClick(e) {
+            if (e.target.id === 'edit-dish-modal') {
+                closeEditDishModal();
+            }
+        }
+
+        document.getElementById('edit-dish-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!editDishTargetId) return;
+
+            const nameInput = document.getElementById('edit-dish-name-input');
+            const priceInput = document.getElementById('edit-dish-price-input');
+            const shopSelect = document.getElementById('edit-dish-shop-select');
+
+            const name = nameInput.value.trim();
+            const price = parseInt(priceInput.value);
+            const shopId = parseInt(shopSelect.value);
+
+            if (!name || isNaN(price) || price <= 0 || isNaN(shopId)) return;
+
+            const btn = document.getElementById('edit-dish-submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Đang lưu...';
+
+            try {
+                const resp = await fetch(`/api/dishes/${editDishTargetId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        price,
+                        shop_id: shopId,
+                        caller_id: currentUser.id
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast(`Đã sửa món ăn thành công!`);
+                    closeEditDishModal();
+                    await loadAllDishesForAdmin();
+                    await loadDishes(); // Refresh list on ordering panel
+                } else {
+                    showToast(data.error || 'Sửa món ăn thất bại.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Lưu Món Ăn';
+            }
+        });
+
+        // =======================================================
+        // EDIT TOPPING MODAL JS
+        // =======================================================
+        let editToppingTargetId = null;
+
+        function openEditToppingModal(toppingId, currentName, currentPrice) {
+            editToppingTargetId = toppingId;
+            const modal = document.getElementById('edit-topping-modal');
+            const nameInput = document.getElementById('edit-topping-name-input');
+            const priceInput = document.getElementById('edit-topping-price-input');
+
+            nameInput.value = currentName;
+            priceInput.value = currentPrice;
+
+            modal.style.display = 'flex';
+            setTimeout(() => nameInput.focus(), 80);
+        }
+
+        function closeEditToppingModal() {
+            document.getElementById('edit-topping-modal').style.display = 'none';
+            editToppingTargetId = null;
+        }
+
+        function handleEditToppingModalOverlayClick(e) {
+            if (e.target.id === 'edit-topping-modal') {
+                closeEditToppingModal();
+            }
+        }
+
+        document.getElementById('edit-topping-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!editToppingTargetId) return;
+
+            const nameInput = document.getElementById('edit-topping-name-input');
+            const priceInput = document.getElementById('edit-topping-price-input');
+
+            const name = nameInput.value.trim();
+            const price = parseInt(priceInput.value);
+
+            if (!name || isNaN(price) || price < 0) return;
+
+            const btn = document.getElementById('edit-topping-submit-btn');
+            btn.disabled = true;
+            btn.textContent = 'Đang lưu...';
+
+            try {
+                const resp = await fetch(`/api/toppings/${editToppingTargetId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        price,
+                        caller_id: currentUser.id
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    showToast(`Đã sửa topping thành công!`);
+                    closeEditToppingModal();
+                    await loadToppings();
+                } else {
+                    showToast(data.error || 'Sửa topping thất bại.', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối máy chủ.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Lưu Topping';
             }
         });
     </script>

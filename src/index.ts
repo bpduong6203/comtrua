@@ -202,8 +202,13 @@ export default {
 			// Thêm cửa hàng mới (hoặc cập nhật nếu trùng tên)
 			// POST /api/shops
 			if (pathname === '/api/shops' && method === 'POST') {
-				const body = await request.json() as { name?: string };
+				const body = await request.json() as { name?: string; caller_id?: number };
 				const name = body.name?.trim();
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
 
 				if (!name) {
 					return jsonResponse({ error: 'Tên cửa hàng không được bỏ trống.' }, 400);
@@ -227,6 +232,12 @@ export default {
 			const shopDeleteMatch = pathname.match(/^\/api\/shops\/(\d+)$/);
 			if (shopDeleteMatch && method === 'DELETE') {
 				const shopId = parseInt(shopDeleteMatch[1]);
+				const callerId = Number(url.searchParams.get('caller_id'));
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+
 				const result = await env.DB.prepare('UPDATE shops SET active = 0 WHERE id = ?')
 					.bind(shopId)
 					.run();
@@ -236,6 +247,33 @@ export default {
 				}
 
 				return jsonResponse({ message: 'Đã ẩn cửa hàng thành công.' });
+			}
+
+			// Cập nhật cửa hàng (chỉ admin ID 1)
+			// PATCH /api/shops/:id
+			const shopUpdateMatch = pathname.match(/^\/api\/shops\/(\d+)$/);
+			if (shopUpdateMatch && method === 'PATCH') {
+				const shopId = parseInt(shopUpdateMatch[1]);
+				const body = await request.json() as { name?: string; caller_id?: number };
+				const name = body.name?.trim();
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+				if (!name) {
+					return jsonResponse({ error: 'Tên cửa hàng không được bỏ trống.' }, 400);
+				}
+
+				const result = await env.DB.prepare('UPDATE shops SET name = ? WHERE id = ?')
+					.bind(name, shopId)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật cửa hàng.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật cửa hàng thành công.' });
 			}
 
 			// ==========================================
@@ -307,10 +345,15 @@ export default {
 			// Thêm món ăn mới (hoặc cập nhật nếu trùng tên)
 			// POST /api/dishes
 			if (pathname === '/api/dishes' && method === 'POST') {
-				const body = await request.json() as { name?: string; price?: number; shop_id?: number };
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number; caller_id?: number };
 				const name = body.name?.trim();
 				const price = Number(body.price);
 				const shopId = Number(body.shop_id || 1);
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
 
 				if (!name || isNaN(price) || price <= 0) {
 					return jsonResponse({ error: 'Tên món ăn và giá (lớn hơn 0) không hợp lệ.' }, 400);
@@ -335,6 +378,12 @@ export default {
 			const dishDeleteMatch = pathname.match(/^\/api\/dishes\/(\d+)$/);
 			if (dishDeleteMatch && method === 'DELETE') {
 				const dishId = parseInt(dishDeleteMatch[1]);
+				const callerId = Number(url.searchParams.get('caller_id'));
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+
 				const result = await env.DB.prepare('UPDATE dishes SET active = 0 WHERE id = ?')
 					.bind(dishId)
 					.run();
@@ -344,6 +393,35 @@ export default {
 				}
 
 				return jsonResponse({ message: 'Đã ẩn món ăn thành công.' });
+			}
+
+			// Cập nhật món ăn (chỉ admin ID 1)
+			// PATCH /api/dishes/:id
+			const dishUpdateMatch = pathname.match(/^\/api\/dishes\/(\d+)$/);
+			if (dishUpdateMatch && method === 'PATCH') {
+				const dishId = parseInt(dishUpdateMatch[1]);
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number; caller_id?: number };
+				const name = body.name?.trim();
+				const price = Number(body.price);
+				const shopId = Number(body.shop_id);
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+				if (!name || isNaN(price) || price <= 0 || isNaN(shopId)) {
+					return jsonResponse({ error: 'Thông tin món ăn không hợp lệ.' }, 400);
+				}
+
+				const result = await env.DB.prepare('UPDATE dishes SET name = ?, price = ?, shop_id = ? WHERE id = ?')
+					.bind(name, price, shopId, dishId)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật món ăn.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật món ăn thành công.' });
 			}
 
 			// ==========================================
@@ -360,9 +438,14 @@ export default {
 			// Thêm món thêm mới (hoặc cập nhật nếu trùng tên)
 			// POST /api/toppings
 			if (pathname === '/api/toppings' && method === 'POST') {
-				const body = await request.json() as { name?: string; price?: number };
+				const body = await request.json() as { name?: string; price?: number; caller_id?: number };
 				const name = body.name?.trim();
 				const price = Number(body.price);
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
 
 				if (!name || isNaN(price) || price < 0) {
 					return jsonResponse({ error: 'Tên món thêm và giá (lớn hơn hoặc bằng 0) không hợp lệ.' }, 400);
@@ -386,6 +469,12 @@ export default {
 			const toppingDeleteMatch = pathname.match(/^\/api\/toppings\/(\d+)$/);
 			if (toppingDeleteMatch && method === 'DELETE') {
 				const toppingId = parseInt(toppingDeleteMatch[1]);
+				const callerId = Number(url.searchParams.get('caller_id'));
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+
 				const result = await env.DB.prepare('UPDATE toppings SET active = 0 WHERE id = ?')
 					.bind(toppingId)
 					.run();
@@ -395,6 +484,34 @@ export default {
 				}
 
 				return jsonResponse({ message: 'Đã ẩn món thêm thành công.' });
+			}
+
+			// Cập nhật món thêm (chỉ admin ID 1)
+			// PATCH /api/toppings/:id
+			const toppingUpdateMatch = pathname.match(/^\/api\/toppings\/(\d+)$/);
+			if (toppingUpdateMatch && method === 'PATCH') {
+				const toppingId = parseInt(toppingUpdateMatch[1]);
+				const body = await request.json() as { name?: string; price?: number; caller_id?: number };
+				const name = body.name?.trim();
+				const price = Number(body.price);
+				const callerId = Number(body.caller_id);
+
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
+				}
+				if (!name || isNaN(price) || price < 0) {
+					return jsonResponse({ error: 'Thông tin món thêm không hợp lệ.' }, 400);
+				}
+
+				const result = await env.DB.prepare('UPDATE toppings SET name = ?, price = ? WHERE id = ?')
+					.bind(name, price, toppingId)
+					.run();
+
+				if (!result.success) {
+					return jsonResponse({ error: 'Không thể cập nhật món thêm.' }, 500);
+				}
+
+				return jsonResponse({ message: 'Cập nhật món thêm thành công.' });
 			}
 
 			// ==========================================
