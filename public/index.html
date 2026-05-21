@@ -59,13 +59,6 @@
                     </div>
                     <button type="submit" class="btn btn-primary">Bắt Đầu Đặt Cơm</button>
                 </form>
-
-                <div style="margin-top: 1.5rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
-                    <label>Hoặc chọn nhanh từ danh sách thành viên:</label>
-                    <select id="user-quick-select" class="input-ctrl" style="margin-top: 0.5rem;">
-                        <option value="">-- Chọn thành viên có sẵn --</option>
-                    </select>
-                </div>
             </div>
         </div>
 
@@ -255,7 +248,7 @@
                                 Cửa Hàng</button>
                             <button class="tab-btn" id="tab-btn-toppings" onclick="switchAdminTab('toppings')">Quản Lý
                                 Topping</button>
-                            <button class="tab-btn" id="tab-btn-users" onclick="switchAdminTab('users')">Quản Lý Thành
+                            <button class="tab-btn" id="tab-btn-users" onclick="switchAdminTab('users')" style="display: none;">Quản Lý Thành
                                 Viên</button>
                             <button class="tab-btn" id="tab-btn-settings" onclick="switchAdminTab('settings')" style="display: none;">⚙️ Cài Đặt</button>
                         </div>
@@ -395,6 +388,7 @@
         let todayQrState = 'default'; // 'default', 'ordered', 'hidden'
         let orderDeadline = '11:00'; // Default daily deadline
         let allExistingUsers = [];   // Cached list of all active users for login autocomplete
+        let allUsersFullList = [];   // Full list of all active users including admin
 
         // =======================================================
         // DOM ELEMENTS
@@ -456,6 +450,7 @@
         const adminUsersList = document.getElementById('admin-users-list');
 
         const tabBtnSettings = document.getElementById('tab-btn-settings');
+        const tabBtnUsers = document.getElementById('tab-btn-users');
         const tabContentSettings = document.getElementById('tab-content-settings');
         const settingsForm = document.getElementById('settings-form');
         const settingsDeadlineInput = document.getElementById('settings-deadline');
@@ -727,7 +722,7 @@
 
             // Listen to Forms
             loginForm.addEventListener('submit', handleLoginSubmit);
-            userQuickSelect.addEventListener('change', handleQuickSelectChange);
+            if (userQuickSelect) userQuickSelect.addEventListener('change', handleQuickSelectChange);
             orderForm.addEventListener('submit', handleOrderSubmit);
             addDishForm.addEventListener('submit', handleAddDishSubmit);
             addShopForm.addEventListener('submit', handleAddShopSubmit);
@@ -793,7 +788,19 @@
         function renderSuggestions(matches, query) {
             loginSuggestions.innerHTML = '';
             
+            const queryClean = query.trim().toLowerCase();
+            const queryNormalized = removeVietnameseTones(queryClean);
+            
+            const isExistingName = allUsersFullList.some(user => {
+                const nameClean = user.name.trim().toLowerCase();
+                return nameClean === queryClean || removeVietnameseTones(nameClean) === queryNormalized;
+            });
+            
             if (matches.length === 0) {
+                if (isExistingName) {
+                    loginSuggestions.style.display = 'none';
+                    return;
+                }
                 const item = document.createElement('div');
                 item.className = 'suggestion-item new-user-hint';
                 item.innerHTML = `✨ Click để đăng ký mới: "${query}"`;
@@ -850,9 +857,14 @@
             if (currentUser.id === 1) {
                 dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
                 tabBtnSettings.style.display = 'block';
+                tabBtnUsers.style.display = 'block';
             } else {
                 dropdownProfileRole.textContent = 'Thành viên';
                 tabBtnSettings.style.display = 'none';
+                tabBtnUsers.style.display = 'none';
+                if (currentAdminTab === 'users' || currentAdminTab === 'settings') {
+                    switchAdminTab('dishes');
+                }
             }
 
             // Initial loads
@@ -922,14 +934,17 @@
                 const resp = await fetch('/api/users');
                 const data = await resp.json();
                 if (resp.ok) {
-                    allExistingUsers = data; // Cache active users for autocomplete suggestions
-                    userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
-                    data.forEach(user => {
-                        const opt = document.createElement('option');
-                        opt.value = user.name;
-                        opt.textContent = user.name;
-                        userQuickSelect.appendChild(opt);
-                    });
+                    allUsersFullList = data;
+                    allExistingUsers = data.filter(user => user.id !== 1);
+                    if (userQuickSelect) {
+                        userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
+                        data.forEach(user => {
+                            const opt = document.createElement('option');
+                            opt.value = user.name;
+                            opt.textContent = user.name;
+                            userQuickSelect.appendChild(opt);
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('Lỗi khi tải danh sách thành viên:', err);
@@ -1006,7 +1021,7 @@
             localStorage.removeItem('currentUser');
             currentUser = null;
             loginNameInput.value = '';
-            userQuickSelect.value = '';
+            if (userQuickSelect) userQuickSelect.value = '';
             showToast('Đã đăng xuất tài khoản.');
             showLogin();
         }
@@ -1069,6 +1084,7 @@
         }
 
         async function loadUsers() {
+            if (!currentUser || currentUser.id !== 1) return;
             try {
                 const resp = await fetch('/api/users');
                 users = await resp.json();
@@ -1814,6 +1830,9 @@
         }
 
         function switchAdminTab(tabName) {
+            if (currentUser && currentUser.id !== 1 && (tabName === 'users' || tabName === 'settings')) {
+                return;
+            }
             currentAdminTab = tabName;
             document.getElementById('tab-btn-dishes').classList.toggle('active', tabName === 'dishes');
             document.getElementById('tab-btn-shops').classList.toggle('active', tabName === 'shops');
