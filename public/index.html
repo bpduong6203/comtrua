@@ -161,29 +161,38 @@
                     <p>Hệ thống đặt cơm trưa nội bộ văn phòng</p>
                 </div>
 
-                <div class="user-profile" id="user-profile-widget" onclick="toggleProfileDropdown(event)">
-                    <div class="profile-trigger" id="profile-trigger">
-                        <div class="avatar" id="user-avatar">?</div>
-                        <div class="user-info-brief">
-                            <span class="user-name" id="profile-name">Đang tải...</span>
-                            <span class="dropdown-arrow">▼</span>
-                        </div>
-                    </div>
-                    <div class="profile-dropdown-menu" id="profile-dropdown-menu" onclick="event.stopPropagation()">
-                        <div class="dropdown-header">
-                            <div class="dropdown-avatar" id="dropdown-user-avatar">?</div>
-                            <div class="dropdown-user-details">
-                                <span class="dropdown-user-name" id="dropdown-profile-name">...</span>
-                                <span class="dropdown-user-role" id="dropdown-profile-role">Thành viên</span>
+                <div class="header-right">
+                    <a href="https://zalo.me/g/vubktafat2bqvftxrbja" target="_blank" rel="noopener noreferrer" class="header-link-btn tra">
+                        🍵 Mebi Trà
+                    </a>
+                    <a href="https://zalo.me/g/egspxp6jde17fd5w0nyd" target="_blank" rel="noopener noreferrer" class="header-link-btn com">
+                        🍛 Mebi Cơm
+                    </a>
+
+                    <div class="user-profile" id="user-profile-widget" onclick="toggleProfileDropdown(event)">
+                        <div class="profile-trigger" id="profile-trigger">
+                            <div class="avatar" id="user-avatar">?</div>
+                            <div class="user-info-brief">
+                                <span class="user-name" id="profile-name">Đang tải...</span>
+                                <span class="dropdown-arrow">▼</span>
                             </div>
                         </div>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item-btn" onclick="openRenameModal(currentUser.id, currentUser.name); closeProfileDropdown();">
-                            <span class="icon">✏️</span> Đổi tên tài khoản
-                        </button>
-                        <button class="dropdown-item-btn logout" onclick="logout(); closeProfileDropdown();">
-                            <span class="icon">🚪</span> Đăng xuất
-                        </button>
+                        <div class="profile-dropdown-menu" id="profile-dropdown-menu" onclick="event.stopPropagation()">
+                            <div class="dropdown-header">
+                                <div class="dropdown-avatar" id="dropdown-user-avatar">?</div>
+                                <div class="dropdown-user-details">
+                                    <span class="dropdown-user-name" id="dropdown-profile-name">...</span>
+                                    <span class="dropdown-user-role" id="dropdown-profile-role">Thành viên</span>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item-btn" onclick="openRenameModal(currentUser.id, currentUser.name); closeProfileDropdown();">
+                                <span class="icon">✏️</span> Đổi tên tài khoản
+                            </button>
+                            <button class="dropdown-item-btn logout" onclick="logout(); closeProfileDropdown();">
+                                <span class="icon">🚪</span> Đăng xuất
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
