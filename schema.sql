@@ -2,6 +2,9 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    avatar TEXT DEFAULT '👤',
+    default_note TEXT,
     active INTEGER DEFAULT 1, -- 1: Đang hoạt động, 0: Đã nghỉ/tạm ngưng
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,11 +35,13 @@ CREATE TABLE IF NOT EXISTS orders (
     dish_name TEXT NOT NULL, -- Lưu snapshot phòng khi món ăn bị đổi tên sau này
     dish_price INTEGER NOT NULL, -- Lưu snapshot giá lúc đặt cơm
     paid INTEGER DEFAULT 0, -- 0: Chưa thanh toán, 1: Đã thanh toán
+    note TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id),
     FOREIGN KEY(dish_id) REFERENCES dishes(id),
     UNIQUE(date, user_id) -- Mỗi người chỉ được đặt tối đa 1 phần cơm một ngày!
 );
+
 
 -- Chèn dữ liệu cửa hàng mẫu ban đầu
 INSERT OR IGNORE INTO shops (id, name, active) VALUES

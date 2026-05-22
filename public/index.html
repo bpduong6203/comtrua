@@ -14,26 +14,59 @@
         <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
         <div id="toast-container" class="toast-container"></div>
 
-        <!-- RENAME USER MODAL -->
+        <!-- PROFILE SETUP MODAL -->
         <div id="rename-modal" class="modal-overlay" style="display:none;" onclick="handleModalOverlayClick(event)">
-            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="rename-modal-title" style="max-width: 480px;">
                 <div class="modal-header">
-                    <h3 id="rename-modal-title">✏️ Đổi Tên Tài Khoản</h3>
+                    <h3 id="rename-modal-title">⚙️ Thiết Lập Hồ Sơ</h3>
                     <button class="modal-close-btn" onclick="closeRenameModal()" title="Đóng">✕</button>
                 </div>
                 <div class="modal-body">
-                    <p class="modal-hint">Nhập tên mới bạn muốn sử dụng. Tên phải là duy nhất trong hệ thống.</p>
+                    <p class="modal-hint">Cập nhật thông tin cá nhân của bạn để nhận hàng thuận tiện và cá nhân hóa trải nghiệm.</p>
                     <form id="rename-form">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="rename-input">Tên mới</label>
-                            <input type="text" id="rename-input" class="input-ctrl" placeholder="Nhập tên mới..."
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label for="rename-input">Tên hiển thị <span style="color: var(--color-danger);">*</span></label>
+                            <input type="text" id="rename-input" class="input-ctrl" placeholder="Nhập tên của bạn..."
                                 required autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label for="profile-phone-input">Số điện thoại liên hệ</label>
+                            <input type="tel" id="profile-phone-input" class="input-ctrl" placeholder="Nhập số điện thoại nhận hàng..."
+                                autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label for="profile-avatar-select">Ảnh đại diện (Emoji)</label>
+                            <select id="profile-avatar-select" class="input-ctrl">
+                                <option value="👤">👤 Mặc định (Trống)</option>
+                                <option value="🧑‍💻">🧑‍💻 Lập trình viên</option>
+                                <option value="🦊">🦊 Cáo nhỏ</option>
+                                <option value="🐱">🐱 Mèo con</option>
+                                <option value="🐰">🐰 Thỏ ngọc</option>
+                                <option value="🐼">🐼 Gấu trúc</option>
+                                <option value="🦁">🦁 Sư tử</option>
+                                <option value="🐻">🐻 Gấu nâu</option>
+                                <option value="🐸">🐸 Ếch xanh</option>
+                                <option value="🥑">🥑 Bơ xanh</option>
+                                <option value="🍕">🍕 Pizza</option>
+                                <option value="🍔">🍔 Burger</option>
+                                <option value="☕">☕ Cà phê</option>
+                                <option value="🚀">🚀 Tên lửa</option>
+                                <option value="🎸">🎸 Đàn guitar</option>
+                                <option value="🌸">🌸 Hoa anh đào</option>
+                                <option value="👑">👑 Vương miện</option>
+                                <option value="💎">💎 Kim cương</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="profile-note-input">Ghi chú ăn uống mặc định</label>
+                            <input type="text" id="profile-note-input" class="input-ctrl" placeholder="Ví dụ: Không hành, nhiều cơm, dị ứng lạc..."
+                                autocomplete="off">
                         </div>
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary"
                                 style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeRenameModal()">Hủy</button>
                             <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
-                                id="rename-submit-btn">Lưu Tên Mới</button>
+                                id="rename-submit-btn">Lưu Thay Đổi</button>
                         </div>
                     </form>
                 </div>
@@ -187,7 +220,7 @@
                             </div>
                             <div class="dropdown-divider"></div>
                             <button class="dropdown-item-btn" onclick="openRenameModal(currentUser.id, currentUser.name); closeProfileDropdown();">
-                                <span class="icon">✏️</span> Đổi tên tài khoản
+                                <span class="icon">⚙️</span> Thiết lập hồ sơ
                             </button>
                             <button class="dropdown-item-btn logout" onclick="logout(); closeProfileDropdown();">
                                 <span class="icon">🚪</span> Đăng xuất
@@ -303,6 +336,11 @@
                                 <div id="toppings-options-container" class="toppings-options-grid">
                                     <!-- Toppings checkboxes loaded dynamically -->
                                 </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 1rem; margin-bottom: 1.25rem;">
+                                <label for="order-note-input">Ghi chú cho đơn cơm hôm nay (Không bắt buộc):</label>
+                                <input type="text" id="order-note-input" class="input-ctrl" placeholder="Ví dụ: Không hành, nhiều cơm, ít cay..." autocomplete="off">
                             </div>
 
                             <div id="order-summary-price"
@@ -922,10 +960,10 @@
                 const item = document.createElement('div');
                 item.className = 'suggestion-item';
                 
-                const initial = user.name.charAt(0).toUpperCase();
+                const avatar = user.avatar || '👤';
                 
                 item.innerHTML = `
-                    <div class="suggestion-avatar">${initial}</div>
+                    <div class="suggestion-avatar">${avatar}</div>
                     <span class="suggestion-name">${user.name}</span>
                     <span class="suggestion-badge">Thành viên</span>
                 `;
@@ -954,11 +992,11 @@
 
             // Update header widget
             profileName.textContent = currentUser.name;
-            userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+            userAvatar.textContent = currentUser.avatar || '👤';
 
             // Populate dropdown menu details
             dropdownProfileName.textContent = currentUser.name;
-            dropdownUserAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+            dropdownUserAvatar.textContent = currentUser.avatar || '👤';
             if (currentUser.id === 1) {
                 dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
                 tabBtnSettings.style.display = 'block';
@@ -1410,7 +1448,17 @@
             ordersListBadge.textContent = orders.length;
 
             // Check if current user has ordered on this date
-            const myOrder = orders.find(o => o.user_id === currentUser.id);
+            const myOrder = currentUser ? orders.find(o => o.user_id === currentUser.id) : null;
+
+            // Pre-fill today's order note input
+            const orderNoteInput = document.getElementById('order-note-input');
+            if (orderNoteInput && currentUser) {
+                if (myOrder) {
+                    orderNoteInput.value = myOrder.note || '';
+                } else {
+                    orderNoteInput.value = currentUser.default_note || '';
+                }
+            }
 
             if (myOrder) {
                 personalOrderStatus.style.display = 'block';
@@ -1473,25 +1521,44 @@
             const isAdmin = currentUser && currentUser.id === 1;
 
             orders.forEach(order => {
-                const isMe = order.user_id === currentUser.id;
-                const canToggle = isMe || currentUser.id === 1;
+                const isMe = currentUser && order.user_id === currentUser.id;
+                const canToggle = currentUser && (isMe || currentUser.id === 1);
                 const item = document.createElement('div');
                 item.className = 'order-item';
 
                 // Show delete button only if it's their own order and either not locked or they are the admin
                 const showDeleteBtn = isMe && (!deadlineStatus.locked || isAdmin);
 
+                const avatar = order.user_avatar || '👤';
+                const phoneHtml = order.user_phone ? `
+                    <a href="tel:${order.user_phone}" class="user-phone-link" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; margin-top: 0.15rem;" title="Gọi điện">
+                        📞 ${order.user_phone}
+                    </a>
+                ` : '';
+                const noteHtml = order.note ? `
+                    <div class="order-note" style="margin-top: 0.35rem; font-size: 0.8rem; color: #fbbf24; font-style: italic; display: flex; align-items: center; gap: 0.25rem;">
+                        📝 <span>Ghi chú: ${order.note}</span>
+                    </div>
+                ` : '';
+
                 item.innerHTML = `
-                        <div class="order-user">
-                            <div class="order-user-name">
-                                ${order.user_name}
-                                ${isMe ? '<span class="badge-me">Bạn</span>' : ''}
+                        <div class="order-user" style="flex: 1; min-width: 0;">
+                            <div class="order-user-name" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <span class="order-user-avatar" style="font-size: 1.25rem; line-height: 1;">${avatar}</span>
+                                <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                        <span style="font-weight: 700; font-size: 1.05rem;">${order.user_name}</span>
+                                        ${isMe ? '<span class="badge-me">Bạn</span>' : ''}
+                                    </div>
+                                    ${phoneHtml}
+                                </div>
                             </div>
-                            <div class="order-dish-desc">
+                            <div class="order-dish-desc" style="margin-left: 1.75rem; word-break: break-word;">
                                 ${order.dish_name} • <span class="order-dish-price">${formatCurrency(order.dish_price)}</span>
+                                ${noteHtml}
                             </div>
                         </div>
-                        <div class="order-actions">
+                        <div class="order-actions" style="flex-shrink: 0;">
                             <label class="switch">
                                 <input type="checkbox" ${order.paid ? 'checked' : ''} ${canToggle ? '' : 'disabled'} onchange="toggleOrderPaid(${order.id}, this.checked)">
                                 <span class="slider"><span class="slider-text"></span></span>
@@ -1645,13 +1712,24 @@
             users.forEach(user => {
                 const item = document.createElement('div');
                 item.className = 'order-item';
-                item.style.padding = '0.5rem 0.75rem';
+                item.style.padding = '0.75rem 1rem';
+                
+                const userPhone = user.phone ? `<a href="tel:${user.phone}" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.15rem; margin-top: 0.15rem;" title="Gọi điện">📞 ${user.phone}</a>` : '';
+                const userNote = user.default_note ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; font-style: italic; display: flex; align-items: center; gap: 0.2rem;">📝 Mặc định: ${user.default_note}</div>` : '';
+                
                 item.innerHTML = `
-                        <div style="font-weight:600; font-size:0.9rem;">
-                            👤 ${user.name}
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <span>${user.avatar || '👤'}</span>
+                                <span>${user.name}</span>
+                            </div>
+                            <div style="margin-left: 1.5rem;">
+                                ${userPhone}
+                                ${userNote}
+                            </div>
                         </div>
                         <button class="btn-edit" onclick="openRenameModal(${user.id}, '${user.name.replace(/'/g, "\\'")}')"
-                            title="Đổi tên thành viên">
+                            title="Chỉnh sửa thông tin thành viên">
                             ✏️
                         </button>
                     `;
@@ -1672,6 +1750,9 @@
                 return;
             }
 
+            const noteInput = document.getElementById('order-note-input');
+            const orderNote = noteInput ? noteInput.value.trim() : '';
+
             try {
                 const resp = await fetch('/api/orders', {
                     method: 'POST',
@@ -1680,7 +1761,8 @@
                         user_id: currentUser.id,
                         dish_id: selectedDishId,
                         date: selectedDate,
-                        topping_ids: selectedToppingIds
+                        topping_ids: selectedToppingIds,
+                        note: orderNote
                     })
                 });
 
@@ -1999,11 +2081,30 @@
         function openRenameModal(userId, currentName) {
             renameTargetUserId = userId;
             const modal = document.getElementById('rename-modal');
-            const input = document.getElementById('rename-input');
-            input.value = currentName;
+            const nameInput = document.getElementById('rename-input');
+            const phoneInput = document.getElementById('profile-phone-input');
+            const avatarSelect = document.getElementById('profile-avatar-select');
+            const noteInput = document.getElementById('profile-note-input');
+            
+            // Find target user's details
+            let targetUser = null;
+            if (currentUser && currentUser.id === userId) {
+                targetUser = currentUser;
+            } else if (typeof users !== 'undefined' && Array.isArray(users)) {
+                targetUser = users.find(u => u.id === userId);
+            }
+            if (!targetUser && typeof allUsersFullList !== 'undefined' && Array.isArray(allUsersFullList)) {
+                targetUser = allUsersFullList.find(u => u.id === userId);
+            }
+
+            nameInput.value = currentName;
+            phoneInput.value = targetUser ? (targetUser.phone || '') : '';
+            avatarSelect.value = targetUser ? (targetUser.avatar || '👤') : '👤';
+            noteInput.value = targetUser ? (targetUser.default_note || '') : '';
+            
             modal.style.display = 'flex';
             // Delay focus so transition plays first
-            setTimeout(() => input.focus(), 80);
+            setTimeout(() => nameInput.focus(), 80);
         }
 
         function closeRenameModal() {
@@ -2032,8 +2133,16 @@
             e.preventDefault();
             if (!renameTargetUserId) return;
 
-            const input = document.getElementById('rename-input');
-            const newName = input.value.trim();
+            const nameInput = document.getElementById('rename-input');
+            const phoneInput = document.getElementById('profile-phone-input');
+            const avatarSelect = document.getElementById('profile-avatar-select');
+            const noteInput = document.getElementById('profile-note-input');
+
+            const newName = nameInput.value.trim();
+            const phone = phoneInput.value.trim();
+            const avatar = avatarSelect.value;
+            const defaultNote = noteInput.value.trim();
+
             if (!newName) return;
 
             const btn = document.getElementById('rename-submit-btn');
@@ -2044,32 +2153,51 @@
                 const resp = await fetch(`/api/users/${renameTargetUserId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newName })
+                    body: JSON.stringify({
+                        name: newName,
+                        phone: phone,
+                        avatar: avatar,
+                        default_note: defaultNote
+                    })
                 });
 
                 const data = await resp.json();
 
                 if (resp.ok) {
-                    showToast(`Đã đổi tên thành "${newName}" thành công!`);
+                    showToast(`Thiết lập hồ sơ thành công!`);
 
                     // Nếu đang đổi tên chính mình, cập nhật local state và UI
-                    if (renameTargetUserId === currentUser.id) {
+                    if (currentUser && renameTargetUserId === currentUser.id) {
                         currentUser.name = newName;
+                        currentUser.phone = phone;
+                        currentUser.avatar = avatar;
+                        currentUser.default_note = defaultNote;
                         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        
                         profileName.textContent = newName;
-                        userAvatar.textContent = newName.charAt(0).toUpperCase();
+                        userAvatar.textContent = avatar;
+                        dropdownProfileName.textContent = newName;
+                        dropdownUserAvatar.textContent = avatar;
+
+                        // Autofill order note if empty
+                        const orderNoteInput = document.getElementById('order-note-input');
+                        if (orderNoteInput && !orderNoteInput.value.trim()) {
+                            orderNoteInput.value = defaultNote;
+                        }
                     }
 
                     closeRenameModal();
                     await loadUsers();
+                    await loadUsersListForLogin();
+                    await loadDailyOrders();
                 } else {
-                    showToast(data.error || 'Đổi tên thất bại.', 'error');
+                    showToast(data.error || 'Thiết lập hồ sơ thất bại.', 'error');
                 }
             } catch (err) {
                 showToast('Lỗi kết nối máy chủ.', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Lưu Tên Mới';
+                btn.textContent = 'Lưu Thay Đổi';
             }
         });
 
