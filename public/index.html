@@ -377,6 +377,24 @@
 
                 <!-- RIGHT COLUMN (ADMIN PANELS & MANAGE MENU) -->
                 <div>
+                    <!-- ANNOUNCEMENT BOARD -->
+                    <div class="panel announcement-card" id="announcement-card" style="display: none;">
+                        <div class="announcement-header">
+                            <span class="announcement-title">📢 Bảng Tin & Thông Báo</span>
+                            <button id="edit-announcement-btn" class="announcement-edit-btn" onclick="toggleEditAnnouncement()" style="display: none;">✏️ Chỉnh sửa</button>
+                        </div>
+                        <div class="announcement-content" id="announcement-view-content">
+                            <!-- announcement text rendered here -->
+                        </div>
+                        <div class="announcement-edit-box" id="announcement-edit-box" style="display: none; margin-top: 1rem;">
+                            <textarea id="announcement-input" class="input-ctrl" rows="3" placeholder="Nhập nội dung thông báo nổi bật..."></textarea>
+                            <div class="announcement-edit-actions" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button class="btn btn-secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="cancelEditAnnouncement()">Hủy</button>
+                                <button class="btn btn-primary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="saveAnnouncement()">Lưu Thông Báo</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="panel">
                         <div class="tab-header">
                             <button class="tab-btn active" id="tab-btn-dishes" onclick="switchAdminTab('dishes')">Quản
@@ -1026,17 +1044,120 @@
             await loadAllDishesForAdmin();
         }
 
+        let announcementText = '';
+        let isEditingAnnouncement = false;
+
         async function loadSettings() {
             try {
                 const resp = await fetch('/api/settings');
                 const data = await resp.json();
-                if (resp.ok && data.order_deadline) {
-                    orderDeadline = data.order_deadline;
-                    settingsDeadlineInput.value = orderDeadline;
-                    checkAndUpdateDeadlineUI();
+                if (resp.ok) {
+                    if (data.order_deadline) {
+                        orderDeadline = data.order_deadline;
+                        settingsDeadlineInput.value = orderDeadline;
+                        checkAndUpdateDeadlineUI();
+                    }
+                    announcementText = data.announcement || '';
+                    renderAnnouncement();
                 }
             } catch (err) {
                 console.error('Lỗi khi tải cài đặt:', err);
+            }
+        }
+
+        function renderAnnouncement() {
+            const announcementCard = document.getElementById('announcement-card');
+            const announcementViewContent = document.getElementById('announcement-view-content');
+            const editBtn = document.getElementById('edit-announcement-btn');
+            
+            // Show edit button only for admin (id === 1)
+            const isAdmin = currentUser && currentUser.id === 1;
+            if (isAdmin) {
+                editBtn.style.display = 'block';
+            } else {
+                editBtn.style.display = 'none';
+            }
+            
+            if (announcementText.trim() === '') {
+                if (isAdmin) {
+                    // Admin gets a nice blank slate helper
+                    announcementViewContent.innerHTML = `<span style="font-style: italic; color: var(--text-muted);">Chưa có thông báo nào. Bấm Chỉnh sửa để thêm thông báo nổi bật cho mọi người!</span>`;
+                    announcementCard.style.display = 'block';
+                } else {
+                    // Normal users don't see the card if it's empty
+                    announcementCard.style.display = 'none';
+                }
+            } else {
+                // Escape HTML to prevent XSS, but preserve formatting
+                const escaped = announcementText
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+                announcementViewContent.innerHTML = escaped;
+                announcementCard.style.display = 'block';
+            }
+        }
+
+        function toggleEditAnnouncement() {
+            const viewContent = document.getElementById('announcement-view-content');
+            const editBox = document.getElementById('announcement-edit-box');
+            const input = document.getElementById('announcement-input');
+            const editBtn = document.getElementById('edit-announcement-btn');
+            
+            isEditingAnnouncement = true;
+            input.value = announcementText;
+            
+            viewContent.style.display = 'none';
+            editBtn.style.display = 'none';
+            editBox.style.display = 'block';
+            input.focus();
+        }
+
+        function cancelEditAnnouncement() {
+            const viewContent = document.getElementById('announcement-view-content');
+            const editBox = document.getElementById('announcement-edit-box');
+            const editBtn = document.getElementById('edit-announcement-btn');
+            
+            isEditingAnnouncement = false;
+            
+            viewContent.style.display = 'block';
+            editBtn.style.display = 'block';
+            editBox.style.display = 'none';
+        }
+
+        async function saveAnnouncement() {
+            const input = document.getElementById('announcement-input');
+            const newValue = input.value.trim();
+            
+            try {
+                const resp = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: 'announcement',
+                        value: newValue,
+                        caller_id: currentUser.id
+                    })
+                });
+                
+                const data = await resp.json();
+                if (resp.ok) {
+                    announcementText = newValue;
+                    showToast('Đã lưu thông báo mới!');
+                    isEditingAnnouncement = false;
+                    
+                    // Reset UI
+                    document.getElementById('announcement-view-content').style.display = 'block';
+                    document.getElementById('announcement-edit-box').style.display = 'none';
+                    renderAnnouncement();
+                } else {
+                    showToast(data.error || 'Không thể lưu thông báo.', 'error');
+                }
+            } catch (err) {
+                console.error('Lỗi khi lưu thông báo:', err);
+                showToast('Lỗi kết nối máy chủ.', 'error');
             }
         }
 

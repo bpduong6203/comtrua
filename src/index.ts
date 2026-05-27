@@ -292,15 +292,20 @@ export default {
 			// 1.9 API CÀI ĐẶT (SETTINGS)
 			// ==========================================
 
-			// Lấy hạn chốt đặt cơm
+			// Lấy các cài đặt hệ thống
 			// GET /api/settings
 			if (pathname === '/api/settings' && method === 'GET') {
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
-				const result = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
-					.bind('order_deadline')
-					.first<{ value: string }>();
-				const deadline = result?.value || '11:00';
-				return jsonResponse({ order_deadline: deadline });
+				const { results } = await env.DB.prepare('SELECT * FROM settings').all<{ key: string; value: string }>();
+				
+				const settingsObj: Record<string, string> = { 
+					order_deadline: '11:00', 
+					announcement: '' 
+				};
+				for (const row of results) {
+					settingsObj[row.key] = row.value;
+				}
+				return jsonResponse(settingsObj);
 			}
 
 			// Cập nhật cài đặt hệ thống (chỉ admin ID 1)
@@ -309,13 +314,13 @@ export default {
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
 				const body = await request.json() as { key?: string; value?: string; caller_id?: number };
 				const key = body.key?.trim();
-				const value = body.value?.trim();
+				const value = body.value !== undefined ? body.value.trim() : undefined;
 				const callerId = Number(body.caller_id);
 
 				if (callerId !== 1) {
 					return jsonResponse({ error: 'Bạn không có quyền thay đổi cài đặt hệ thống.' }, 403);
 				}
-				if (!key || !value) {
+				if (!key || value === undefined) {
 					return jsonResponse({ error: 'Thiếu thông tin cài đặt.' }, 400);
 				}
 
