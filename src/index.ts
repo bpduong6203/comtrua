@@ -129,13 +129,16 @@ export default {
 				return jsonResponse(results);
 			}
 
-			// Cập nhật tên người dùng
+			// Cập nhật thông tin người dùng (Hồ sơ)
 			// PATCH /api/users/:id
 			const userUpdateMatch = pathname.match(/^\/api\/users\/(\d+)$/);
 			if (userUpdateMatch && method === 'PATCH') {
 				const userId = parseInt(userUpdateMatch[1]);
-				const body = await request.json() as { name?: string };
+				const body = await request.json() as { name?: string; phone?: string; avatar?: string; default_note?: string };
 				const newName = body.name?.trim();
+				const phone = body.phone?.trim() || null;
+				const avatar = body.avatar?.trim() || '👤';
+				const defaultNote = body.default_note?.trim() || null;
 
 				if (!newName) {
 					return jsonResponse({ error: 'Tên người dùng không được bỏ trống.' }, 400);
@@ -150,15 +153,24 @@ export default {
 					return jsonResponse({ error: `Tên "${newName}" đã được sử dụng bởi tài khoản khác.` }, 409);
 				}
 
-				const result = await env.DB.prepare('UPDATE users SET name = ? WHERE id = ?')
-					.bind(newName, userId)
+				const result = await env.DB.prepare('UPDATE users SET name = ?, phone = ?, avatar = ?, default_note = ? WHERE id = ?')
+					.bind(newName, phone, avatar, defaultNote, userId)
 					.run();
 
 				if (!result.success) {
-					return jsonResponse({ error: 'Không thể cập nhật tên người dùng.' }, 500);
+					return jsonResponse({ error: 'Không thể cập nhật thông tin người dùng.' }, 500);
 				}
 
-				return jsonResponse({ message: 'Cập nhật tên thành công', name: newName });
+				return jsonResponse({
+					message: 'Cập nhật thông tin thành công',
+					user: {
+						id: userId,
+						name: newName,
+						phone,
+						avatar,
+						default_note: defaultNote
+					}
+				});
 			}
 
 			// Lấy tổng nợ chưa thanh toán và chi tiết hóa đơn nợ của một người dùng
@@ -529,10 +541,13 @@ export default {
 						o.date, 
 						o.user_id, 
 						u.name as user_name, 
+						u.phone as user_phone,
+						u.avatar as user_avatar,
 						o.dish_id, 
 						o.dish_name, 
 						o.dish_price, 
 						o.paid, 
+						o.note,
 						o.created_at
 					FROM orders o
 					JOIN users u ON o.user_id = u.id
@@ -548,11 +563,12 @@ export default {
 			// Đặt cơm / Đổi món
 			// POST /api/orders
 			if (pathname === '/api/orders' && method === 'POST') {
-				const body = await request.json() as { user_id?: number; dish_id?: number; date?: string; topping_ids?: number[] };
+				const body = await request.json() as { user_id?: number; dish_id?: number; date?: string; topping_ids?: number[]; note?: string };
 				const userId = Number(body.user_id);
 				const dishId = Number(body.dish_id);
 				const dateParam = body.date?.trim() || getVNDateString();
 				const toppingIds = body.topping_ids || [];
+				const note = body.note?.trim() || null;
 
 				if (!userId || !dishId) {
 					return jsonResponse({ error: 'Thiếu thông tin người dùng hoặc món ăn.' }, 400);
@@ -595,16 +611,17 @@ export default {
 				// Thêm mới hoặc cập nhật đơn cơm cho ngày này (Unique: date, user_id)
 				// Trạng thái paid sẽ tự reset về 0 (chưa trả) nếu thay đổi sang món khác
 				const result = await env.DB.prepare(
-					`INSERT INTO orders (date, user_id, dish_id, dish_name, dish_price, paid)
-					VALUES (?, ?, ?, ?, ?, 0)
+					`INSERT INTO orders (date, user_id, dish_id, dish_name, dish_price, paid, note)
+					VALUES (?, ?, ?, ?, ?, 0, ?)
 					ON CONFLICT(date, user_id) DO UPDATE SET
 						dish_id = EXCLUDED.dish_id,
 						dish_name = EXCLUDED.dish_name,
 						dish_price = EXCLUDED.dish_price,
 						paid = 0,
+						note = EXCLUDED.note,
 						created_at = CURRENT_TIMESTAMP`
 				)
-					.bind(dateParam, userId, dishId, finalName, finalPrice)
+					.bind(dateParam, userId, dishId, finalName, finalPrice, note)
 					.run();
 
 				if (!result.success) {
