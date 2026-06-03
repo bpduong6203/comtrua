@@ -162,6 +162,31 @@
             </div>
         </div>
 
+        <!-- EDIT ANNOUNCEMENT MODAL -->
+        <div id="edit-announcement-modal" class="modal-overlay" style="display:none;" onclick="handleEditAnnouncementModalOverlayClick(event)">
+            <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-announcement-modal-title">
+                <div class="modal-header">
+                    <h3 id="edit-announcement-modal-title">✏️ Chỉnh Sửa Bảng Tin & Thông Báo</h3>
+                    <button class="modal-close-btn" onclick="closeEditAnnouncementModal()" title="Đóng">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Nhập nội dung thông báo mới. Nội dung sẽ tự động chạy ngang ở phần trên cùng của ứng dụng.</p>
+                    <form id="edit-announcement-form" onsubmit="event.preventDefault(); saveAnnouncement();">
+                        <div class="form-group">
+                            <label for="announcement-input">Nội dung thông báo</label>
+                            <textarea id="announcement-input" class="input-ctrl" rows="4" placeholder="Nhập nội dung thông báo nổi bật cho mọi người..." required></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary"
+                                style="width:auto; padding: 0.65rem 1.25rem;" onclick="closeEditAnnouncementModal()">Hủy</button>
+                            <button type="submit" class="btn btn-primary" style="width:auto; padding: 0.65rem 1.5rem;"
+                                id="edit-announcement-submit-btn">Lưu Thông Báo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
         <div id="auth-section" class="auth-container" style="display: none;">
             <div class="panel auth-panel">
@@ -187,11 +212,20 @@
 
         <!-- 2. MAIN APP SECTION -->
         <div id="main-section" style="display: none;">
+
+
             <!-- HEADER -->
             <header>
                 <div class="logo-area">
                     <h1>🍱 ComTrua</h1>
                     <p>Hệ thống đặt cơm trưa nội bộ văn phòng</p>
+                </div>
+
+                <!-- HEADER ANNOUNCEMENT -->
+                <div class="header-announcement" id="announcement-card" style="display: none;">
+                    <span class="announcement-emoji">📢</span>
+                    <span id="announcement-view-content" class="announcement-text">...</span>
+                    <button id="edit-announcement-btn" class="announcement-edit-btn" onclick="toggleEditAnnouncement()" style="display: none;" title="Chỉnh sửa thông báo">✏️</button>
                 </div>
 
                 <div class="header-right">
@@ -230,24 +264,7 @@
                 </div>
             </header>
 
-            <!-- STATS PANELS -->
-            <div class="stats-grid">
-                <div class="stat-card total">
-                    <span class="stat-label">Tổng Phần Ăn Hôm Nay</span>
-                    <span class="stat-value" id="stats-total-orders">0 suất</span>
-                    <span class="stat-sub" id="stats-total-dishes-desc">Chưa có ai đặt</span>
-                </div>
-                <div class="stat-card paid">
-                    <span class="stat-label">Đã Thanh Toán</span>
-                    <span class="stat-value" id="stats-paid-amount">0 đ</span>
-                    <span class="stat-sub" id="stats-paid-count">0 người</span>
-                </div>
-                <div class="stat-card unpaid">
-                    <span class="stat-label">Chưa Thanh Toán</span>
-                    <span class="stat-value" id="stats-unpaid-amount">0 đ</span>
-                    <span class="stat-sub" id="stats-unpaid-count">0 người</span>
-                </div>
-            </div>
+
 
             <div class="dashboard-grid">
                 <!-- LEFT COLUMN (ORDERING FORM & DAILY ORDERS LIST) -->
@@ -375,28 +392,12 @@
                     </div>
                 </div>
 
-                <!-- RIGHT COLUMN (ADMIN PANELS & MANAGE MENU) -->
+                <!-- RIGHT COLUMN -->
                 <div>
-                    <!-- ANNOUNCEMENT BOARD -->
-                    <div class="panel announcement-card" id="announcement-card" style="display: none;">
-                        <div class="announcement-header">
-                            <span class="announcement-title">📢 Bảng Tin & Thông Báo</span>
-                            <button id="edit-announcement-btn" class="announcement-edit-btn" onclick="toggleEditAnnouncement()" style="display: none;">✏️ Chỉnh sửa</button>
-                        </div>
-                        <div class="announcement-content" id="announcement-view-content">
-                            <!-- announcement text rendered here -->
-                        </div>
-                        <div class="announcement-edit-box" id="announcement-edit-box" style="display: none; margin-top: 1rem;">
-                            <textarea id="announcement-input" class="input-ctrl" rows="3" placeholder="Nhập nội dung thông báo nổi bật..."></textarea>
-                            <div class="announcement-edit-actions" style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <button class="btn btn-secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="cancelEditAnnouncement()">Hủy</button>
-                                <button class="btn btn-primary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="saveAnnouncement()">Lưu Thông Báo</button>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="panel">
-                        <div class="tab-header">
+
+                    <div class="panel" id="admin-panel-card">
+                        <div class="tab-header" style="display: none;">
                             <button class="tab-btn active" id="tab-btn-dishes" onclick="switchAdminTab('dishes')">Quản
                                 Lý Thực Đơn</button>
                             <button class="tab-btn" id="tab-btn-shops" onclick="switchAdminTab('shops')">Quản Lý
@@ -409,7 +410,7 @@
                         </div>
 
                         <!-- Tab 1: Manage Dishes Menu -->
-                        <div id="tab-content-dishes">
+                        <div id="tab-content-dishes" class="admin-section">
                             <div id="add-dish-section">
                                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Món Ăn Mới</h3>
                                 <form id="add-dish-form">
@@ -442,7 +443,7 @@
                         </div>
 
                         <!-- Tab 1.2: Manage Shops -->
-                        <div id="tab-content-shops" style="display: none;">
+                        <div id="tab-content-shops" class="admin-section" style="display: none;">
                             <div id="add-shop-section">
                                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Cửa Hàng Mới
                                 </h3>
@@ -465,7 +466,7 @@
                         </div>
 
                         <!-- Tab 1.5: Manage Toppings -->
-                        <div id="tab-content-toppings" style="display: none;">
+                        <div id="tab-content-toppings" class="admin-section" style="display: none;">
                             <div id="add-topping-section">
                                 <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Topping Mới
                                 </h3>
@@ -493,7 +494,7 @@
                         </div>
 
                         <!-- Tab 2: Manage Users -->
-                        <div id="tab-content-users" style="display: none;">
+                        <div id="tab-content-users" class="admin-section" style="display: none;">
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">➕ Thêm Thành Viên Mới
                             </h3>
                             <form id="add-user-form">
@@ -514,7 +515,7 @@
                         </div>
 
                         <!-- Tab 5: Settings -->
-                        <div id="tab-content-settings" style="display: none;">
+                        <div id="tab-content-settings" class="admin-section" style="display: none;">
                             <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">⚙️ Thiết Lập Hệ Thống</h3>
                             <form id="settings-form">
                                 <div class="form-group">
@@ -524,6 +525,77 @@
                                 </div>
                                 <button type="submit" class="btn btn-secondary">Lưu Cài Đặt</button>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- CUMULATIVE SPENDING DASHBOARD -->
+                    <div class="panel spending-dashboard-card" id="spending-dashboard-section" style="margin-top: 0.5rem;">
+                        <h2 class="section-title" style="margin-bottom: 1rem;">📊 Bảng Thống Kê</h2>
+
+                        <div class="spending-hero-row">
+                            <!-- Donut Chart (Compact 110x110) -->
+                            <div class="spending-donut-wrapper">
+                                <canvas id="spending-donut-chart" width="110" height="110"></canvas>
+                                <div class="donut-center-label">
+                                    <span class="donut-center-value" id="donut-center-value">0 đ</span>
+                                    <span class="donut-center-sub">Tổng chi</span>
+                                </div>
+                            </div>
+
+                            <!-- Flat list of statistics -->
+                            <div class="spending-stats-flat-list">
+                                <!-- Item 1: Total Spending -->
+                                <div class="spending-flat-item total">
+                                    <span class="spending-flat-icon">💰</span>
+                                    <div class="spending-flat-info">
+                                        <div class="spending-flat-header">
+                                            <span class="spending-flat-label">Tổng Chi Tiêu</span>
+                                            <span class="spending-flat-value" id="spending-total-amount">0 đ</span>
+                                        </div>
+                                        <div class="spending-flat-sub">
+                                            Hôm nay: <strong id="stats-total-orders">0 suất</strong> <span id="stats-total-dishes-desc">(Chưa có ai đặt cơm)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Item 2: Paid -->
+                                <div class="spending-flat-item paid">
+                                    <span class="spending-flat-icon">✅</span>
+                                    <div class="spending-flat-info">
+                                        <div class="spending-flat-header">
+                                            <span class="spending-flat-label">Đã Thanh Toán</span>
+                                            <span class="spending-flat-value" id="spending-paid-amount">0 đ</span>
+                                        </div>
+                                        <div class="spending-flat-sub">
+                                            Hôm nay: <strong id="stats-paid-amount">0 đ</strong> (<span id="stats-paid-count">0 người</span>)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Item 3: Unpaid / Debt -->
+                                <div class="spending-flat-item unpaid">
+                                    <span class="spending-flat-icon">⏳</span>
+                                    <div class="spending-flat-info">
+                                        <div class="spending-flat-header">
+                                            <span class="spending-flat-label">Tổng Nợ Tích Lũy</span>
+                                            <span class="spending-flat-value unpaid" id="spending-unpaid-amount">0 đ</span>
+                                        </div>
+                                        <div class="spending-flat-sub">
+                                            Hôm nay chưa trả: <strong id="stats-unpaid-amount" style="color: rgba(255,255,255,0.75);">0 đ</strong> (<span id="stats-unpaid-count">0 người</span>)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leaderboard with progress bars -->
+                        <div class="spending-leaderboard" style="margin-top: 1.5rem;">
+                            <div class="leaderboard-header">
+                                <span>🏆 Bảng Xếp Hạng Chi Tiêu</span>
+                            </div>
+                            <div id="spending-leaderboard-list" class="leaderboard-list">
+                                <div class="empty-state">Đang tải dữ liệu chi tiêu...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1017,6 +1089,12 @@
             dropdownUserAvatar.textContent = currentUser.avatar || '👤';
             if (currentUser.id === 1) {
                 dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
+                document.getElementById('admin-panel-card').style.display = 'block';
+                document.getElementById('tab-content-dishes').style.display = 'block';
+                document.getElementById('tab-content-shops').style.display = 'block';
+                document.getElementById('tab-content-toppings').style.display = 'block';
+                document.getElementById('tab-content-users').style.display = 'block';
+                document.getElementById('tab-content-settings').style.display = 'block';
                 tabBtnSettings.style.display = 'block';
                 tabBtnUsers.style.display = 'block';
                 document.getElementById('add-dish-section').style.display = 'block';
@@ -1024,6 +1102,7 @@
                 document.getElementById('add-topping-section').style.display = 'block';
             } else {
                 dropdownProfileRole.textContent = 'Thành viên';
+                document.getElementById('admin-panel-card').style.display = 'none';
                 tabBtnSettings.style.display = 'none';
                 tabBtnUsers.style.display = 'none';
                 document.getElementById('add-dish-section').style.display = 'none';
@@ -1042,6 +1121,7 @@
             await loadDailyOrders();
             await loadPersonalDebt();
             await loadAllDishesForAdmin();
+            await loadSpendingStats();
         }
 
         let announcementText = '';
@@ -1081,8 +1161,8 @@
             if (announcementText.trim() === '') {
                 if (isAdmin) {
                     // Admin gets a nice blank slate helper
-                    announcementViewContent.innerHTML = `<span style="font-style: italic; color: var(--text-muted);">Chưa có thông báo nào. Bấm Chỉnh sửa để thêm thông báo nổi bật cho mọi người!</span>`;
-                    announcementCard.style.display = 'block';
+                    announcementViewContent.innerHTML = `<span style="font-style: italic; color: var(--text-muted);">Chưa có thông báo. Nhấp ✏️ để thêm!</span>`;
+                    announcementCard.style.display = 'flex';
                 } else {
                     // Normal users don't see the card if it's empty
                     announcementCard.style.display = 'none';
@@ -1095,39 +1175,45 @@
                     .replace(/>/g, "&gt;")
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
+                
                 announcementViewContent.innerHTML = escaped;
-                announcementCard.style.display = 'block';
+                announcementCard.style.display = 'flex';
+            }
+        }
+
+        function openEditAnnouncementModal() {
+            if (!currentUser || currentUser.id !== 1) return;
+            const modal = document.getElementById('edit-announcement-modal');
+            const input = document.getElementById('announcement-input');
+            input.value = announcementText;
+            modal.style.display = 'flex';
+            setTimeout(() => input.focus(), 80);
+        }
+
+        function closeEditAnnouncementModal() {
+            document.getElementById('edit-announcement-modal').style.display = 'none';
+        }
+
+        function handleEditAnnouncementModalOverlayClick(e) {
+            if (e.target.id === 'edit-announcement-modal') {
+                closeEditAnnouncementModal();
             }
         }
 
         function toggleEditAnnouncement() {
-            const viewContent = document.getElementById('announcement-view-content');
-            const editBox = document.getElementById('announcement-edit-box');
-            const input = document.getElementById('announcement-input');
-            const editBtn = document.getElementById('edit-announcement-btn');
-            
-            isEditingAnnouncement = true;
-            input.value = announcementText;
-            
-            viewContent.style.display = 'none';
-            editBtn.style.display = 'none';
-            editBox.style.display = 'block';
-            input.focus();
+            if (!currentUser || currentUser.id !== 1) return;
+            openEditAnnouncementModal();
         }
 
         function cancelEditAnnouncement() {
-            const viewContent = document.getElementById('announcement-view-content');
-            const editBox = document.getElementById('announcement-edit-box');
-            const editBtn = document.getElementById('edit-announcement-btn');
-            
-            isEditingAnnouncement = false;
-            
-            viewContent.style.display = 'block';
-            editBtn.style.display = 'block';
-            editBox.style.display = 'none';
+            closeEditAnnouncementModal();
         }
 
         async function saveAnnouncement() {
+            if (!currentUser || currentUser.id !== 1) {
+                showToast('Bạn không có quyền thực hiện thao tác này.', 'error');
+                return;
+            }
             const input = document.getElementById('announcement-input');
             const newValue = input.value.trim();
             
@@ -1146,11 +1232,7 @@
                 if (resp.ok) {
                     announcementText = newValue;
                     showToast('Đã lưu thông báo mới!');
-                    isEditingAnnouncement = false;
-                    
-                    // Reset UI
-                    document.getElementById('announcement-view-content').style.display = 'block';
-                    document.getElementById('announcement-edit-box').style.display = 'none';
+                    closeEditAnnouncementModal();
                     renderAnnouncement();
                 } else {
                     showToast(data.error || 'Không thể lưu thông báo.', 'error');
@@ -1390,6 +1472,144 @@
             } catch (err) {
                 console.error('Lỗi khi tải tổng nợ cá nhân:', err);
             }
+        }
+
+        async function loadSpendingStats() {
+            try {
+                const resp = await fetch('/api/stats/spending');
+                const data = await resp.json();
+                if (resp.ok) {
+                    // Update Summary stat cards
+                    document.getElementById('spending-total-amount').textContent = formatCurrency(data.grand_total);
+                    document.getElementById('spending-paid-amount').textContent = formatCurrency(data.grand_paid);
+                    document.getElementById('spending-unpaid-amount').textContent = formatCurrency(data.grand_unpaid);
+                    document.getElementById('donut-center-value').textContent = formatCurrency(data.grand_total);
+
+                    // Draw Donut Chart
+                    drawSpendingDonut(data.grand_paid, data.grand_unpaid);
+
+                    // Render Leaderboard
+                    const listEl = document.getElementById('spending-leaderboard-list');
+                    listEl.innerHTML = '';
+
+                    if (data.users_breakdown.length === 0) {
+                        listEl.innerHTML = '<div class="empty-state">Chưa có dữ liệu đặt cơm tích lũy nào.</div>';
+                        return;
+                    }
+
+                    const maxSpent = Math.max(...data.users_breakdown.map(u => u.total_spent), 1);
+
+                    data.users_breakdown.forEach((user, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+
+                        // Rank
+                        let rankHtml = '';
+                        if (index === 0) rankHtml = '🥇';
+                        else if (index === 1) rankHtml = '🥈';
+                        else if (index === 2) rankHtml = '🥉';
+                        else rankHtml = `<span class="lb-rank-num">${index + 1}</span>`;
+
+                        const avatar = user.user_avatar || '👤';
+                        const barPercent = Math.round((user.total_spent / maxSpent) * 100);
+                        const debtClass = user.total_unpaid > 0 ? 'has-debt' : 'no-debt';
+                        const debtLabel = user.total_unpaid > 0 ? `Nợ ${formatCurrency(user.total_unpaid)}` : 'Hết nợ ✓';
+
+                        item.innerHTML = `
+                            <div class="lb-rank">${rankHtml}</div>
+                            <div class="lb-avatar">${avatar}</div>
+                            <div class="lb-info">
+                                <div class="lb-name">${user.user_name}</div>
+                                <div class="lb-bar-wrap">
+                                    <div class="lb-bar-track">
+                                        <div class="lb-bar-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <span class="lb-bar-label">${user.total_orders} suất</span>
+                                </div>
+                            </div>
+                            <div class="lb-amounts">
+                                <span class="lb-spent">${formatCurrency(user.total_spent)}</span>
+                                <span class="lb-debt ${debtClass}">${debtLabel}</span>
+                            </div>
+                        `;
+                        listEl.appendChild(item);
+
+                        // Animate bar fill
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                item.querySelector('.lb-bar-fill').style.width = barPercent + '%';
+                            });
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error('Lỗi khi tải bảng thống kê chi tiêu:', err);
+            }
+        }
+
+        // Donut chart renderer (pure canvas, no library needed)
+        function drawSpendingDonut(paid, unpaid) {
+            const canvas = document.getElementById('spending-donut-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const size = 110;
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            ctx.scale(dpr, dpr);
+
+            const cx = size / 2, cy = size / 2;
+            const outerR = size / 2 - 4;
+            const innerR = outerR - 14;
+            const total = paid + unpaid;
+
+            ctx.clearRect(0, 0, size, size);
+
+            if (total === 0) {
+                // Empty state ring
+                ctx.beginPath();
+                ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+                ctx.arc(cx, cy, innerR, 0, Math.PI * 2, true);
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fill();
+                return;
+            }
+
+            const segments = [
+                { value: paid, color: '#10b981' },
+                { value: unpaid, color: '#f59e0b' },
+            ];
+
+            let startAngle = -Math.PI / 2;
+            const gap = 0.04; // small gap between segments
+
+            segments.forEach(seg => {
+                if (seg.value <= 0) return;
+                const sweep = (seg.value / total) * (Math.PI * 2 - gap * segments.filter(s => s.value > 0).length);
+
+                // Gradient fill
+                const grad = ctx.createLinearGradient(0, 0, size, size);
+                grad.addColorStop(0, seg.color);
+                grad.addColorStop(1, seg.color + 'cc');
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, outerR, startAngle, startAngle + sweep);
+                ctx.arc(cx, cy, innerR, startAngle + sweep, startAngle, true);
+                ctx.closePath();
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Subtle glow
+                ctx.shadowColor = seg.color;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+
+                startAngle += sweep + gap;
+            });
         }
 
         // =======================================================
@@ -1894,6 +2114,7 @@
                     selectedToppingIds = [];
                     loadDailyOrders();
                     loadPersonalDebt();
+                    loadSpendingStats();
                 } else {
                     showToast(data.error || 'Lỗi khi đặt cơm.', 'error');
                 }
@@ -1914,6 +2135,7 @@
                     showToast(isPaid ? 'Đã thu tiền thành công!' : 'Đã hủy đánh dấu thanh toán.');
                     loadDailyOrders();
                     loadPersonalDebt();
+                    loadSpendingStats();
                 } else {
                     const data = await resp.json();
                     showToast(data.error || 'Không thể cập nhật thanh toán.', 'error');
@@ -1941,6 +2163,7 @@
                     showToast('Đã hủy suất cơm của bạn!');
                     loadDailyOrders();
                     loadPersonalDebt();
+                    loadSpendingStats();
                 } else {
                     showToast('Không thể hủy đặt cơm.', 'error');
                 }

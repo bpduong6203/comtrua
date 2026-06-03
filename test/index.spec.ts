@@ -206,5 +206,51 @@ describe("ComTrua Backend Tests", () => {
 		expect(ordersList[0].dish_name).toContain("Trứng ốp la");
 		expect(ordersList[0].note).toBe("Ít cơm, thêm trứng chín kỹ");
 	});
+
+	it("should calculate cumulative spending stats correctly", async () => {
+		// Register a user
+		const loginReq = new Request("http://example.com/api/users/login", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ name: "Nguyễn Văn A" }),
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(loginReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const loginData = await response.json() as any;
+		const userId = loginData.user.id;
+
+		// Place an order for dish 1 (35000)
+		const orderReq = new Request("http://example.com/api/orders", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				user_id: userId,
+				dish_id: 1,
+				date: "2026-05-22",
+				topping_ids: [],
+			}),
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(orderReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		// Now fetch spending stats
+		const statsReq = new Request("http://example.com/api/stats/spending");
+		ctx = createExecutionContext();
+		response = await worker.fetch(statsReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const stats = await response.json() as any;
+		expect(stats.grand_total).toBe(35000);
+		expect(stats.grand_paid).toBe(0);
+		expect(stats.grand_unpaid).toBe(35000);
+		expect(stats.users_breakdown.length).toBe(1);
+		expect(stats.users_breakdown[0].user_name).toBe("Nguyễn Văn A");
+		expect(stats.users_breakdown[0].total_orders).toBe(1);
+		expect(stats.users_breakdown[0].total_spent).toBe(35000);
+		expect(stats.users_breakdown[0].total_unpaid).toBe(35000);
+	});
 });
 

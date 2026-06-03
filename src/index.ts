@@ -289,8 +289,51 @@ export default {
 			}
 
 			// ==========================================
+			// 1.85 API THỐNG KÊ (STATS)
+			// ==========================================
+
+			// Lấy thống kê chi tiêu tích lũy của toàn bộ mọi người
+			// GET /api/stats/spending
+			if (pathname === '/api/stats/spending' && method === 'GET') {
+				// Tính tổng cộng của hệ thống
+				const summary = await env.DB.prepare(`
+					SELECT 
+						COALESCE(SUM(dish_price), 0) as grand_total,
+						COALESCE(SUM(CASE WHEN paid = 1 THEN dish_price ELSE 0 END), 0) as grand_paid,
+						COALESCE(SUM(CASE WHEN paid = 0 THEN dish_price ELSE 0 END), 0) as grand_unpaid
+					FROM orders
+				`).first<{ grand_total: number; grand_paid: number; grand_unpaid: number }>();
+
+				// Chi tiết từng người dùng
+				const { results: usersBreakdown } = await env.DB.prepare(`
+					SELECT 
+						u.id as user_id,
+						u.name as user_name,
+						u.avatar as user_avatar,
+						COUNT(o.id) as total_orders,
+						COALESCE(SUM(o.dish_price), 0) as total_spent,
+						COALESCE(SUM(CASE WHEN o.paid = 1 THEN o.dish_price ELSE 0 END), 0) as total_paid,
+						COALESCE(SUM(CASE WHEN o.paid = 0 THEN o.dish_price ELSE 0 END), 0) as total_unpaid
+					FROM users u
+					LEFT JOIN orders o ON u.id = o.user_id
+					WHERE u.active = 1
+					GROUP BY u.id, u.name, u.avatar
+					HAVING total_spent > 0
+					ORDER BY total_spent DESC
+				`).all();
+
+				return jsonResponse({
+					grand_total: summary?.grand_total || 0,
+					grand_paid: summary?.grand_paid || 0,
+					grand_unpaid: summary?.grand_unpaid || 0,
+					users_breakdown: usersBreakdown
+				});
+			}
+
+			// ==========================================
 			// 1.9 API CÀI ĐẶT (SETTINGS)
 			// ==========================================
+
 
 			// Lấy các cài đặt hệ thống
 			// GET /api/settings
