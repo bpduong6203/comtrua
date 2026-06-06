@@ -5,7 +5,150 @@
 
 export interface Env {
 	DB: D1Database;
+	JWT_SECRET?: string;
 }
+
+// Cookie helpers
+function getCookie(request: Request, name: string): string | null {
+	const cookieHeader = request.headers.get('Cookie');
+	if (!cookieHeader) return null;
+	const cookies = cookieHeader.split(';');
+	for (let cookie of cookies) {
+		const [key, val] = cookie.trim().split('=');
+		if (key === name) {
+			return decodeURIComponent(val);
+		}
+	}
+	return null;
+}
+
+// Cryptography helpers (PBKDF2 SHA-256)
+function generateSalt(): string {
+	const arr = new Uint8Array(16);
+	crypto.getRandomValues(arr);
+	return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashPassword(password: string, salt: string): Promise<string> {
+	const encoder = new TextEncoder();
+	const keyMaterial = await crypto.subtle.importKey(
+		'raw',
+		encoder.encode(password),
+		{ name: 'PBKDF2' },
+		false,
+		['deriveBits', 'deriveKey']
+	);
+	const key = await crypto.subtle.deriveKey(
+		{
+			name: 'PBKDF2',
+			salt: encoder.encode(salt),
+			iterations: 100000,
+			hash: 'SHA-256'
+		},
+		keyMaterial,
+		{ name: 'HMAC', hash: 'SHA-256', length: 256 },
+		true,
+		['sign']
+	);
+	const exported = await crypto.subtle.exportKey('raw', key) as ArrayBuffer;
+	return Array.from(new Uint8Array(exported)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// JWT Helpers (HS256)
+async function base64urlEncode(str: string | ArrayBuffer): Promise<string> {
+	let bytes: Uint8Array;
+	if (typeof str === 'string') {
+		bytes = new TextEncoder().encode(str);
+	} else {
+		bytes = new Uint8Array(str);
+	}
+	let binString = '';
+	for (let i = 0; i < bytes.byteLength; i++) {
+		binString += String.fromCharCode(bytes[i]);
+	}
+	const base64 = btoa(binString);
+	return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlDecode(str: string): Uint8Array {
+	let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+	while (base64.length % 4) {
+		base64 += '=';
+	}
+	const binString = atob(base64);
+	const bytes = new Uint8Array(binString.length);
+	for (let i = 0; i < binString.length; i++) {
+		bytes[i] = binString.charCodeAt(i);
+	}
+	return bytes;
+}
+
+async function signJwt(payload: any, secret: string): Promise<string> {
+	const header = { alg: 'HS256', typ: 'JWT' };
+	const encodedHeader = await base64urlEncode(JSON.stringify(header));
+	const encodedPayload = await base64urlEncode(JSON.stringify(payload));
+	
+	const tokenInput = `${encodedHeader}.${encodedPayload}`;
+	
+	const encoder = new TextEncoder();
+	const key = await crypto.subtle.importKey(
+		'raw',
+		encoder.encode(secret),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+	
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		key,
+		encoder.encode(tokenInput)
+	);
+	
+	const encodedSignature = await base64urlEncode(signature);
+	return `${tokenInput}.${encodedSignature}`;
+}
+
+async function verifyJwt(token: string, secret: string): Promise<any | null> {
+	try {
+		const parts = token.split('.');
+		if (parts.length !== 3) return null;
+		
+		const [encodedHeader, encodedPayload, encodedSignature] = parts;
+		const tokenInput = `${encodedHeader}.${encodedPayload}`;
+		
+		const encoder = new TextEncoder();
+		const key = await crypto.subtle.importKey(
+			'raw',
+			encoder.encode(secret),
+			{ name: 'HMAC', hash: 'SHA-256' },
+			false,
+			['verify']
+		);
+		
+		const signatureBytes = base64urlDecode(encodedSignature);
+		const isValid = await crypto.subtle.verify(
+			'HMAC',
+			key,
+			signatureBytes,
+			encoder.encode(tokenInput)
+		);
+		
+		if (!isValid) return null;
+		
+		const payloadJson = new TextDecoder().decode(base64urlDecode(encodedPayload));
+		const payload = JSON.parse(payloadJson);
+		
+		if (payload.exp && Date.now() / 1000 > payload.exp) {
+			return null;
+		}
+		
+		return payload;
+	} catch (e) {
+		return null;
+	}
+}
+
 
 // Helper to return a JSON response with CORS headers
 function jsonResponse(data: any, status: number = 200) {
@@ -85,41 +228,139 @@ export default {
 			// 1. API NGƯỜI DÙNG (USERS)
 			// ==========================================
 
-			// Đăng nhập / Đăng ký không mật khẩu bằng Tên
+			// Đăng nhập / Đăng ký
 			// POST /api/users/login
 			if (pathname === '/api/users/login' && method === 'POST') {
-				const body = await request.json() as { name?: string };
+				const body = await request.json() as { name?: string; password?: string; register?: boolean };
 				const name = body.name?.trim();
+				const password = body.password || '';
 
 				if (!name) {
 					return jsonResponse({ error: 'Tên người dùng không được bỏ trống.' }, 400);
 				}
 
+				interface UserRow {
+					id: number;
+					name: string;
+					phone: string | null;
+					avatar: string;
+					default_note: string | null;
+					active: number;
+					password_hash: string | null;
+				}
+
 				// Kiểm tra người dùng đã tồn tại chưa
 				let user = await env.DB.prepare('SELECT * FROM users WHERE name = ?')
 					.bind(name)
-					.first<{ id: number; name: string; active: number }>();
+					.first<UserRow>();
 
 				if (!user) {
-					// Nếu chưa tồn tại, tự động tạo mới tài khoản
-					const result = await env.DB.prepare('INSERT INTO users (name) VALUES (?)')
-						.bind(name)
-						.run();
+					// Nếu chưa tồn tại, chỉ tự động tạo nếu có cờ register=true
+					if (body.register) {
+						const pwdToHash = password || '123456';
+						const salt = generateSalt();
+						const hash = await hashPassword(pwdToHash, salt);
+						const passwordHashValue = `${salt}:${hash}`;
 
-					if (!result.success) {
-						return jsonResponse({ error: 'Không thể tạo tài khoản người dùng.' }, 500);
+						const result = await env.DB.prepare('INSERT INTO users (name, password_hash) VALUES (?, ?)')
+							.bind(name, passwordHashValue)
+							.run();
+
+						if (!result.success) {
+							return jsonResponse({ error: 'Không thể tạo tài khoản người dùng.' }, 500);
+						}
+
+						user = await env.DB.prepare('SELECT * FROM users WHERE name = ?')
+							.bind(name)
+							.first<UserRow>();
+					} else {
+						// Trả về 404 để thông báo cho Frontend hỏi ý kiến đăng ký tài khoản mới
+						return jsonResponse({ error: 'Tài khoản chưa tồn tại.' }, 404);
 					}
-
-					user = await env.DB.prepare('SELECT * FROM users WHERE name = ?')
-						.bind(name)
-						.first<{ id: number; name: string; active: number }>();
 				}
 
-				if (user && user.active === 0) {
+				if (!user) {
+					return jsonResponse({ error: 'Không thể tạo hoặc tìm thấy tài khoản người dùng.' }, 500);
+				}
+
+				if (user.active === 0) {
 					return jsonResponse({ error: 'Tài khoản này đã bị khóa hoặc tạm ngưng hoạt động.' }, 403);
 				}
 
-				return jsonResponse({ message: 'Đăng nhập thành công', user });
+				// Xác thực mật khẩu
+				let isPasswordCorrect = false;
+				if (user.password_hash === null) {
+					// Chưa đổi mật khẩu lần nào -> Mặc định là '123456'
+					if (password === '123456') {
+						isPasswordCorrect = true;
+					}
+				} else {
+					const [salt, storedHash] = user.password_hash.split(':');
+					if (salt && storedHash) {
+						const enteredHash = await hashPassword(password, salt);
+						if (enteredHash === storedHash) {
+							isPasswordCorrect = true;
+						}
+					}
+				}
+
+				if (!isPasswordCorrect) {
+					return jsonResponse({ error: 'Mật khẩu không chính xác.' }, 401);
+				}
+
+				// Đăng nhập thành công -> Tạo JWT token
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const token = await signJwt({ id: user.id, name: user.name }, secret);
+
+				// Loại bỏ password_hash khỏi dữ liệu trả về trước khi gửi cho client
+				const safeUser = {
+					id: user.id,
+					name: user.name,
+					phone: user.phone,
+					avatar: user.avatar || '👤',
+					default_note: user.default_note,
+					active: user.active
+				};
+
+				const response = jsonResponse({ message: 'Đăng nhập thành công', user: safeUser });
+				// Set cookie có hiệu lực trong 1 năm (chỉ đặt Secure khi dùng HTTPS)
+				const isSecure = url.protocol === 'https:';
+				response.headers.append('Set-Cookie', `session=${token}; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Max-Age=31536000`);
+				return response;
+			}
+
+			// Lấy thông tin tài khoản hiện tại từ cookie
+			// GET /api/users/me
+			if (pathname === '/api/users/me' && method === 'GET') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ user: null });
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ user: null });
+				}
+
+				const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active FROM users WHERE id = ?')
+					.bind(payload.id)
+					.first<{ id: number; name: string; phone: string | null; avatar: string; default_note: string | null; active: number }>();
+
+				if (!user || user.active === 0) {
+					return jsonResponse({ user: null });
+				}
+
+				return jsonResponse({ user });
+			}
+
+			// Đăng xuất và xóa session cookie
+			// POST /api/users/logout
+			if (pathname === '/api/users/logout' && method === 'POST') {
+				const response = jsonResponse({ message: 'Đăng xuất thành công' });
+				const isSecure = url.protocol === 'https:';
+				response.headers.append('Set-Cookie', `session=; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0`);
+				return response;
 			}
 
 			// Lấy danh sách thành viên đang hoạt động
@@ -129,12 +370,13 @@ export default {
 				return jsonResponse(results);
 			}
 
+
 			// Cập nhật thông tin người dùng (Hồ sơ)
 			// PATCH /api/users/:id
 			const userUpdateMatch = pathname.match(/^\/api\/users\/(\d+)$/);
 			if (userUpdateMatch && method === 'PATCH') {
 				const userId = parseInt(userUpdateMatch[1]);
-				const body = await request.json() as { name?: string; phone?: string; avatar?: string; default_note?: string };
+				const body = await request.json() as { name?: string; phone?: string; avatar?: string; default_note?: string; password?: string };
 				const newName = body.name?.trim();
 				const phone = body.phone?.trim() || null;
 				const avatar = body.avatar?.trim() || '👤';
@@ -153,9 +395,20 @@ export default {
 					return jsonResponse({ error: `Tên "${newName}" đã được sử dụng bởi tài khoản khác.` }, 409);
 				}
 
-				const result = await env.DB.prepare('UPDATE users SET name = ?, phone = ?, avatar = ?, default_note = ? WHERE id = ?')
-					.bind(newName, phone, avatar, defaultNote, userId)
-					.run();
+				let result;
+				if (body.password) {
+					const salt = generateSalt();
+					const hash = await hashPassword(body.password, salt);
+					const passwordHashValue = `${salt}:${hash}`;
+
+					result = await env.DB.prepare('UPDATE users SET name = ?, phone = ?, avatar = ?, default_note = ?, password_hash = ? WHERE id = ?')
+						.bind(newName, phone, avatar, defaultNote, passwordHashValue, userId)
+						.run();
+				} else {
+					result = await env.DB.prepare('UPDATE users SET name = ?, phone = ?, avatar = ?, default_note = ? WHERE id = ?')
+						.bind(newName, phone, avatar, defaultNote, userId)
+						.run();
+				}
 
 				if (!result.success) {
 					return jsonResponse({ error: 'Không thể cập nhật thông tin người dùng.' }, 500);
@@ -596,9 +849,13 @@ export default {
 						o.dish_price, 
 						o.paid, 
 						o.note,
-						o.created_at
+						o.created_at,
+						d.shop_id,
+						s.name as shop_name
 					FROM orders o
 					JOIN users u ON o.user_id = u.id
+					LEFT JOIN dishes d ON o.dish_id = d.id
+					LEFT JOIN shops s ON d.shop_id = s.id
 					WHERE o.date = ?
 					ORDER BY o.dish_name ASC, u.name ASC`
 				)

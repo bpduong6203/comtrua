@@ -16,6 +16,7 @@ async function setupDatabase() {
 			avatar TEXT DEFAULT '👤',
 			default_note TEXT,
 			active INTEGER DEFAULT 1,
+			password_hash TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS shops (
@@ -83,7 +84,7 @@ describe("ComTrua Backend Tests", () => {
 		const request = new Request("http://example.com/api/users/login", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: "Nguyễn Văn A" }),
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
 		});
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
@@ -101,7 +102,7 @@ describe("ComTrua Backend Tests", () => {
 		const loginReq = new Request("http://example.com/api/users/login", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: "Nguyễn Văn A" }),
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
 		});
 		let ctx = createExecutionContext();
 		let response = await worker.fetch(loginReq, env, ctx);
@@ -147,7 +148,7 @@ describe("ComTrua Backend Tests", () => {
 		const loginReq = new Request("http://example.com/api/users/login", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: "Nguyễn Văn A" }),
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
 		});
 		let ctx = createExecutionContext();
 		let response = await worker.fetch(loginReq, env, ctx);
@@ -212,7 +213,7 @@ describe("ComTrua Backend Tests", () => {
 		const loginReq = new Request("http://example.com/api/users/login", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: "Nguyễn Văn A" }),
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
 		});
 		let ctx = createExecutionContext();
 		let response = await worker.fetch(loginReq, env, ctx);

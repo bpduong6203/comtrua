@@ -57,9 +57,14 @@
                                 <option value="💎">💎 Kim cương</option>
                             </select>
                         </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
                             <label for="profile-note-input">Ghi chú ăn uống mặc định</label>
                             <input type="text" id="profile-note-input" class="input-ctrl" placeholder="Ví dụ: Không hành, nhiều cơm, dị ứng lạc..."
+                                autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="profile-password-input">Mật khẩu mới (Bỏ trống nếu không đổi)</label>
+                            <input type="password" id="profile-password-input" class="input-ctrl" placeholder="Nhập mật khẩu mới..."
                                 autocomplete="off">
                         </div>
                         <div class="modal-actions">
@@ -192,7 +197,7 @@
             <div class="panel auth-panel">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🍱</div>
                 <h2>Đăng Nhập Đặt Cơm</h2>
-                <p>Nhập tên của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
+                <p>Nhập tên và mật khẩu của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
 
                 <form id="login-form">
                     <div class="form-group autocomplete-container" id="login-autocomplete-container">
@@ -203,9 +208,13 @@
                             <div class="input-clear-btn" id="login-name-clear" style="display: none;" onclick="clearLoginInput(event)">✕</div>
                         </div>
                         <div class="suggestions-box" id="login-suggestions" style="display: none;"></div>
-                        <div class="autocomplete-hint">Hệ thống gợi ý tên đã có. Nhấp vào tên để đăng nhập nhanh!</div>
+                        <div class="autocomplete-hint">Nhấp vào tên để điền tên đăng nhập nhanh!</div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Bắt Đầu Đặt Cơm</button>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="login-password">Mật khẩu</label>
+                        <input type="password" id="login-password" class="input-ctrl" placeholder="Mật khẩu của bạn (mặc định: 123456)..." required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">Bắt Đầu Đặt Cơm</button>
                 </form>
             </div>
         </div>
@@ -307,6 +316,17 @@
                         </div>
                         <button class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.9rem;"
                             onclick="setSelectedToToday()">Quay lại Hôm Nay</button>
+                    </div>
+
+                    <!-- SHOP SUMMARY BY DATE -->
+                    <div class="panel" id="shop-summary-widget" style="display: none; padding: 1.25rem 1.5rem;">
+                        <h2 class="section-title" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 1rem;">
+                            <span>🏪 Tổng Tiền Theo Cửa Hàng</span>
+                            <span class="badge" id="shop-summary-total-badge" style="font-size: 0.9rem; background: var(--primary-gradient); padding: 0.25rem 0.75rem; border-radius: 50px;">0 đ</span>
+                        </h2>
+                        <div id="shop-summary-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+                            <!-- Loaded dynamically -->
+                        </div>
                     </div>
 
                     <!-- ORDERING FORM -->
@@ -660,6 +680,9 @@
         const ordersListBadge = document.getElementById('orders-list-badge');
         const ordersSummaryWidget = document.getElementById('orders-summary-widget');
         const ordersSummaryGrid = document.getElementById('orders-summary-grid');
+        const shopSummaryWidget = document.getElementById('shop-summary-widget');
+        const shopSummaryList = document.getElementById('shop-summary-list');
+        const shopSummaryTotalBadge = document.getElementById('shop-summary-total-badge');
 
         const statsTotalOrders = document.getElementById('stats-total-orders');
         const statsTotalDishesDesc = document.getElementById('stats-total-dishes-desc');
@@ -937,14 +960,8 @@
             orderDatePicker.value = selectedDate;
             orderingDateTitle.textContent = formatDateDisplay(selectedDate);
 
-            // Check stored user
-            const storedUser = localStorage.getItem('currentUser');
-            if (storedUser) {
-                currentUser = JSON.parse(storedUser);
-                showDashboard();
-            } else {
-                showLogin();
-            }
+            // Check stored user / session cookie
+            checkSession();
 
             // Handle date picker changes
             orderDatePicker.addEventListener('change', (e) => {
@@ -1038,7 +1055,10 @@
                 item.className = 'suggestion-item new-user-hint';
                 item.innerHTML = `✨ Click để đăng ký mới: "${query}"`;
                 item.addEventListener('click', () => {
-                    performLogin(query);
+                    loginNameInput.value = query;
+                    loginNameClear.style.display = 'flex';
+                    const pwdInput = document.getElementById('login-password');
+                    if (pwdInput) pwdInput.focus();
                     loginSuggestions.style.display = 'none';
                 });
                 loginSuggestions.appendChild(item);
@@ -1060,7 +1080,9 @@
                 
                 item.addEventListener('click', () => {
                     loginNameInput.value = user.name;
-                    performLogin(user.name);
+                    loginNameClear.style.display = 'flex';
+                    const pwdInput = document.getElementById('login-password');
+                    if (pwdInput) pwdInput.focus();
                     loginSuggestions.style.display = 'none';
                 });
                 
@@ -1303,27 +1325,55 @@
             }
         }
 
+        async function checkSession() {
+            try {
+                const resp = await fetch('/api/users/me');
+                const data = await resp.json();
+                if (resp.ok && data.user) {
+                    currentUser = data.user;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showDashboard();
+                } else {
+                    localStorage.removeItem('currentUser');
+                    currentUser = null;
+                    showLogin();
+                }
+            } catch (err) {
+                console.error('Lỗi kiểm tra phiên đăng nhập:', err);
+                const storedUser = localStorage.getItem('currentUser');
+                if (storedUser) {
+                    currentUser = JSON.parse(storedUser);
+                    showDashboard();
+                } else {
+                    showLogin();
+                }
+            }
+        }
+
         async function handleLoginSubmit(e) {
             e.preventDefault();
             const name = loginNameInput.value.trim();
+            const pwdInput = document.getElementById('login-password');
+            const password = pwdInput ? pwdInput.value : '';
             if (!name) return;
 
-            // Check if user already exists
-            await performLogin(name);
+            await performLogin(name, password);
         }
 
         async function handleQuickSelectChange(e) {
             const name = e.target.value;
             if (!name) return;
-            await performLogin(name);
+            const password = prompt(`Nhập mật khẩu cho tài khoản "${name}" (mặc định: 123456):`);
+            if (password === null) return;
+            await performLogin(name, password);
         }
 
-        async function performLogin(name) {
+        async function performLogin(name, password) {
             try {
                 const resp = await fetch('/api/users/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify({ name, password })
                 });
 
                 const data = await resp.json();
@@ -1334,13 +1384,16 @@
                     showToast(`Chào mừng ${currentUser.name} quay trở lại!`);
                     showDashboard();
                 } else {
-                    // User confirmation for creating new account
                     if (resp.status === 403) {
                         showToast(data.error, 'error');
-                    } else {
-                        if (confirm(`Tên "${name}" chưa tồn tại trong danh sách. Bạn muốn đăng ký tài khoản mới này không?`)) {
-                            registerNewUser(name);
+                    } else if (resp.status === 401) {
+                        showToast(data.error || 'Mật khẩu không chính xác.', 'error');
+                    } else if (resp.status === 404) {
+                        if (confirm(`Tên "${name}" chưa tồn tại trong danh sách. Bạn muốn đăng ký tài khoản mới với mật khẩu vừa nhập không?`)) {
+                            await registerNewUser(name, password);
                         }
+                    } else {
+                        showToast(data.error || 'Đăng nhập thất bại.', 'error');
                     }
                 }
             } catch (err) {
@@ -1348,12 +1401,12 @@
             }
         }
 
-        async function registerNewUser(name) {
+        async function registerNewUser(name, password) {
             try {
                 const resp = await fetch('/api/users/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify({ name, password, register: true })
                 });
                 const data = await resp.json();
                 if (resp.ok) {
@@ -1369,10 +1422,17 @@
             }
         }
 
-        function logout() {
+        async function logout() {
+            try {
+                await fetch('/api/users/logout', { method: 'POST' });
+            } catch (err) {
+                console.error('Lỗi khi gọi API đăng xuất:', err);
+            }
             localStorage.removeItem('currentUser');
             currentUser = null;
             loginNameInput.value = '';
+            const pwdInput = document.getElementById('login-password');
+            if (pwdInput) pwdInput.value = '';
             if (userQuickSelect) userQuickSelect.value = '';
             showToast('Đã đăng xuất tài khoản.');
             showLogin();
@@ -1835,6 +1895,7 @@
             // Populate the Quick Summary grid and toggle its visibility
             if (orders.length === 0) {
                 ordersSummaryWidget.style.display = 'none';
+                if (shopSummaryWidget) shopSummaryWidget.style.display = 'none';
                 dailyOrdersList.innerHTML = '<div class="empty-state">Chưa có ai đặt cơm cho ngày này. Hãy là người đầu tiên!</div>';
                 return;
             }
@@ -1843,8 +1904,19 @@
             ordersSummaryGrid.innerHTML = '';
 
             const dishSummary = {};
+            const shopSummary = {};
+            let grandTotalToday = 0;
+
             orders.forEach(o => {
                 dishSummary[o.dish_name] = (dishSummary[o.dish_name] || 0) + 1;
+                
+                const shopName = o.shop_name || 'Cửa hàng khác';
+                if (!shopSummary[shopName]) {
+                    shopSummary[shopName] = { count: 0, total: 0 };
+                }
+                shopSummary[shopName].count += 1;
+                shopSummary[shopName].total += o.dish_price;
+                grandTotalToday += o.dish_price;
             });
 
             for (const dishName in dishSummary) {
@@ -1855,6 +1927,36 @@
                     <span class="summary-item-count">x${dishSummary[dishName]}</span>
                 `;
                 ordersSummaryGrid.appendChild(item);
+            }
+
+            // Render Shop Summary
+            if (shopSummaryWidget && shopSummaryList && shopSummaryTotalBadge) {
+                shopSummaryList.innerHTML = '';
+                for (const shopName in shopSummary) {
+                    const summary = shopSummary[shopName];
+                    const item = document.createElement('div');
+                    item.className = 'shop-summary-item';
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    item.style.alignItems = 'center';
+                    item.style.padding = '0.75rem 1rem';
+                    item.style.background = 'rgba(255, 255, 255, 0.02)';
+                    item.style.border = '1px solid var(--panel-border)';
+                    item.style.borderRadius = '12px';
+                    
+                    item.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.2rem;">🏪</span>
+                            <span style="font-weight: 600; font-size: 0.95rem;">${shopName}</span>
+                            <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 50px; font-weight: 600;">${summary.count} suất</span>
+                        </div>
+                        <span style="font-weight: 700; color: #10b981; font-size: 1.05rem;">${formatCurrency(summary.total)}</span>
+                    `;
+                    shopSummaryList.appendChild(item);
+                }
+                
+                shopSummaryTotalBadge.textContent = formatCurrency(grandTotalToday);
+                shopSummaryWidget.style.display = 'block';
             }
 
             // Render order items list
@@ -2216,7 +2318,7 @@
                 const resp = await fetch('/api/users/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    body: JSON.stringify({ name, register: true })
                 });
 
                 if (resp.ok) {
@@ -2446,6 +2548,9 @@
             avatarSelect.value = targetUser ? (targetUser.avatar || '👤') : '👤';
             noteInput.value = targetUser ? (targetUser.default_note || '') : '';
             
+            const passwordInput = document.getElementById('profile-password-input');
+            if (passwordInput) passwordInput.value = '';
+            
             modal.style.display = 'flex';
             // Delay focus so transition plays first
             setTimeout(() => nameInput.focus(), 80);
@@ -2481,11 +2586,13 @@
             const phoneInput = document.getElementById('profile-phone-input');
             const avatarSelect = document.getElementById('profile-avatar-select');
             const noteInput = document.getElementById('profile-note-input');
+            const passwordInput = document.getElementById('profile-password-input');
 
             const newName = nameInput.value.trim();
             const phone = phoneInput.value.trim();
             const avatar = avatarSelect.value;
             const defaultNote = noteInput.value.trim();
+            const password = passwordInput ? passwordInput.value.trim() : '';
 
             if (!newName) return;
 
@@ -2494,15 +2601,20 @@
             btn.textContent = 'Đang lưu...';
 
             try {
+                const updatePayload = {
+                    name: newName,
+                    phone: phone,
+                    avatar: avatar,
+                    default_note: defaultNote
+                };
+                if (password) {
+                    updatePayload.password = password;
+                }
+
                 const resp = await fetch(`/api/users/${renameTargetUserId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: newName,
-                        phone: phone,
-                        avatar: avatar,
-                        default_note: defaultNote
-                    })
+                    body: JSON.stringify(updatePayload)
                 });
 
                 const data = await resp.json();
