@@ -7,6 +7,7 @@
     <title>ComTrua - Mebi Cơm</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 
 <body>
@@ -195,7 +196,9 @@
         <!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
         <div id="auth-section" class="auth-container" style="display: none;">
             <div class="panel auth-panel">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🍱</div>
+                <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
+                    <lottie-player src="/icon.json" background="transparent" speed="1" style="width: 120px; height: 120px;" loop autoplay></lottie-player>
+                </div>
                 <h2>Đăng Nhập Đặt Cơm</h2>
                 <p>Nhập tên và mật khẩu của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
 
@@ -226,7 +229,10 @@
             <!-- HEADER -->
             <header>
                 <div class="logo-area">
-                    <h1>🍱 ComTrua</h1>
+                    <h1>
+                        <lottie-player src="/icon.json" background="transparent" speed="1" style="width: 48px; height: 48px;" loop autoplay></lottie-player>
+                        <span class="logo-text">ComTrua</span>
+                    </h1>
                     <p>Hệ thống đặt cơm trưa nội bộ văn phòng</p>
                 </div>
 
@@ -381,7 +387,7 @@
                             </div>
 
                             <div id="order-summary-price"
-                                style="margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 700; color: #a5b4fc; text-align: right; display: none;">
+                                style="margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 700; color: #E8613C; text-align: right; display: none;">
                                 Tổng cộng: <span id="temp-total-price">0 đ</span>
                             </div>
 
@@ -601,7 +607,7 @@
                                             <span class="spending-flat-value unpaid" id="spending-unpaid-amount">0 đ</span>
                                         </div>
                                         <div class="spending-flat-sub">
-                                            Hôm nay chưa trả: <strong id="stats-unpaid-amount" style="color: rgba(255,255,255,0.75);">0 đ</strong> (<span id="stats-unpaid-count">0 người</span>)
+                                            Hôm nay chưa trả: <strong id="stats-unpaid-amount" style="color: var(--text-main);">0 đ</strong> (<span id="stats-unpaid-count">0 người</span>)
                                         </div>
                                     </div>
                                 </div>
@@ -1638,8 +1644,8 @@
             }
 
             const segments = [
-                { value: paid, color: '#10b981' },
-                { value: unpaid, color: '#f59e0b' },
+                { value: paid, color: '#2D9B4E' },
+                { value: unpaid, color: '#D4890B' },
             ];
 
             let startAngle = -Math.PI / 2;
@@ -1948,9 +1954,9 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 1.2rem;">🏪</span>
                             <span style="font-weight: 600; font-size: 0.95rem;">${shopName}</span>
-                            <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 50px; font-weight: 600;">${summary.count} suất</span>
+                            <span class="badge" style="background: rgba(232, 97, 60, 0.1); color: #E8613C; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 50px; font-weight: 600;">${summary.count} suất</span>
                         </div>
-                        <span style="font-weight: 700; color: #10b981; font-size: 1.05rem;">${formatCurrency(summary.total)}</span>
+                        <span style="font-weight: 700; color: #2D9B4E; font-size: 1.05rem;">${formatCurrency(summary.total)}</span>
                     `;
                     shopSummaryList.appendChild(item);
                 }
@@ -2079,7 +2085,7 @@
                     item.className = 'debt-list-item';
                     item.innerHTML = `
                             <span>📅 Ngày ${formatDateDisplay(o.date)} (${o.dish_name})</span>
-                            <span style="font-weight:700; color:#f59e0b">${formatCurrency(o.dish_price)}</span>
+                            <span style="font-weight:700; color:#D4890B">${formatCurrency(o.dish_price)}</span>
                         `;
                     personalDebtOrdersList.appendChild(item);
                 });
@@ -2136,7 +2142,7 @@
                 item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
                             ${dish.name}
-                            <span style="color:#a5b4fc; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
+                            <span style="color:#E8613C; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
                             <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
                         </div>
                         ${controlsHtml}
