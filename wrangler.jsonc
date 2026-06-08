@@ -26,13 +26,12 @@
 			"database_id": "3cd3e884-6a8b-4ded-addf-807d433ecc72"
 		}
 	],
-		"r2_buckets": [
-    {
-      "binding": "STORAGE",
-      "bucket_name": "comtrua"
-    }
-  ]
-	
+	"r2_buckets": [
+		{
+			"binding": "STORAGE",
+			"bucket_name": "comtrua"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
