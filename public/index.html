@@ -1478,7 +1478,8 @@
         let allDishes = [];
         async function loadAllDishesForAdmin() {
             try {
-                const resp = await fetch('/api/dishes');
+                const callerId = currentUser ? currentUser.id : '';
+                const resp = await fetch(`/api/dishes?caller_id=${callerId}`);
                 if (resp.ok) {
                     allDishes = await resp.json();
                     renderAdminDishes();
@@ -2133,14 +2134,15 @@
                         <button class="btn-edit" onclick="openEditDishModal(${dish.id}, '${dish.name.replace(/'/g, "\\'")}', ${dish.price}, ${dish.shop_id})" title="Sửa món ăn">
                             ✏️
                         </button>
-                        <button class="btn-delete" onclick="deleteDish(${dish.id})" title="Xóa món ăn">
-                            🗑️
-                        </button>
+                        <label class="switch-status">
+                            <input type="checkbox" ${dish.active ? 'checked' : ''} onchange="toggleDishActive(${dish.id}, this.checked)">
+                            <span class="slider"><span class="slider-text"></span></span>
+                        </label>
                     </div>
                 ` : '';
 
                 item.innerHTML = `
-                        <div style="font-weight:600; font-size:0.9rem;">
+                        <div style="font-weight:600; font-size:0.9rem; ${dish.active === 0 ? 'text-decoration: line-through; color: var(--text-muted); opacity: 0.6;' : ''}">
                             ${dish.name}
                             <span style="color:#E8613C; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
                             <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
@@ -2340,20 +2342,22 @@
             }
         }
 
-        async function deleteDish(dishId) {
-            if (!confirm('Bạn có chắc chắn muốn ẩn món ăn này khỏi thực đơn không? (Các đơn hàng cũ vẫn được giữ nguyên)')) return;
-
+        async function toggleDishActive(dishId, isActive) {
             try {
-                const resp = await fetch(`/api/dishes/${dishId}?caller_id=${currentUser.id}`, {
-                    method: 'DELETE'
+                const resp = await fetch(`/api/dishes/${dishId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: isActive ? 1 : 0, caller_id: currentUser.id })
                 });
 
                 if (resp.ok) {
-                    showToast('Đã ẩn món ăn khỏi thực đơn!');
+                    showToast(isActive ? 'Đã bật món ăn thành công!' : 'Đã ngưng bán món ăn.');
                     await loadDishes();
                     await loadAllDishesForAdmin();
                 } else {
-                    showToast('Không thể ẩn món ăn.', 'error');
+                    const data = await resp.json();
+                    showToast(data.error || 'Lỗi cập nhật trạng thái món ăn.', 'error');
+                    await loadAllDishesForAdmin();
                 }
             } catch (err) {
                 showToast('Lỗi kết nối.', 'error');

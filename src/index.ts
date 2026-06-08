@@ -637,20 +637,38 @@ export default {
 			// 2. API MÓN ĂN (DISHES)
 			// ==========================================
 
-			// Lấy thực đơn (danh sách món ăn đang bán)
+			// Lấy thực đơn (danh sách món ăn đang bán, hoặc tất cả đối với admin)
 			// GET /api/dishes (hỗ trợ lọc theo ?shop_id=N)
 			if (pathname === '/api/dishes' && method === 'GET') {
+				let isAdmin = false;
+				const cookieVal = getCookie(request, 'session');
+				if (cookieVal) {
+					const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+					const payload = await verifyJwt(cookieVal, secret);
+					if (payload && payload.id === 1) {
+						isAdmin = true;
+					}
+				}
+				const callerIdParam = url.searchParams.get('caller_id');
+				if (callerIdParam === '1') {
+					isAdmin = true;
+				}
+
 				const shopIdParam = url.searchParams.get('shop_id');
 				if (shopIdParam) {
 					const shopId = parseInt(shopIdParam);
-					const { results } = await env.DB.prepare(
-						'SELECT * FROM dishes WHERE active = 1 AND shop_id = ? ORDER BY price ASC'
-					)
+					const query = isAdmin
+						? 'SELECT * FROM dishes WHERE shop_id = ? ORDER BY price ASC'
+						: 'SELECT * FROM dishes WHERE active = 1 AND shop_id = ? ORDER BY price ASC';
+					const { results } = await env.DB.prepare(query)
 						.bind(shopId)
 						.all();
 					return jsonResponse(results);
 				} else {
-					const { results } = await env.DB.prepare('SELECT * FROM dishes WHERE active = 1 ORDER BY price ASC').all();
+					const query = isAdmin
+						? 'SELECT * FROM dishes ORDER BY price ASC'
+						: 'SELECT * FROM dishes WHERE active = 1 ORDER BY price ASC';
+					const { results } = await env.DB.prepare(query).all();
 					return jsonResponse(results);
 				}
 			}
@@ -713,15 +731,31 @@ export default {
 			const dishUpdateMatch = pathname.match(/^\/api\/dishes\/(\d+)$/);
 			if (dishUpdateMatch && method === 'PATCH') {
 				const dishId = parseInt(dishUpdateMatch[1]);
-				const body = await request.json() as { name?: string; price?: number; shop_id?: number; caller_id?: number };
-				const name = body.name?.trim();
-				const price = Number(body.price);
-				const shopId = Number(body.shop_id);
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number; active?: number; caller_id?: number };
 				const callerId = Number(body.caller_id);
 
 				if (callerId !== 1) {
 					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
 				}
+
+				// Nếu chỉ cập nhật trạng thái active (bật/tắt)
+				if (body.active !== undefined) {
+					const activeVal = body.active ? 1 : 0;
+					const result = await env.DB.prepare('UPDATE dishes SET active = ? WHERE id = ?')
+						.bind(activeVal, dishId)
+						.run();
+
+					if (!result.success) {
+						return jsonResponse({ error: 'Không thể cập nhật trạng thái món ăn.' }, 500);
+					}
+
+					return jsonResponse({ message: 'Cập nhật trạng thái món ăn thành công.' });
+				}
+
+				const name = body.name?.trim();
+				const price = Number(body.price);
+				const shopId = Number(body.shop_id);
+
 				if (!name || isNaN(price) || price <= 0 || isNaN(shopId)) {
 					return jsonResponse({ error: 'Thông tin món ăn không hợp lệ.' }, 400);
 				}
