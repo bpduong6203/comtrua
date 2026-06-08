@@ -5,6 +5,7 @@
 
 export interface Env {
 	DB: D1Database;
+	STORAGE: R2Bucket;
 	JWT_SECRET?: string;
 }
 
@@ -225,8 +226,87 @@ export default {
 
 		try {
 			// ==========================================
+			// 0. AVATARS SERVING FROM R2
+			// ==========================================
+			if (pathname.startsWith('/avatars/') && method === 'GET') {
+				const key = decodeURIComponent(pathname.slice(1));
+				const object = await env.STORAGE.get(key);
+				if (!object) {
+					return new Response('Ảnh đại diện không tồn tại', { status: 404 });
+				}
+
+				const headers = new Headers();
+				object.writeHttpMetadata(headers);
+				headers.set('etag', object.httpEtag);
+				headers.set('Cache-Control', 'public, max-age=31536000');
+				
+				const contentType = object.httpMetadata?.contentType || 'image/jpeg';
+				headers.set('Content-Type', contentType);
+
+				return new Response(object.body, { headers });
+			}
+
+			// ==========================================
 			// 1. API NGƯỜI DÙNG (USERS)
 			// ==========================================
+
+			// POST /api/users/upload-avatar
+			if (pathname === '/api/users/upload-avatar' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				try {
+					const formData = await request.formData();
+					const file = formData.get('avatar');
+					if (!file || !(file instanceof File)) {
+						return jsonResponse({ error: 'Không tìm thấy file ảnh tải lên.' }, 400);
+					}
+
+					// Validate file type
+					if (!file.type.startsWith('image/')) {
+						return jsonResponse({ error: 'Định dạng file không hợp lệ. Chỉ chấp nhận ảnh.' }, 400);
+					}
+					// Validate file size (2MB max)
+					if (file.size > 2 * 1024 * 1024) {
+						return jsonResponse({ error: 'Dung lượng ảnh tối đa là 2MB.' }, 400);
+					}
+
+					// Delete old avatar if it exists in R2
+					const oldUser = await env.DB.prepare('SELECT avatar FROM users WHERE id = ?')
+						.bind(payload.id)
+						.first<{ avatar: string }>();
+					if (oldUser && oldUser.avatar && oldUser.avatar.startsWith('/avatars/')) {
+						const oldKey = decodeURIComponent(oldUser.avatar.slice(1));
+						try {
+							await env.STORAGE.delete(oldKey);
+						} catch (err) {
+							console.error('Error deleting old avatar:', err);
+						}
+					}
+
+					const extension = file.name.split('.').pop() || 'jpg';
+					const key = `avatars/user-${payload.id}-${Date.now()}.${extension}`;
+					
+					await env.STORAGE.put(key, await file.arrayBuffer(), {
+						httpMetadata: {
+							contentType: file.type
+						}
+					});
+
+					const avatarUrl = `/${key}`;
+					return jsonResponse({ message: 'Tải ảnh đại diện thành công', avatarUrl });
+				} catch (e: any) {
+					return jsonResponse({ error: e.message || 'Lỗi khi tải ảnh lên.' }, 500);
+				}
+			}
 
 			// Đăng nhập / Đăng ký
 			// POST /api/users/login

@@ -36,27 +36,43 @@
                                 autocomplete="off">
                         </div>
                         <div class="form-group" style="margin-bottom: 1.25rem;">
-                            <label for="profile-avatar-select">Ảnh đại diện (Emoji)</label>
-                            <select id="profile-avatar-select" class="input-ctrl">
-                                <option value="👤">👤 Mặc định (Trống)</option>
-                                <option value="🧑‍💻">🧑‍💻 Lập trình viên</option>
-                                <option value="🦊">🦊 Cáo nhỏ</option>
-                                <option value="🐱">🐱 Mèo con</option>
-                                <option value="🐰">🐰 Thỏ ngọc</option>
-                                <option value="🐼">🐼 Gấu trúc</option>
-                                <option value="🦁">🦁 Sư tử</option>
-                                <option value="🐻">🐻 Gấu nâu</option>
-                                <option value="🐸">🐸 Ếch xanh</option>
-                                <option value="🥑">🥑 Bơ xanh</option>
-                                <option value="🍕">🍕 Pizza</option>
-                                <option value="🍔">🍔 Burger</option>
-                                <option value="☕">☕ Cà phê</option>
-                                <option value="🚀">🚀 Tên lửa</option>
-                                <option value="🎸">🎸 Đàn guitar</option>
-                                <option value="🌸">🌸 Hoa anh đào</option>
-                                <option value="👑">👑 Vương miện</option>
-                                <option value="💎">💎 Kim cương</option>
-                            </select>
+                            <label>Ảnh đại diện</label>
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; background: var(--bg-secondary); padding: 0.75rem; border-radius: var(--radius-md); border: 1.5px solid var(--panel-border);">
+                                <div id="profile-avatar-preview" style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-gradient); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; box-shadow: 0 4px 12px rgba(232, 97, 60, 0.2); flex-shrink: 0; overflow: hidden;">
+                                    👤
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem; flex-grow: 1;">
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <label for="profile-avatar-file-input" class="btn btn-secondary" style="width: auto; padding: 0.45rem 0.9rem; font-size: 0.82rem; margin-bottom: 0; border-radius: 8px; cursor: pointer; display: inline-flex; font-weight: 700; gap: 0.3rem;">
+                                            📤 Tải ảnh lên
+                                        </label>
+                                        <input type="file" id="profile-avatar-file-input" accept="image/*" style="display: none;">
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                        <span style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">Hoặc Emoji:</span>
+                                        <select id="profile-avatar-select" class="input-ctrl" style="padding: 0.3rem 1.8rem 0.3rem 0.6rem; font-size: 0.82rem; border-radius: 8px; width: auto; height: auto; display: inline-block;">
+                                            <option value="👤">👤 Mặc định (Trống)</option>
+                                            <option value="🧑‍💻">🧑‍💻 Lập trình viên</option>
+                                            <option value="🦊">🦊 Cáo nhỏ</option>
+                                            <option value="🐱">🐱 Mèo con</option>
+                                            <option value="🐰">🐰 Thỏ ngọc</option>
+                                            <option value="🐼">🐼 Gấu trúc</option>
+                                            <option value="🦁">🦁 Sư tử</option>
+                                            <option value="🐻">🐻 Gấu nâu</option>
+                                            <option value="🐸">🐸 Ếch xanh</option>
+                                            <option value="🥑">🥑 Bơ xanh</option>
+                                            <option value="🍕">🍕 Pizza</option>
+                                            <option value="🍔">🍔 Burger</option>
+                                            <option value="☕">☕ Cà phê</option>
+                                            <option value="🚀">🚀 Tên lửa</option>
+                                            <option value="🎸">🎸 Đàn guitar</option>
+                                            <option value="🌸">🌸 Hoa anh đào</option>
+                                            <option value="👑">👑 Vương miện</option>
+                                            <option value="💎">💎 Kim cương</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-group" style="margin-bottom: 1.25rem;">
                             <label for="profile-note-input">Ghi chú ăn uống mặc định</label>
@@ -631,6 +647,23 @@
 
     <script>
         // =======================================================
+        // HELPER FOR RENDERING AVATAR (EMOJI OR R2 IMAGE)
+        // =======================================================
+        function getAvatarHtml(avatarValue, className = '') {
+            if (!avatarValue) {
+                return '👤';
+            }
+            const isUrl = avatarValue.startsWith('http://') || 
+                          avatarValue.startsWith('https://') || 
+                          avatarValue.startsWith('/') || 
+                          avatarValue.startsWith('data:');
+            if (isUrl) {
+                return `<img src="${avatarValue}" class="${className}" alt="avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='👤';">`;
+            }
+            return avatarValue;
+        }
+
+        // =======================================================
         // STATE DEFINITIONS
         // =======================================================
         let currentUser = null;
@@ -1079,7 +1112,7 @@
                 const avatar = user.avatar || '👤';
                 
                 item.innerHTML = `
-                    <div class="suggestion-avatar">${avatar}</div>
+                    <div class="suggestion-avatar">${getAvatarHtml(avatar)}</div>
                     <span class="suggestion-name">${user.name}</span>
                     <span class="suggestion-badge">Thành viên</span>
                 `;
@@ -1110,11 +1143,11 @@
 
             // Update header widget
             profileName.textContent = currentUser.name;
-            userAvatar.textContent = currentUser.avatar || '👤';
+            userAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤');
 
             // Populate dropdown menu details
             dropdownProfileName.textContent = currentUser.name;
-            dropdownUserAvatar.textContent = currentUser.avatar || '👤';
+            dropdownUserAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤');
             if (currentUser.id === 1) {
                 dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
                 document.getElementById('admin-panel-card').style.display = 'block';
@@ -1584,7 +1617,7 @@
 
                         item.innerHTML = `
                             <div class="lb-rank">${rankHtml}</div>
-                            <div class="lb-avatar">${avatar}</div>
+                            <div class="lb-avatar">${getAvatarHtml(avatar)}</div>
                             <div class="lb-info">
                                 <div class="lb-name">${user.user_name}</div>
                                 <div class="lb-bar-wrap">
@@ -1994,7 +2027,7 @@
                 item.innerHTML = `
                         <div class="order-user" style="flex: 1; min-width: 0;">
                             <div class="order-user-name" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                <span class="order-user-avatar" style="font-size: 1.25rem; line-height: 1;">${avatar}</span>
+                                <span class="order-user-avatar" style="font-size: 1.25rem; line-height: 1; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 50%;">${getAvatarHtml(avatar)}</span>
                                 <div style="display: flex; flex-direction: column; align-items: flex-start;">
                                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                                         <span style="font-weight: 700; font-size: 1.05rem;">${order.user_name}</span>
@@ -2171,7 +2204,7 @@
                 item.innerHTML = `
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                <span>${user.avatar || '👤'}</span>
+                                <span style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 50%;">${getAvatarHtml(user.avatar || '👤')}</span>
                                 <span>${user.name}</span>
                             </div>
                             <div style="margin-left: 1.5rem;">
@@ -2533,6 +2566,7 @@
         // RENAME USER MODAL
         // =======================================================
         let renameTargetUserId = null;
+        let modalAvatarValue = '👤';
 
         function openRenameModal(userId, currentName) {
             renameTargetUserId = userId;
@@ -2541,6 +2575,7 @@
             const phoneInput = document.getElementById('profile-phone-input');
             const avatarSelect = document.getElementById('profile-avatar-select');
             const noteInput = document.getElementById('profile-note-input');
+            const previewEl = document.getElementById('profile-avatar-preview');
             
             // Find target user's details
             let targetUser = null;
@@ -2555,8 +2590,18 @@
 
             nameInput.value = currentName;
             phoneInput.value = targetUser ? (targetUser.phone || '') : '';
-            avatarSelect.value = targetUser ? (targetUser.avatar || '👤') : '👤';
             noteInput.value = targetUser ? (targetUser.default_note || '') : '';
+            
+            const currentAvatar = targetUser ? (targetUser.avatar || '👤') : '👤';
+            modalAvatarValue = currentAvatar;
+            previewEl.innerHTML = getAvatarHtml(currentAvatar);
+
+            const isUrl = currentAvatar.startsWith('http') || currentAvatar.startsWith('/') || currentAvatar.startsWith('data:');
+            if (isUrl) {
+                avatarSelect.value = '👤';
+            } else {
+                avatarSelect.value = currentAvatar;
+            }
             
             const passwordInput = document.getElementById('profile-password-input');
             if (passwordInput) passwordInput.value = '';
@@ -2565,6 +2610,47 @@
             // Delay focus so transition plays first
             setTimeout(() => nameInput.focus(), 80);
         }
+
+        // Add change listeners for avatar inputs
+        document.getElementById('profile-avatar-select').addEventListener('change', (e) => {
+            modalAvatarValue = e.target.value;
+            document.getElementById('profile-avatar-preview').innerHTML = getAvatarHtml(modalAvatarValue);
+        });
+
+        document.getElementById('profile-avatar-file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            const uploadBtn = document.querySelector('label[for="profile-avatar-file-input"]');
+            const originalText = uploadBtn.textContent;
+            uploadBtn.textContent = '⏳ Đang tải...';
+            uploadBtn.style.pointerEvents = 'none';
+
+            try {
+                const resp = await fetch('/api/users/upload-avatar', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (resp.ok && data.avatarUrl) {
+                    modalAvatarValue = data.avatarUrl;
+                    document.getElementById('profile-avatar-preview').innerHTML = getAvatarHtml(modalAvatarValue);
+                    showToast('Tải ảnh đại diện thành công!');
+                } else {
+                    showToast(data.error || 'Tải ảnh lên thất bại', 'danger');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Lỗi kết nối khi tải ảnh lên', 'danger');
+            } finally {
+                uploadBtn.textContent = originalText;
+                uploadBtn.style.pointerEvents = 'auto';
+                e.target.value = ''; // clear value so same file can trigger change event again
+            }
+        });
 
         function closeRenameModal() {
             document.getElementById('rename-modal').style.display = 'none';
@@ -2594,13 +2680,12 @@
 
             const nameInput = document.getElementById('rename-input');
             const phoneInput = document.getElementById('profile-phone-input');
-            const avatarSelect = document.getElementById('profile-avatar-select');
             const noteInput = document.getElementById('profile-note-input');
             const passwordInput = document.getElementById('profile-password-input');
 
             const newName = nameInput.value.trim();
             const phone = phoneInput.value.trim();
-            const avatar = avatarSelect.value;
+            const avatar = modalAvatarValue;
             const defaultNote = noteInput.value.trim();
             const password = passwordInput ? passwordInput.value.trim() : '';
 
@@ -2641,9 +2726,9 @@
                         localStorage.setItem('currentUser', JSON.stringify(currentUser));
                         
                         profileName.textContent = newName;
-                        userAvatar.textContent = avatar;
+                        userAvatar.innerHTML = getAvatarHtml(avatar);
                         dropdownProfileName.textContent = newName;
-                        dropdownUserAvatar.textContent = avatar;
+                        dropdownUserAvatar.innerHTML = getAvatarHtml(avatar);
 
                         // Autofill order note if empty
                         const orderNoteInput = document.getElementById('order-note-input');

@@ -253,5 +253,54 @@ describe("ComTrua Backend Tests", () => {
 		expect(stats.users_breakdown[0].total_spent).toBe(35000);
 		expect(stats.users_breakdown[0].total_unpaid).toBe(35000);
 	});
+
+	it("should upload avatar to R2 and serve it", async () => {
+		// Register and login user A
+		const loginReq = new Request("http://example.com/api/users/login", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(loginReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const loginData = await response.json() as any;
+		
+		const sessionCookie = response.headers.get("Set-Cookie");
+		expect(sessionCookie).not.toBeNull();
+
+		// Construct FormData with an avatar image file
+		const formData = new FormData();
+		const testBlob = new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: "image/png" });
+		const testFile = new File([testBlob], "avatar.png", { type: "image/png" });
+		formData.append("avatar", testFile);
+
+		const uploadReq = new Request("http://example.com/api/users/upload-avatar", {
+			method: "POST",
+			headers: {
+				"Cookie": sessionCookie || "",
+			},
+			body: formData,
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(uploadReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const uploadData = await response.json() as any;
+		expect(uploadData.message).toBe("Tải ảnh đại diện thành công");
+		expect(uploadData.avatarUrl).toContain("/avatars/");
+
+		// Retrieve from R2 directly via route GET /avatars/:key
+		const getAvatarReq = new Request(`http://example.com${uploadData.avatarUrl}`);
+		ctx = createExecutionContext();
+		response = await worker.fetch(getAvatarReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Content-Type")).toBe("image/png");
+		const arrayBuf = await response.arrayBuffer();
+		expect(new Uint8Array(arrayBuf)[0]).toBe(137); // PNG header check
+	});
 });
 
