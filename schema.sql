@@ -65,18 +65,21 @@ INSERT OR IGNORE INTO users (id, name, active) VALUES
 -- 4. Bảng món thêm (Toppings)
 CREATE TABLE IF NOT EXISTS toppings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    shop_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
     price INTEGER NOT NULL, -- Giá tiền VND (có thể là 0đ)
-    active INTEGER DEFAULT 1 -- 1: Đang bán, 0: Tạm ngưng
+    active INTEGER DEFAULT 1, -- 1: Đang bán, 0: Tạm ngưng
+    FOREIGN KEY(shop_id) REFERENCES shops(id),
+    UNIQUE(shop_id, name)
 );
 
 -- Chèn dữ liệu món thêm mẫu ban đầu
-INSERT OR IGNORE INTO toppings (id, name, price, active) VALUES
-(1, 'Cơm thêm', 0, 1),
-(2, 'Nhiều Cơm', 0, 1),
-(3, 'Nhiều Mì', 0, 1),
-(4, 'Nhiều Nuôi', 0, 1),
-(5, 'Trứng ốp la', 5000, 1);
+INSERT OR IGNORE INTO toppings (id, shop_id, name, price, active) VALUES
+(1, 1, 'Cơm thêm', 0, 1),
+(2, 1, 'Nhiều Cơm', 0, 1),
+(3, 1, 'Nhiều Mì', 0, 1),
+(4, 1, 'Nhiều Nuôi', 0, 1),
+(5, 2, 'Trứng ốp la', 5000, 1);
 
 -- 5. Bảng cài đặt hệ thống (Settings)
 CREATE TABLE IF NOT EXISTS settings (

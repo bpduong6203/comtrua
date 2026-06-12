@@ -1906,3 +1906,366 @@ input:checked + .slider .slider-text::after { content: "Đã Trả"; }
         justify-content: flex-end;
     }
 }
+
+/* ============================================
+   FLOATING AI CHAT WIDGET
+   ============================================ */
+.ai-chat-widget {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    font-family: inherit;
+}
+
+/* Chat toggle button */
+.ai-chat-toggle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(232, 97, 60, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+}
+
+.ai-chat-toggle:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 6px 24px rgba(232, 97, 60, 0.55);
+}
+
+.ai-chat-toggle .ai-icon {
+    font-size: 28px;
+    color: white;
+}
+
+/* Red ping animation indicating AI is available */
+.ai-badge-ping {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background-color: var(--color-success);
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+/* Chat window container with Glassmorphism */
+.ai-chat-window {
+    position: absolute;
+    bottom: 75px;
+    right: 0;
+    width: 380px;
+    height: 520px;
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 120px);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
+    border: 1px solid rgba(244, 200, 156, 0.6);
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(61, 44, 30, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUpFade 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transform-origin: bottom right;
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Chat Header */
+.ai-chat-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    box-shadow: 0 2px 10px rgba(232, 97, 60, 0.15);
+}
+
+.ai-chat-header-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+.ai-chat-header-info h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.ai-chat-header-info .ai-status {
+    font-size: 0.72rem;
+    opacity: 0.9;
+    font-weight: 600;
+}
+
+.ai-chat-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.ai-chat-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Messages area */
+.ai-chat-messages {
+    flex-grow: 1;
+    padding: 1.25rem 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ai-msg {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    word-wrap: break-word;
+    font-weight: 500;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-msg.user {
+    align-self: flex-end;
+    background: var(--bg-secondary);
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    border-bottom-right-radius: 4px;
+}
+
+.ai-msg.assistant {
+    align-self: flex-start;
+    background: white;
+    border: 1.5px solid var(--panel-border);
+    color: var(--text-main);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(180, 140, 100, 0.04);
+}
+
+/* Typing indicator */
+.ai-typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 0.6rem 0.9rem;
+}
+
+.ai-typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    animation: aiDotPulse 1.4s infinite ease-in-out;
+    opacity: 0.4;
+}
+
+.ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes aiDotPulse {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.4); opacity: 1; }
+}
+
+/* Quick suggestions chips */
+.ai-chat-quick-suggestions {
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-top: 1px dashed rgba(244, 200, 156, 0.4);
+    background: rgba(255, 255, 255, 0.5);
+    scrollbar-width: none; /* Firefox */
+    flex-shrink: 0;
+}
+
+.ai-chat-quick-suggestions::-webkit-scrollbar {
+    display: none; /* Safari & Chrome */
+}
+
+.ai-chip {
+    background: #ffffff;
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s;
+    box-shadow: 0 1px 4px rgba(180, 140, 100, 0.05);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.ai-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--bg-secondary);
+}
+
+/* Chat input area */
+.ai-chat-input-area {
+    padding: 0.75rem 1rem 1rem;
+    background: #ffffff;
+    border-top: 1.5px solid var(--panel-border);
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.ai-chat-input-area input {
+    flex-grow: 1;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    padding: 0.65rem 1rem;
+    border-radius: var(--radius-md);
+    outline: none;
+    font-family: inherit;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+}
+
+.ai-chat-input-area input:focus {
+    border-color: var(--primary);
+    background: white;
+}
+
+.ai-chat-send-btn {
+    background: var(--primary-gradient);
+    border: none;
+    color: white;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ai-chat-send-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(232, 97, 60, 0.3);
+}
+
+/* Recommended Dish Card in Chat */
+.ai-dish-card {
+    background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%);
+    border: 1.5px solid #F4C89C;
+    border-radius: 12px;
+    padding: 0.85rem;
+    margin-top: 0.5rem;
+    box-shadow: 0 4px 12px rgba(180, 140, 100, 0.08);
+}
+
+.ai-dish-title {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--text-heading);
+}
+
+.ai-dish-shop {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+.ai-dish-price {
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--primary);
+    margin-top: 0.25rem;
+}
+
+.ai-dish-toppings {
+    font-size: 0.78rem;
+    color: var(--color-pending);
+    margin-top: 0.2rem;
+    font-weight: 600;
+}
+
+.ai-dish-btn {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    padding: 0.55rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 0.65rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(232, 97, 60, 0.2);
+}
+
+.ai-dish-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(232, 97, 60, 0.35);
+}
+
+.ai-dish-btn.ordered {
+    background: var(--color-success-bg);
+    border: 1px solid rgba(45, 155, 78, 0.3);
+    color: var(--color-success);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}

@@ -48,9 +48,12 @@ async function setupDatabase() {
 		)`,
 		`CREATE TABLE IF NOT EXISTS toppings (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL UNIQUE,
+			shop_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
 			price INTEGER NOT NULL,
-			active INTEGER DEFAULT 1
+			active INTEGER DEFAULT 1,
+			FOREIGN KEY(shop_id) REFERENCES shops(id),
+			UNIQUE(shop_id, name)
 		)`,
 		`CREATE TABLE IF NOT EXISTS settings (
 			key TEXT PRIMARY KEY,
@@ -58,7 +61,7 @@ async function setupDatabase() {
 		)`,
 		`INSERT OR IGNORE INTO shops (id, name, active) VALUES (1, 'Quán Cơm Chiên', 1)`,
 		`INSERT OR IGNORE INTO dishes (id, shop_id, name, price, active) VALUES (1, 1, 'Cơm Đùi Gà', 35000, 1)`,
-		`INSERT OR IGNORE INTO toppings (id, name, price, active) VALUES (5, 'Trứng ốp la', 5000, 1)`
+		`INSERT OR IGNORE INTO toppings (id, shop_id, name, price, active) VALUES (5, 1, 'Trứng ốp la', 5000, 1)`
 	];
 	
 	for (const sql of statements) {

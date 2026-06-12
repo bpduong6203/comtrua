@@ -279,7 +279,13 @@
 									autocomplete="off"
 								/>
 							</div>
-							<div class="form-group">
+							<div class="form-group" style="margin-top: 1rem">
+								<label for="edit-topping-shop-select">Thuộc cửa hàng</label>
+								<select id="edit-topping-shop-select" class="input-ctrl" required>
+									<!-- Loaded dynamically -->
+								</select>
+							</div>
+							<div class="form-group" style="margin-top: 1rem">
 								<label for="edit-topping-price-input">Giá Topping mới (VND)</label>
 								<input
 									type="number"
@@ -750,11 +756,17 @@
 											<label for="topping-name">Tên topping</label>
 											<input type="text" id="topping-name" class="input-ctrl" placeholder="Ví dụ: Trứng ốp la" required />
 										</div>
-										<div class="form-group">
+										<div class="form-group" style="margin-top: 1rem">
+											<label for="topping-shop-select">Thuộc cửa hàng</label>
+											<select id="topping-shop-select" class="input-ctrl" required>
+												<!-- Loaded dynamically -->
+											</select>
+										</div>
+										<div class="form-group" style="margin-top: 1rem">
 											<label for="topping-price">Giá tiền (VND)</label>
 											<input type="number" id="topping-price" class="input-ctrl" placeholder="Ví dụ: 5000" min="0" step="1000" required />
 										</div>
-										<button type="submit" class="btn btn-secondary">Thêm Topping</button>
+										<button type="submit" class="btn btn-secondary" style="margin-top: 1.25rem">Thêm Topping</button>
 									</form>
 								</div>
 
@@ -973,6 +985,7 @@
 			const personalDebtOrdersList = document.getElementById('personal-debt-orders-list');
 
 			const dishShopSelect = document.getElementById('dish-shop-select');
+			const toppingShopSelect = document.getElementById('topping-shop-select');
 			const addDishForm = document.getElementById('add-dish-form');
 			const adminDishesList = document.getElementById('admin-dishes-list');
 			const addShopForm = document.getElementById('add-shop-form');
@@ -2055,8 +2068,10 @@
 
 			function updateDishShopSelectOptions() {
 				dishShopSelect.innerHTML = '';
+				if (toppingShopSelect) toppingShopSelect.innerHTML = '';
 				if (shops.length === 0) {
 					dishShopSelect.innerHTML = '<option value="">-- Không có cửa hàng --</option>';
+					if (toppingShopSelect) toppingShopSelect.innerHTML = '<option value="">-- Không có cửa hàng --</option>';
 					return;
 				}
 
@@ -2065,18 +2080,26 @@
 					opt.value = shop.id;
 					opt.textContent = shop.name;
 					dishShopSelect.appendChild(opt);
+
+					if (toppingShopSelect) {
+						const opt2 = document.createElement('option');
+						opt2.value = shop.id;
+						opt2.textContent = shop.name;
+						toppingShopSelect.appendChild(opt2);
+					}
 				});
 			}
 
 			function renderToppingsOptions() {
 				toppingsOptionsContainer.innerHTML = '';
-				if (toppings.length === 0) {
+				const shopToppings = toppings.filter((t) => t.shop_id === selectedShopId);
+				if (shopToppings.length === 0) {
 					toppingsOptionsContainer.innerHTML =
 						'<div style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">Không có món thêm nào.</div>';
 					return;
 				}
 
-				toppings.forEach((topping) => {
+				shopToppings.forEach((topping) => {
 					const label = document.createElement('label');
 					label.className = 'topping-checkbox-label';
 
@@ -2709,17 +2732,19 @@
 				e.preventDefault();
 				const nameInput = document.getElementById('topping-name');
 				const priceInput = document.getElementById('topping-price');
+				const shopSelect = document.getElementById('topping-shop-select');
 
 				const name = nameInput.value.trim();
 				const price = parseInt(priceInput.value);
+				const shopId = parseInt(shopSelect.value);
 
-				if (!name || isNaN(price) || price < 0) return;
+				if (!name || isNaN(price) || price < 0 || isNaN(shopId)) return;
 
 				try {
 					const resp = await fetch('/api/toppings', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ name, price, caller_id: currentUser.id }),
+						body: JSON.stringify({ name, price, shop_id: shopId, caller_id: currentUser.id }),
 					});
 
 					if (resp.ok) {
@@ -2763,6 +2788,8 @@
 				}
 
 				toppings.forEach((topping) => {
+					const shop = shops.find((s) => s.id === topping.shop_id);
+					const shopName = shop ? shop.name : 'Không rõ';
 					const item = document.createElement('div');
 					item.className = 'order-item';
 					item.style.padding = '0.5rem 0.75rem';
@@ -2771,7 +2798,7 @@
 					const controlsHtml = isAdmin
 						? `
                     <div style="display:flex; gap:0.5rem; align-items:center;">
-                        <button class="btn-edit" onclick="openEditToppingModal(${topping.id}, '${topping.name.replace(/'/g, "\\'")}', ${topping.price})" title="Sửa topping">
+                        <button class="btn-edit" onclick="openEditToppingModal(${topping.id}, '${topping.name.replace(/'/g, "\\'")}', ${topping.price}, ${topping.shop_id})" title="Sửa topping">
                             ✏️
                         </button>
                         <button class="btn-delete" onclick="deleteTopping(${topping.id})" title="Xóa topping">
@@ -2783,7 +2810,9 @@
 
 					item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
-                            🥚 ${topping.name} <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(topping.price)})</span>
+                            🥚 ${topping.name} 
+                            <span style="color:#E8613C; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
+                            <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(topping.price)})</span>
                         </div>
                         ${controlsHtml}
                     `;
@@ -3171,14 +3200,27 @@
 			// =======================================================
 			let editToppingTargetId = null;
 
-			function openEditToppingModal(toppingId, currentName, currentPrice) {
+			function openEditToppingModal(toppingId, currentName, currentPrice, currentShopId) {
 				editToppingTargetId = toppingId;
 				const modal = document.getElementById('edit-topping-modal');
 				const nameInput = document.getElementById('edit-topping-name-input');
 				const priceInput = document.getElementById('edit-topping-price-input');
+				const shopSelect = document.getElementById('edit-topping-shop-select');
 
 				nameInput.value = currentName;
 				priceInput.value = currentPrice;
+
+				// Populate the shop selector for editing
+				shopSelect.innerHTML = '';
+				shops.forEach((shop) => {
+					const opt = document.createElement('option');
+					opt.value = shop.id;
+					opt.textContent = shop.name;
+					if (shop.id === currentShopId) {
+						opt.selected = true;
+					}
+					shopSelect.appendChild(opt);
+				});
 
 				modal.style.display = 'flex';
 				setTimeout(() => nameInput.focus(), 80);
@@ -3201,11 +3243,13 @@
 
 				const nameInput = document.getElementById('edit-topping-name-input');
 				const priceInput = document.getElementById('edit-topping-price-input');
+				const shopSelect = document.getElementById('edit-topping-shop-select');
 
 				const name = nameInput.value.trim();
 				const price = parseInt(priceInput.value);
+				const shopId = parseInt(shopSelect.value);
 
-				if (!name || isNaN(price) || price < 0) return;
+				if (!name || isNaN(price) || price < 0 || isNaN(shopId)) return;
 
 				const btn = document.getElementById('edit-topping-submit-btn');
 				btn.disabled = true;
@@ -3218,6 +3262,7 @@
 						body: JSON.stringify({
 							name,
 							price,
+							shop_id: shopId,
 							caller_id: currentUser.id,
 						}),
 					});
@@ -3238,6 +3283,361 @@
 					btn.textContent = 'Lưu Topping';
 				}
 			});
+
+			// =======================================================
+			// AI CHAT WIDGET JS
+			// =======================================================
+			let aiMessages = [];
+			let excludedDishIdsForAI = [];
+
+			function toggleAIChat() {
+				const chatWindow = document.getElementById('ai-chat-window');
+				const toggleBtn = document.getElementById('ai-chat-toggle');
+
+				// Hide ping badge on click
+				const ping = toggleBtn.querySelector('.ai-badge-ping');
+				if (ping) ping.style.display = 'none';
+
+				if (chatWindow.style.display === 'none') {
+					chatWindow.style.display = 'flex';
+					if (aiMessages.length === 0) {
+						// Add initial welcome message
+						const name = currentUser ? currentUser.name : 'bạn';
+						addChatMessage(
+							'assistant',
+							`Xin chào **${name}**! Hôm nay bạn muốn ăn gì nào? Mình có thể phân tích lịch sử đặt món của bạn và tư vấn món ăn từ thực đơn hôm nay nhé! 🍜`,
+						);
+					}
+					// Scroll messages to bottom
+					const messagesContainer = document.getElementById('ai-chat-messages');
+					setTimeout(() => (messagesContainer.scrollTop = messagesContainer.scrollHeight), 100);
+				} else {
+					chatWindow.style.display = 'none';
+				}
+			}
+
+			// Formats standard Markdown-like bold (**text**) to HTML strong in messages
+			function formatMarkdown(text) {
+				if (!text) return '';
+				return text
+					.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+					.replace(/\*(.*?)\*/g, '<em>$1</em>')
+					.replace(/\n/g, '<br/>');
+			}
+
+			function addChatMessage(role, content, recommendedDish = null) {
+				const messagesContainer = document.getElementById('ai-chat-messages');
+				if (!messagesContainer) return;
+
+				const msgDiv = document.createElement('div');
+				msgDiv.className = `ai-msg ${role}`;
+				msgDiv.innerHTML = formatMarkdown(content);
+
+				if (recommendedDish) {
+					const dishCard = document.createElement('div');
+					dishCard.className = 'ai-dish-card';
+
+					const title = document.createElement('div');
+					title.className = 'ai-dish-title';
+					title.textContent = `🍽️ ${recommendedDish.dish_name}`;
+					dishCard.appendChild(title);
+
+					const shop = document.createElement('div');
+					shop.className = 'ai-dish-shop';
+					shop.textContent = `🏪 Quán: ${recommendedDish.shop_name}`;
+					dishCard.appendChild(shop);
+
+					const priceVal = recommendedDish.price;
+					let toppingPrice = 0;
+					let toppingsText = '';
+
+					if (recommendedDish.topping_ids && recommendedDish.topping_ids.length > 0) {
+						const matchingToppings = toppings.filter((t) => recommendedDish.topping_ids.includes(t.id));
+						if (matchingToppings.length > 0) {
+							toppingsText = `+ Món thêm: ${matchingToppings.map((t) => t.name).join(', ')}`;
+							toppingPrice = matchingToppings.reduce((sum, t) => sum + t.price, 0);
+						}
+					}
+
+					const totalAmount = priceVal + toppingPrice;
+
+					const price = document.createElement('div');
+					price.className = 'ai-dish-price';
+					price.textContent = formatCurrency(totalAmount);
+					dishCard.appendChild(price);
+
+					if (toppingsText) {
+						const toppingsDiv = document.createElement('div');
+						toppingsDiv.className = 'ai-dish-toppings';
+						toppingsDiv.textContent = toppingsText;
+						dishCard.appendChild(toppingsDiv);
+					}
+
+					const orderBtn = document.createElement('button');
+					orderBtn.className = 'ai-dish-btn';
+					orderBtn.innerHTML = '👍 Đồng ý, đặt luôn!';
+
+					// Check if this dish is already ordered by current user
+					const myOrder = orders.find((o) => o.user_id === currentUser.id);
+					if (myOrder && myOrder.dish_id === recommendedDish.dish_id) {
+						orderBtn.className = 'ai-dish-btn ordered';
+						orderBtn.disabled = true;
+						orderBtn.innerHTML = '✅ Đã đặt món này';
+					} else {
+						orderBtn.onclick = async () => {
+							orderBtn.disabled = true;
+							orderBtn.innerHTML = '⏳ Đang đặt món...';
+							const success = await submitAIOrder(recommendedDish.dish_id, recommendedDish.topping_ids || []);
+							if (success) {
+								orderBtn.className = 'ai-dish-btn ordered';
+								orderBtn.innerHTML = '✅ Đã đặt thành công!';
+								addChatMessage(
+									'assistant',
+									`Tuyệt vời! Mình đã đặt món **${recommendedDish.dish_name}** giúp bạn rồi nhé. Chúc bạn ngon miệng! 🥰`,
+								);
+							} else {
+								orderBtn.disabled = false;
+								orderBtn.innerHTML = '👍 Đồng ý, đặt luôn!';
+							}
+						};
+					}
+
+					dishCard.appendChild(orderBtn);
+					msgDiv.appendChild(dishCard);
+				}
+
+				messagesContainer.appendChild(msgDiv);
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			}
+
+			function showTypingIndicator() {
+				const messagesContainer = document.getElementById('ai-chat-messages');
+				if (!messagesContainer) return;
+
+				const typingDiv = document.createElement('div');
+				typingDiv.className = 'ai-msg assistant ai-typing-container';
+				typingDiv.id = 'ai-typing-indicator';
+
+				typingDiv.innerHTML = `
+					<div class="ai-typing-indicator">
+						<div class="ai-typing-dot"></div>
+						<div class="ai-typing-dot"></div>
+						<div class="ai-typing-dot"></div>
+					</div>
+				`;
+				messagesContainer.appendChild(typingDiv);
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			}
+
+			function removeTypingIndicator() {
+				const indicator = document.getElementById('ai-typing-indicator');
+				if (indicator) indicator.remove();
+			}
+
+			async function sendQuickMessage(text) {
+				const input = document.getElementById('ai-chat-input');
+				if (input) {
+					input.value = text;
+					document.getElementById('ai-chat-form').dispatchEvent(new Event('submit'));
+				}
+			}
+
+			async function handleAIChatSubmit(e) {
+				e.preventDefault();
+				const input = document.getElementById('ai-chat-input');
+				const text = input.value.trim();
+				if (!text) return;
+
+				input.value = '';
+				addChatMessage('user', text);
+
+				aiMessages.push({ role: 'user', content: text });
+				// Keep only last 10 messages to avoid large payload limits
+				if (aiMessages.length > 10) {
+					aiMessages = aiMessages.slice(aiMessages.length - 10);
+				}
+
+				showTypingIndicator();
+
+				try {
+					const resp = await fetch('/api/ai/recommend', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							messages: aiMessages,
+							exclude_dish_ids: excludedDishIdsForAI,
+						}),
+					});
+
+					removeTypingIndicator();
+
+					if (resp.ok) {
+						const data = await resp.json();
+
+						addChatMessage('assistant', data.message, data.recommended_dish);
+						aiMessages.push({ role: 'assistant', content: data.message });
+
+						if (data.recommended_dish) {
+							// Push the recommended dish to excluded list so next suggestions will vary
+							excludedDishIdsForAI.push(data.recommended_dish.dish_id);
+							// Limit history of excluded to last 5
+							if (excludedDishIdsForAI.length > 5) {
+								excludedDishIdsForAI.shift();
+							}
+
+							// Auto submit ordering if requested by the user
+							if (data.auto_submit === true) {
+								// Find if already ordered
+								const myOrder = orders.find((o) => o.user_id === currentUser.id);
+								if (myOrder && myOrder.dish_id === data.recommended_dish.dish_id) {
+									addChatMessage('assistant', `Món **${data.recommended_dish.dish_name}** này bạn đã đặt rồi mà nhỉ! 😉`);
+								} else {
+									addChatMessage('assistant', `Nhận lệnh! Mình đang tiến hành tự động đặt món **${data.recommended_dish.dish_name}** cho bạn luôn đây...`);
+									const success = await submitAIOrder(data.recommended_dish.dish_id, data.recommended_dish.topping_ids || []);
+									if (success) {
+										addChatMessage(
+											'assistant',
+											`Tuyệt vời! Mình đã tự động đặt thành công món **${data.recommended_dish.dish_name}** giúp bạn rồi nhé! 🥰`
+										);
+										// Find and update the button in the last card to avoid confusing status
+										const cards = document.querySelectorAll('.ai-dish-card');
+										if (cards.length > 0) {
+											const lastCard = cards[cards.length - 1];
+											const btn = lastCard.querySelector('.ai-dish-btn');
+											if (btn) {
+												btn.className = 'ai-dish-btn ordered';
+												btn.disabled = true;
+												btn.innerHTML = '✅ Đã đặt thành công!';
+											}
+										}
+									} else {
+										addChatMessage(
+											'assistant',
+											`Hic, tự động đặt món thất bại rồi. Bạn nhấn nút đặt thủ công trên thẻ giúp mình nhé!`
+										);
+									}
+								}
+							}
+						}
+					} else {
+						const data = await resp.json();
+						addChatMessage('assistant', data.error || 'Oops, mình gặp lỗi khi xử lý thông tin rồi.');
+					}
+				} catch (err) {
+					removeTypingIndicator();
+					addChatMessage('assistant', 'Lỗi kết nối mạng, bạn hãy thử lại nhé.');
+				}
+			}
+
+			async function submitAIOrder(dishId, toppingIds) {
+				const deadlineStatus = getDeadlineStatus();
+				const isAdmin = currentUser && currentUser.id === 1;
+				if (deadlineStatus.locked && !isAdmin) {
+					showToast('Đã quá thời gian chốt đặt món hôm nay.', 'error');
+					return false;
+				}
+
+				const numericToppingIds = (toppingIds || []).map(Number);
+
+				try {
+					const resp = await fetch('/api/orders', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							user_id: currentUser.id,
+							dish_id: dishId,
+							date: selectedDate,
+							topping_ids: numericToppingIds,
+							note: currentUser.default_note || '',
+						}),
+					});
+
+					const data = await resp.json();
+
+					if (resp.ok) {
+						showToast('AI đã đặt cơm giúp bạn thành công!');
+
+						// Synchronize UI selections to match the AI choice
+						selectedDishId = dishId;
+						selectedToppingIds = numericToppingIds;
+
+						const dish = dishes.find((d) => d.id === dishId);
+						if (dish) {
+							selectedShopId = dish.shop_id;
+							renderShopTabs();
+							renderDishesOptions();
+							renderToppingsOptions();
+							updateOrderSummaryPrice();
+						}
+
+						// Reload stats and tables
+						loadDailyOrders();
+						loadPersonalDebt();
+						loadSpendingStats();
+						return true;
+					} else {
+						showToast(data.error || 'Đặt cơm thất bại.', 'error');
+						return false;
+					}
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+					return false;
+				}
+			}
 		</script>
+
+		<!-- FLOATING AI CHAT WIDGET -->
+		<div id="ai-chat-widget" class="ai-chat-widget">
+			<!-- Chat toggle bubble -->
+			<button id="ai-chat-toggle" class="ai-chat-toggle" onclick="toggleAIChat()" title="Trợ lý ảo ComTrua AI">
+				<lottie-player
+					src="/gemini.json"
+					background="transparent"
+					speed="1"
+					style="width: 52px; height: 52px"
+					loop
+					autoplay
+				></lottie-player>
+				<span class="ai-badge-ping"></span>
+			</button>
+
+			<!-- Chat window -->
+			<div id="ai-chat-window" class="ai-chat-window" style="display: none">
+				<div class="ai-chat-header">
+					<div class="ai-chat-header-avatar" style="border: none; background: transparent; width: 40px; height: 40px">
+						<lottie-player
+							src="/gemini.json"
+							background="transparent"
+							speed="1"
+							style="width: 40px; height: 40px"
+							loop
+							autoplay
+						></lottie-player>
+					</div>
+					<div class="ai-chat-header-info">
+						<h4>Trợ lý ComTrua AI</h4>
+						<span class="ai-status">● Đang trực tuyến</span>
+					</div>
+					<button class="ai-chat-close-btn" onclick="toggleAIChat()">✕</button>
+				</div>
+
+				<div id="ai-chat-messages" class="ai-chat-messages"></div>
+
+				<div class="ai-chat-quick-suggestions" id="ai-chat-suggestions">
+					<button class="ai-chip" onclick="sendQuickMessage('Hôm nay ăn gì ngon?')">🎲 Gợi ý ngẫu nhiên</button>
+					<button class="ai-chip" onclick="sendQuickMessage('Có món nào thanh đạm không?')">🥗 Món thanh đạm</button>
+					<button class="ai-chip" onclick="sendQuickMessage('Món nào nhiều thịt, đậm đà?')">🥩 Thèm thịt</button>
+				</div>
+
+				<form id="ai-chat-form" class="ai-chat-input-area" onsubmit="handleAIChatSubmit(event)">
+					<input type="text" id="ai-chat-input" placeholder="Hỏi AI về món ăn hôm nay..." autocomplete="off" />
+					<button type="submit" class="ai-chat-send-btn" title="Gửi">
+						<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+							<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+						</svg>
+					</button>
+				</form>
+			</div>
+		</div>
 	</body>
 </html>

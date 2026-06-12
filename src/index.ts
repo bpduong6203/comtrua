@@ -7,6 +7,10 @@ export interface Env {
 	DB: D1Database;
 	STORAGE: R2Bucket;
 	JWT_SECRET?: string;
+	AI: any;
+	GEMINI_API_KEY?: string;
+	CLOUDFLARE_ACCOUNT_ID?: string;
+	CLOUDFLARE_AI_GATEWAY?: string;
 }
 
 // Cookie helpers
@@ -88,9 +92,9 @@ async function signJwt(payload: any, secret: string): Promise<string> {
 	const header = { alg: 'HS256', typ: 'JWT' };
 	const encodedHeader = await base64urlEncode(JSON.stringify(header));
 	const encodedPayload = await base64urlEncode(JSON.stringify(payload));
-	
+
 	const tokenInput = `${encodedHeader}.${encodedPayload}`;
-	
+
 	const encoder = new TextEncoder();
 	const key = await crypto.subtle.importKey(
 		'raw',
@@ -99,13 +103,13 @@ async function signJwt(payload: any, secret: string): Promise<string> {
 		false,
 		['sign']
 	);
-	
+
 	const signature = await crypto.subtle.sign(
 		'HMAC',
 		key,
 		encoder.encode(tokenInput)
 	);
-	
+
 	const encodedSignature = await base64urlEncode(signature);
 	return `${tokenInput}.${encodedSignature}`;
 }
@@ -114,10 +118,10 @@ async function verifyJwt(token: string, secret: string): Promise<any | null> {
 	try {
 		const parts = token.split('.');
 		if (parts.length !== 3) return null;
-		
+
 		const [encodedHeader, encodedPayload, encodedSignature] = parts;
 		const tokenInput = `${encodedHeader}.${encodedPayload}`;
-		
+
 		const encoder = new TextEncoder();
 		const key = await crypto.subtle.importKey(
 			'raw',
@@ -126,7 +130,7 @@ async function verifyJwt(token: string, secret: string): Promise<any | null> {
 			false,
 			['verify']
 		);
-		
+
 		const signatureBytes = base64urlDecode(encodedSignature);
 		const isValid = await crypto.subtle.verify(
 			'HMAC',
@@ -134,16 +138,16 @@ async function verifyJwt(token: string, secret: string): Promise<any | null> {
 			signatureBytes,
 			encoder.encode(tokenInput)
 		);
-		
+
 		if (!isValid) return null;
-		
+
 		const payloadJson = new TextDecoder().decode(base64urlDecode(encodedPayload));
 		const payload = JSON.parse(payloadJson);
-		
+
 		if (payload.exp && Date.now() / 1000 > payload.exp) {
 			return null;
 		}
-		
+
 		return payload;
 	} catch (e) {
 		return null;
@@ -239,7 +243,7 @@ export default {
 				object.writeHttpMetadata(headers);
 				headers.set('etag', object.httpEtag);
 				headers.set('Cache-Control', 'public, max-age=31536000');
-				
+
 				const contentType = object.httpMetadata?.contentType || 'image/jpeg';
 				headers.set('Content-Type', contentType);
 
@@ -294,7 +298,7 @@ export default {
 
 					const extension = file.name.split('.').pop() || 'jpg';
 					const key = `avatars/user-${payload.id}-${Date.now()}.${extension}`;
-					
+
 					await env.STORAGE.put(key, await file.arrayBuffer(), {
 						httpMetadata: {
 							contentType: file.type
@@ -673,10 +677,10 @@ export default {
 			if (pathname === '/api/settings' && method === 'GET') {
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
 				const { results } = await env.DB.prepare('SELECT * FROM settings').all<{ key: string; value: string }>();
-				
-				const settingsObj: Record<string, string> = { 
-					order_deadline: '11:00', 
-					announcement: '' 
+
+				const settingsObj: Record<string, string> = {
+					order_deadline: '11:00',
+					announcement: ''
 				};
 				for (const row of results) {
 					settingsObj[row.key] = row.value;
@@ -856,32 +860,46 @@ export default {
 			// ==========================================
 
 			// Lấy thực đơn món thêm đang bán
-			// GET /api/toppings
+			// GET /api/toppings (hỗ trợ lọc theo ?shop_id=N)
 			if (pathname === '/api/toppings' && method === 'GET') {
-				const { results } = await env.DB.prepare('SELECT * FROM toppings WHERE active = 1 ORDER BY price ASC').all();
-				return jsonResponse(results);
+				const shopIdParam = url.searchParams.get('shop_id');
+				if (shopIdParam) {
+					const shopId = parseInt(shopIdParam);
+					const { results } = await env.DB.prepare(
+						'SELECT t.*, s.name as shop_name FROM toppings t LEFT JOIN shops s ON t.shop_id = s.id WHERE t.active = 1 AND t.shop_id = ? ORDER BY t.price ASC'
+					)
+						.bind(shopId)
+						.all();
+					return jsonResponse(results);
+				} else {
+					const { results } = await env.DB.prepare(
+						'SELECT t.*, s.name as shop_name FROM toppings t LEFT JOIN shops s ON t.shop_id = s.id WHERE t.active = 1 ORDER BY t.price ASC'
+					).all();
+					return jsonResponse(results);
+				}
 			}
 
-			// Thêm món thêm mới (hoặc cập nhật nếu trùng tên)
+			// Thêm món thêm mới (hoặc cập nhật nếu trùng tên cho cùng một quán)
 			// POST /api/toppings
 			if (pathname === '/api/toppings' && method === 'POST') {
-				const body = await request.json() as { name?: string; price?: number; caller_id?: number };
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number; caller_id?: number };
 				const name = body.name?.trim();
 				const price = Number(body.price);
+				const shopId = Number(body.shop_id);
 				const callerId = Number(body.caller_id);
 
 				if (callerId !== 1) {
 					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
 				}
 
-				if (!name || isNaN(price) || price < 0) {
-					return jsonResponse({ error: 'Tên món thêm và giá (lớn hơn hoặc bằng 0) không hợp lệ.' }, 400);
+				if (!name || isNaN(price) || price < 0 || isNaN(shopId)) {
+					return jsonResponse({ error: 'Tên món thêm, giá và cửa hàng không hợp lệ.' }, 400);
 				}
 
 				const result = await env.DB.prepare(
-					'INSERT INTO toppings (name, price) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET price = EXCLUDED.price, active = 1'
+					'INSERT INTO toppings (shop_id, name, price) VALUES (?, ?, ?) ON CONFLICT(shop_id, name) DO UPDATE SET price = EXCLUDED.price, active = 1'
 				)
-					.bind(name, price)
+					.bind(shopId, name, price)
 					.run();
 
 				if (!result.success) {
@@ -918,20 +936,21 @@ export default {
 			const toppingUpdateMatch = pathname.match(/^\/api\/toppings\/(\d+)$/);
 			if (toppingUpdateMatch && method === 'PATCH') {
 				const toppingId = parseInt(toppingUpdateMatch[1]);
-				const body = await request.json() as { name?: string; price?: number; caller_id?: number };
+				const body = await request.json() as { name?: string; price?: number; shop_id?: number; caller_id?: number };
 				const name = body.name?.trim();
 				const price = Number(body.price);
+				const shopId = Number(body.shop_id);
 				const callerId = Number(body.caller_id);
 
 				if (callerId !== 1) {
 					return jsonResponse({ error: 'Bạn không có quyền thực hiện thao tác này.' }, 403);
 				}
-				if (!name || isNaN(price) || price < 0) {
+				if (!name || isNaN(price) || price < 0 || isNaN(shopId)) {
 					return jsonResponse({ error: 'Thông tin món thêm không hợp lệ.' }, 400);
 				}
 
-				const result = await env.DB.prepare('UPDATE toppings SET name = ?, price = ? WHERE id = ?')
-					.bind(name, price, toppingId)
+				const result = await env.DB.prepare('UPDATE toppings SET name = ?, price = ?, shop_id = ? WHERE id = ?')
+					.bind(name, price, shopId, toppingId)
 					.run();
 
 				if (!result.success) {
@@ -986,7 +1005,7 @@ export default {
 				const userId = Number(body.user_id);
 				const dishId = Number(body.dish_id);
 				const dateParam = body.date?.trim() || getVNDateString();
-				const toppingIds = body.topping_ids || [];
+				const toppingIds = (body.topping_ids || []).map(Number);
 				const note = body.note?.trim() || null;
 
 				if (!userId || !dishId) {
@@ -1000,9 +1019,9 @@ export default {
 				}
 
 				// Lấy thông tin món ăn
-				const dish = await env.DB.prepare('SELECT name, price FROM dishes WHERE id = ? AND active = 1')
+				const dish = await env.DB.prepare('SELECT name, price, shop_id FROM dishes WHERE id = ? AND active = 1')
 					.bind(dishId)
-					.first<{ name: string; price: number }>();
+					.first<{ name: string; price: number; shop_id: number }>();
 
 				if (!dish) {
 					return jsonResponse({ error: 'Món ăn không tồn tại hoặc đã ngừng bán.' }, 404);
@@ -1014,9 +1033,9 @@ export default {
 				if (toppingIds.length > 0) {
 					const placeholders = toppingIds.map(() => '?').join(',');
 					const { results: toppings } = await env.DB.prepare(
-						`SELECT name, price FROM toppings WHERE id IN (${placeholders}) AND active = 1`
+						`SELECT name, price FROM toppings WHERE id IN (${placeholders}) AND active = 1 AND shop_id = ?`
 					)
-						.bind(...toppingIds)
+						.bind(...toppingIds, dish.shop_id)
 						.all<{ name: string; price: number }>();
 
 					if (toppings.length > 0) {
@@ -1119,6 +1138,213 @@ export default {
 				}
 
 				return jsonResponse({ message: 'Hủy đặt món thành công' });
+			}
+
+			// ==========================================
+			// 4. API AI TƯ VẤN (AI RECOMMENDATION)
+			// ==========================================
+			if (pathname === '/api/ai/recommend' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				const userId = payload.id;
+				const body = await request.json() as { messages?: { role: string; content: string }[], exclude_dish_ids?: number[] };
+				const clientMessages = body.messages || [];
+				const excludeDishIds = body.exclude_dish_ids || [];
+
+				// 1. Fetch user's default note and name
+				const user = await env.DB.prepare('SELECT name, default_note FROM users WHERE id = ?')
+					.bind(userId)
+					.first<{ name: string; default_note: string | null }>();
+
+				const userName = user?.name || 'Thành viên';
+				const defaultNote = user?.default_note || 'Không có';
+
+				// 2. Fetch user's order history
+				const history = await env.DB.prepare(
+					'SELECT dish_name, COUNT(*) as count FROM orders WHERE user_id = ? GROUP BY dish_name ORDER BY count DESC LIMIT 5'
+				)
+					.bind(userId)
+					.all<{ dish_name: string; count: number }>();
+
+				const historyStr = history.results.length > 0
+					? history.results.map(h => `${h.dish_name} (${h.count} lần)`).join(', ')
+					: 'Chưa có lịch sử đặt cơm';
+
+				// 3. Fetch active dishes
+				const dishes = await env.DB.prepare(
+					'SELECT d.id, d.name, d.price, d.shop_id, s.name as shop_name FROM dishes d JOIN shops s ON d.shop_id = s.id WHERE d.active = 1'
+				).all<{ id: number; name: string; price: number; shop_id: number; shop_name: string }>();
+
+				// Filter out excluded dishes if any (e.g. when user clicks "Suggest another dish")
+				const availableDishes = dishes.results.filter(d => !excludeDishIds.includes(d.id));
+
+				const dishesStr = availableDishes.length > 0
+					? availableDishes.map(d => `ID: ${d.id} - ${d.name} (${d.price} đ) thuộc quán [${d.shop_name}] (shop_id: ${d.shop_id})`).join('\n')
+					: 'Không có món ăn nào khả dụng hôm nay!';
+
+				// 4. Fetch active toppings
+				const toppings = await env.DB.prepare(
+					'SELECT id, name, price, shop_id FROM toppings WHERE active = 1'
+				).all<{ id: number; name: string; price: number; shop_id: number }>();
+
+				const toppingsStr = toppings.results.length > 0
+					? toppings.results.map(t => `Topping ID: ${t.id} - ${t.name} (+${t.price} đ) thuộc shop_id: ${t.shop_id}`).join('\n')
+					: 'Không có topping';
+
+				// 5. Construct system prompt for Gemma 4
+				const systemPrompt = `Bạn là Trợ lý AI tư vấn món ăn của ComTrua (một ứng dụng đặt cơm văn phòng nội bộ).
+Bạn đang trò chuyện với người dùng tên là: ${userName}.
+Ghi chú ăn uống mặc định của người dùng: ${defaultNote} (nếu có dị ứng hoặc không ăn hành, hãy chú ý tránh gợi ý món có thành phần đó).
+Lịch sử các món người dùng hay ăn gần đây: ${historyStr}.
+
+Thực đơn hôm nay gồm có các món ăn sau đây (chỉ được phép gợi ý các món trong danh sách này):
+${dishesStr}
+
+Danh sách topping đi kèm nếu người dùng muốn chọn thêm:
+${toppingsStr}
+
+Nhiệm vụ của bạn:
+1. Đọc tin nhắn hội thoại từ người dùng để hiểu yêu cầu của họ (họ thèm thịt, muốn ăn mì hay cơm, dị ứng gì, hoặc chỉ muốn bạn gợi ý ngẫu nhiên).
+2. Trả lời người dùng bằng giọng văn tiếng Việt thân thiện, tự nhiên, vui tươi, có chút dí dỏm.
+3. Nếu người dùng hỏi chuyện phiếm hoặc hỏi các câu hỏi không liên quan đến việc đặt món ăn, hãy trả lời bình thường và thiết lập trường "recommended_dish" là null.
+4. Nếu người dùng muốn gợi ý món hoặc đồng ý chọn món, hãy chọn RA DUY NHẤT 1 món phù hợp trong danh sách thực đơn hôm nay.
+   - NGUYÊN TẮC KHỚP TỪ KHÓA: Nếu người dùng hỏi món cụ thể (ví dụ: "mì", "nuôi", "cơm", "bò", "gà"), bạn BẮT BUỘC phải đối chiếu với thực đơn hôm nay:
+     + Nếu thực đơn hôm nay CÓ món chứa từ khóa đó: Gợi ý đúng món đó.
+     + Nếu thực đơn hôm nay KHÔNG CÓ món chứa từ khóa đó: Bạn phải thông báo lịch sự là hôm nay không có món này (ví dụ: "Hôm nay rất tiếc là quán không có món mì nào rồi bạn ơi..."), sau đó đề xuất một món khác đang thực sự CÓ SẴN trong thực đơn hôm nay. Khi đó, thông tin trong "recommended_dish" phải là món có sẵn được đề xuất thay thế đó, tuyệt đối không được điền món không tồn tại trong thực đơn hôm nay.
+   - NGUYÊN TẮC CHỌN TOPPING LOGIC: Gợi ý topping đi kèm phải hợp lý 100% với món ăn chính:
+     + Món ăn chính là MÌ (ví dụ: Mì Xào Bò) -> Chỉ được gợi ý topping có chữ "Mì" (ví dụ: Nhiều Mì) hoặc "Trứng ốp la". Tuyệt đối không chọn topping "Nhiều Nuôi" hay "Nhiều Cơm".
+     + Món ăn chính là NUÔI (ví dụ: Nuôi Xào Bò) -> Chỉ được gợi ý topping có chữ "Nuôi" (ví dụ: Nhiều Nuôi) hoặc "Trứng ốp la". Tuyệt đối không chọn topping "Nhiều Mì".
+     + Món ăn chính là CƠM -> Chỉ gợi ý topping có chữ "Cơm" (ví dụ: Nhiều Cơm, Cơm thêm) hoặc "Trứng ốp la".
+   - Chỉ được gợi ý các topping có cùng shop_id với shop_id của món ăn được chọn.
+   - NGUYÊN TẮC ĐỒNG NHẤT TUYỆT ĐỐI: Món ăn được giới thiệu trong nội dung chat (trường "message") và món ăn được điền vào JSON (trường "recommended_dish" bao gồm "dish_id" và "dish_name") BẮT BUỘC phải là CÙNG MỘT MÓN ĂN. Không được giới thiệu món Mì Xào Bò ở phần chat nhưng trong JSON lại trả về món Cơm Xào Bò. Nếu giới thiệu Mì Xào Bò, trường "recommended_dish" phải chứa đúng ID và thông tin của món Mì Xào Bò trong thực đơn.
+5. Cung cấp câu trả lời dưới định dạng JSON thuần túy như mô tả dưới đây (không viết bất cứ dòng chữ nào khác ngoài JSON):
+
+{
+  "message": "Nội dung câu trả lời thân thiện bằng tiếng Việt của bạn, giải thích lý do gợi ý hoặc đối thoại với người dùng.",
+  "recommended_dish": {
+    "dish_id": 1, // ID của món ăn được chọn từ thực đơn
+    "dish_name": "Tên món ăn",
+    "price": 35000, // Giá của món ăn
+    "shop_name": "Tên quán",
+    "topping_ids": [5] // Mảng ID các topping đi kèm gợi ý (ví dụ: [5] cho Trứng ốp la), để trống [] nếu không gợi ý topping nào.
+  },
+  "auto_submit": false // Điền true nếu trong tin nhắn mới nhất của người dùng có yêu cầu, mệnh lệnh rõ ràng bảo bạn hãy đặt món hoặc chốt món giùm họ (ví dụ: "đặt giùm tôi...", "chốt luôn món này...", "chốt đơn...", "đặt luôn đi..."). Nếu họ chỉ đang hỏi han, tham khảo ý kiến, hoặc chưa nói gì đến việc đặt, điền false.
+}
+
+Lưu ý: Nếu không có món ăn nào khả dụng, đặt "recommended_dish" là null. Trả về JSON hợp lệ, tuyệt đối không được bọc JSON trong markdown tag (ví dụ: không dùng \`\`\`json).`;
+
+				let text = '';
+				try {
+					if (env.GEMINI_API_KEY) {
+						console.log('Using Google AI Studio with Gemini API directly...');
+						const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`;
+						
+						const contents = clientMessages.map(msg => ({
+							role: msg.role === 'assistant' ? 'model' : 'user',
+							parts: [{ text: msg.content }]
+						}));
+
+						const reqBody = {
+							contents: contents,
+							systemInstruction: {
+								parts: [{ text: systemPrompt }]
+							},
+							generationConfig: {
+								responseMimeType: "application/json"
+							}
+						};
+
+						const response = await fetch(directUrl, {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify(reqBody)
+						});
+
+						if (!response.ok) {
+							const errText = await response.text();
+							throw new Error(`Google AI Studio Gemini request failed: ${response.status} ${errText}`);
+						}
+
+						const geminiResult = await response.json() as any;
+						text = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+					} else {
+						console.log('Falling back to local Cloudflare Workers AI gemma-3-12b-it...');
+						const messages = [
+							{ role: 'system', content: systemPrompt },
+							...clientMessages
+						];
+						const aiResult = await env.AI.run('@cf/google/gemma-3-12b-it', {
+							messages: messages
+						}) as any;
+
+						console.log('AI raw result:', typeof aiResult, JSON.stringify(aiResult));
+
+						if (typeof aiResult === 'string') {
+							text = aiResult;
+						} else if (aiResult && typeof aiResult === 'object') {
+							if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
+								text = aiResult.choices[0].message.content || '';
+							} else {
+								text = aiResult.response || aiResult.text || '';
+							}
+						}
+					}
+
+					// Attempt to extract JSON from the text response
+					let parsedResult: any = {
+						message: text,
+						recommended_dish: null
+					};
+
+					try {
+						// Clean up markdown block tags if LLM wraps it
+						let cleanText = text.trim();
+						if (cleanText.startsWith('```json')) {
+							cleanText = cleanText.substring(7);
+						} else if (cleanText.startsWith('```')) {
+							cleanText = cleanText.substring(3);
+						}
+						if (cleanText.endsWith('```')) {
+							cleanText = cleanText.substring(0, cleanText.length - 3);
+						}
+						cleanText = cleanText.trim();
+
+						parsedResult = JSON.parse(cleanText);
+					} catch (e) {
+						// If JSON parsing fails, regex extract or fallback
+						console.error('Failed to parse AI response as JSON:', text);
+						const jsonMatch = text.match(/\{[\s\S]*\}/);
+						if (jsonMatch) {
+							try {
+								parsedResult = JSON.parse(jsonMatch[0]);
+							} catch (e2) {
+								parsedResult = {
+									message: text,
+									recommended_dish: null
+								};
+							}
+						}
+					}
+
+					return jsonResponse({
+						message: parsedResult.message || text,
+						recommended_dish: parsedResult.recommended_dish || null
+					});
+				} catch (aiErr: any) {
+					console.error('AI run error:', aiErr);
+					return jsonResponse({ error: 'Lỗi khi kết nối đến dịch vụ AI: ' + aiErr.message }, 500);
+				}
 			}
 
 			// Đường dẫn không hợp lệ
