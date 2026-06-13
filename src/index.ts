@@ -1224,7 +1224,9 @@ Nhiệm vụ của bạn:
      + Món ăn chính là MÌ (ví dụ: Mì Xào Bò) -> Chỉ được gợi ý topping có chữ "Mì" (ví dụ: Nhiều Mì) hoặc "Trứng ốp la". Tuyệt đối không chọn topping "Nhiều Nuôi" hay "Nhiều Cơm".
      + Món ăn chính là NUÔI (ví dụ: Nuôi Xào Bò) -> Chỉ được gợi ý topping có chữ "Nuôi" (ví dụ: Nhiều Nuôi) hoặc "Trứng ốp la". Tuyệt đối không chọn topping "Nhiều Mì".
      + Món ăn chính là CƠM -> Chỉ gợi ý topping có chữ "Cơm" (ví dụ: Nhiều Cơm, Cơm thêm) hoặc "Trứng ốp la".
-   - Chỉ được gợi ý các topping có cùng shop_id với shop_id của món ăn được chọn.
+   - NGUYÊN TẮC KHỚP SHOP_ID CHO TOPPING (BẮT BUỘC): Mỗi topping đều thuộc về một "shop_id" cụ thể. Bạn CHỈ được phép gợi ý các topping có "shop_id" TRÙNG KHỚP HOÀN TOÀN với "shop_id" của món ăn chính được chọn.
+     + Ví dụ: Món ăn chính có shop_id là 2 (ví dụ: Thịt kho trứng cút) -> bạn chỉ được chọn topping có shop_id là 2. Tuyệt đối không chọn topping có shop_id là 1 (ví dụ như Trứng ốp la có shop_id là 1).
+     + Nếu trong thực đơn hôm nay, cửa hàng của món ăn chính không có topping nào hoạt động (không có topping nào có shop_id khớp), trường "topping_ids" bắt buộc phải là mảng rỗng []. Tuyệt đối không được "mượn tạm" topping của cửa hàng khác.
    - NGUYÊN TẮC ĐỒNG NHẤT TUYỆT ĐỐI: Món ăn được giới thiệu trong nội dung chat (trường "message") và món ăn được điền vào JSON (trường "recommended_dish" bao gồm "dish_id" và "dish_name") BẮT BUỘC phải là CÙNG MỘT MÓN ĂN. Không được giới thiệu món Mì Xào Bò ở phần chat nhưng trong JSON lại trả về món Cơm Xào Bò. Nếu giới thiệu Mì Xào Bò, trường "recommended_dish" phải chứa đúng ID và thông tin của món Mì Xào Bò trong thực đơn.
 5. Cung cấp câu trả lời dưới định dạng JSON thuần túy như mô tả dưới đây (không viết bất cứ dòng chữ nào khác ngoài JSON):
 
