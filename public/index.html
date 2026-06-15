@@ -508,24 +508,87 @@
 							<div style="margin-top: 1rem; text-align: center">
 								<button
 									type="button"
-									class="btn btn-secondary"
-									style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 8px"
-									id="toggle-debt-qr-btn"
-									onclick="toggleDebtQR()"
+									class="btn"
+									style="
+										width: auto;
+										padding: 0.6rem 1.5rem;
+										font-size: 0.95rem;
+										border-radius: 10px;
+										font-weight: 700;
+										background: linear-gradient(135deg, #e8613c, #cb4824);
+										color: white;
+										border: none;
+										box-shadow: 0 4px 12px rgba(232, 97, 60, 0.25);
+										cursor: pointer;
+										display: inline-flex;
+										align-items: center;
+										gap: 0.5rem;
+										transition: all 0.2s;
+									"
+									id="pay-debt-payos-btn"
+									onclick="payDebtWithPayOS()"
 								>
-									🔍 Xem Mã QR Thanh Toán Nợ
+									Thanh toán
 								</button>
 							</div>
-							<div id="debt-qr-box" class="qr-payment-box compact" style="display: none">
-								<div class="qr-title">📲 Quét VietQR Trả Tất Cả Nợ</div>
-								<img id="debt-qr-img" src="" alt="VietQR Thanh Toán Nợ" />
-								<div class="qr-payment-amount" id="debt-qr-amount">0 đ</div>
-								<div class="qr-payment-info">
-									Ngân hàng: <strong>Vietcombank (VCB)</strong><br />
-									Số tài khoản: <strong>1025267307</strong><br />
-									Nội dung: <strong id="debt-qr-desc">...</strong>
+							<!-- payOS QR Payment Box -->
+							<div
+								id="debt-qr-box"
+								class="qr-payment-box compact"
+								style="
+									display: none;
+									flex-direction: column;
+									align-items: center;
+									justify-content: center;
+									gap: 0.75rem;
+									border: 2px solid #e8613c;
+									padding: 1.25rem;
+									border-radius: 14px;
+									background: rgba(232, 97, 60, 0.02);
+									margin-top: 1rem;
+									position: relative;
+								"
+							>
+								<div class="qr-title" style="font-weight: 700; color: #e8613c; font-size: 1rem; text-align: center">
+									Quét Mã VietQR Để Thanh Toán
+								</div>
+								<img
+									id="debt-qr-img"
+									src=""
+									alt="payOS VietQR"
+									style="
+										max-width: 220px;
+										width: 100%;
+										height: auto;
+										aspect-ratio: 1 / 1;
+										border-radius: 8px;
+										box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+									"
+								/>
+								<div
+									class="qr-payment-amount"
+									id="debt-qr-amount"
+									style="font-size: 1.25rem; font-weight: 800; color: #2d9b4e; margin: 0.25rem 0"
+								>
+									0 đ
+								</div>
+								<div class="qr-payment-info" style="font-size: 0.85rem; color: var(--text-muted); text-align: center; line-height: 1.45">
+									Nội dung chuyển khoản:
+									<strong
+										id="debt-qr-desc"
+										style="color: var(--text-main); background: rgba(255, 255, 255, 0.05); padding: 0.1rem 0.4rem; border-radius: 4px"
+										>...</strong
+									><br />
+									<a
+										id="payos-checkout-link"
+										href="#"
+										target="_blank"
+										style="color: #e8613c; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 0.5rem"
+										>Hoặc click để mở trang thanh toán</a
+									>
 								</div>
 							</div>
+							<button id="toggle-debt-qr-btn" style="display: none !important"></button>
 						</div>
 
 						<!-- DATE SELECTION -->
@@ -583,15 +646,32 @@
 							></div>
 
 							<!-- Today's Order QR Box -->
-							<div id="today-order-qr-box" class="qr-payment-box" style="display: none">
-								<div class="qr-title">📲 Quét VietQR Thanh Toán Đơn Hôm Nay</div>
-								<img id="today-order-qr-img" src="" alt="VietQR Thanh Toán Đơn" />
-								<div class="qr-payment-amount" id="today-order-qr-amount">0 đ</div>
-								<div class="qr-payment-info">
-									Ngân hàng: <strong>Vietcombank (VCB)</strong><br />
-									Số tài khoản: <strong>1025267307</strong><br />
-									Nội dung: <strong id="today-order-qr-desc">...</strong>
+							<div
+								id="today-order-qr-box"
+								class="qr-payment-box"
+								style="
+									display: none;
+									padding: 1.25rem;
+									border-radius: 12px;
+									border: 1px dashed var(--color-pending);
+									background: rgba(212, 137, 11, 0.05);
+									text-align: center;
+									justify-content: center;
+									align-items: center;
+									flex-direction: column;
+									gap: 0.5rem;
+									margin-top: 1rem;
+								"
+							>
+								<span style="font-size: 1.5rem">📲</span>
+								<div style="font-weight: 700; color: var(--color-pending); font-size: 0.95rem">Đơn hàng chưa thanh toán</div>
+								<div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4">
+									Vui lòng cuộn xuống mục <strong>"Số tiền bạn chưa thanh toán"</strong> bên dưới để thực hiện thanh toán tự động.
 								</div>
+								<!-- Dummy variables to satisfy JS references -->
+								<img id="today-order-qr-img" style="display: none !important" />
+								<div id="today-order-qr-amount" style="display: none !important"></div>
+								<div id="today-order-qr-desc" style="display: none !important"></div>
 							</div>
 
 							<!-- Shop Selection Tabs -->
@@ -928,7 +1008,9 @@
 			let selectedToppingIds = [];
 			let currentAdminTab = 'dishes';
 			let todayQrState = 'default'; // 'default', 'ordered', 'hidden'
+			let payosPollInterval = null; // Manage payOS polling status
 			let orderDeadline = '11:00'; // Default daily deadline
+
 			let allExistingUsers = []; // Cached list of all active users for login autocomplete
 			let allUsersFullList = []; // Full list of all active users including admin
 
@@ -1252,6 +1334,22 @@
 
 				// Check stored user / session cookie
 				checkSession();
+
+				// Check payOS redirect parameters
+				const urlParams = new URLSearchParams(window.location.search);
+				const payosStatus = urlParams.get('status');
+				if (payosStatus) {
+					if (payosStatus === 'PAID') {
+						showToast('Thanh toán thành công qua payOS!');
+					} else if (payosStatus === 'CANCELLED') {
+						showToast('Thanh toán đã bị hủy.', 'error');
+					}
+					// Clear parameters from URL without reloading
+					const cleanUrl = new URL(window.location.href);
+					cleanUrl.searchParams.delete('status');
+					cleanUrl.searchParams.delete('orderCode');
+					window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search);
+				}
 
 				// Handle date picker changes
 				orderDatePicker.addEventListener('change', (e) => {
@@ -1713,6 +1811,10 @@
 			}
 
 			async function logout() {
+				if (payosPollInterval) {
+					clearInterval(payosPollInterval);
+					payosPollInterval = null;
+				}
 				try {
 					await fetch('/api/users/logout', { method: 'POST' });
 				} catch (err) {
@@ -2272,10 +2374,9 @@
 				// Render order items list
 				const deadlineStatus = getDeadlineStatus();
 				const isAdmin = currentUser && currentUser.id === 1;
-
 				orders.forEach((order) => {
 					const isMe = currentUser && order.user_id === currentUser.id;
-					const canToggle = currentUser && (isMe || currentUser.id === 1);
+					const canToggle = currentUser && currentUser.id === 1;
 					const item = document.createElement('div');
 					item.className = 'order-item';
 
@@ -2402,16 +2503,17 @@
 						personalDebtOrdersList.appendChild(item);
 					});
 
-					const cleanName = removeVietnameseTones(currentUser.name).replace(/\s+/g, '');
-					const description = `ComTrua ${cleanName} Tra`;
-					const encodedDesc = encodeURIComponent(description);
-					debtQrImg.src = `https://img.vietqr.io/image/VCB-1025267307-compact2.png?amount=${data.totalUnpaid}&addInfo=${encodedDesc}`;
-					debtQrAmount.textContent = formatCurrency(data.totalUnpaid);
-					debtQrDesc.textContent = description;
+					// Reset payOS QR box display state on load only if we are not actively polling
+					if (!payosPollInterval) {
+						debtQrBox.style.display = 'none';
+					}
 				} else {
 					personalDebtWidget.style.display = 'none';
 					debtQrBox.style.display = 'none';
-					toggleDebtQrBtn.textContent = '🔍 Xem Mã QR Thanh Toán Nợ';
+					if (payosPollInterval) {
+						clearInterval(payosPollInterval);
+						payosPollInterval = null;
+					}
 				}
 			}
 
@@ -2422,6 +2524,82 @@
 				} else {
 					debtQrBox.style.display = 'none';
 					toggleDebtQrBtn.textContent = '🔍 Xem Mã QR Thanh Toán Nợ';
+				}
+			}
+
+			async function payDebtWithPayOS() {
+				if (payosPollInterval) {
+					clearInterval(payosPollInterval);
+					payosPollInterval = null;
+				}
+
+				const payBtn = document.getElementById('pay-debt-payos-btn');
+				if (!payBtn) return;
+
+				const originalText = payBtn.innerHTML;
+				payBtn.disabled = true;
+				payBtn.innerHTML = '⌛ Đang tạo link thanh toán...';
+
+				try {
+					const resp = await fetch('/api/payment/create', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+					});
+
+					const data = await resp.json();
+
+					if (resp.ok && data.checkoutUrl && data.qrCode) {
+						showToast('Tạo mã QR thanh toán payOS thành công!');
+
+						// Update details in inline QR box
+						debtQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qrCode)}`;
+						debtQrAmount.textContent = formatCurrency(data.amount);
+						debtQrDesc.textContent = data.description;
+
+						const checkoutLink = document.getElementById('payos-checkout-link');
+						if (checkoutLink) {
+							checkoutLink.href = data.checkoutUrl;
+						}
+
+						// Show the QR box
+						debtQrBox.style.display = 'flex';
+
+						// Scroll to the QR box smoothly
+						debtQrBox.scrollIntoView({ behavior: 'smooth' });
+
+						// Start status polling
+						const orderCode = data.orderCode;
+						payosPollInterval = setInterval(async () => {
+							try {
+								const statusResp = await fetch(`/api/payment/status/${orderCode}`);
+								if (statusResp.ok) {
+									const statusData = await statusResp.json();
+									if (statusData.status === 'PAID') {
+										clearInterval(payosPollInterval);
+										payosPollInterval = null;
+										showToast('Thanh toán thành công qua payOS!');
+										debtQrBox.style.display = 'none';
+										// Refresh UI components
+										await Promise.all([loadDailyOrders(), loadPersonalDebt(), loadSpendingStats()]);
+									} else if (statusData.status === 'CANCELLED') {
+										clearInterval(payosPollInterval);
+										payosPollInterval = null;
+										showToast('Giao dịch thanh toán đã bị hủy.', 'warning');
+										debtQrBox.style.display = 'none';
+									}
+								}
+							} catch (pollErr) {
+								console.error('Lỗi khi kiểm tra trạng thái thanh toán:', pollErr);
+							}
+						}, 2000);
+					} else {
+						showToast(data.error || 'Lỗi khi tạo liên kết thanh toán.', 'error');
+					}
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				} finally {
+					payBtn.disabled = false;
+					payBtn.innerHTML = originalText;
 				}
 			}
 
@@ -3492,12 +3670,15 @@
 								if (myOrder && myOrder.dish_id === data.recommended_dish.dish_id) {
 									addChatMessage('assistant', `Món **${data.recommended_dish.dish_name}** này bạn đã đặt rồi mà nhỉ! 😉`);
 								} else {
-									addChatMessage('assistant', `Nhận lệnh! Mình đang tiến hành tự động đặt món **${data.recommended_dish.dish_name}** cho bạn luôn đây...`);
+									addChatMessage(
+										'assistant',
+										`Nhận lệnh! Mình đang tiến hành tự động đặt món **${data.recommended_dish.dish_name}** cho bạn luôn đây...`,
+									);
 									const success = await submitAIOrder(data.recommended_dish.dish_id, data.recommended_dish.topping_ids || []);
 									if (success) {
 										addChatMessage(
 											'assistant',
-											`Tuyệt vời! Mình đã tự động đặt thành công món **${data.recommended_dish.dish_name}** giúp bạn rồi nhé! 🥰`
+											`Tuyệt vời! Mình đã tự động đặt thành công món **${data.recommended_dish.dish_name}** giúp bạn rồi nhé! 🥰`,
 										);
 										// Find and update the button in the last card to avoid confusing status
 										const cards = document.querySelectorAll('.ai-dish-card');
@@ -3511,10 +3692,7 @@
 											}
 										}
 									} else {
-										addChatMessage(
-											'assistant',
-											`Hic, tự động đặt món thất bại rồi. Bạn nhấn nút đặt thủ công trên thẻ giúp mình nhé!`
-										);
+										addChatMessage('assistant', `Hic, tự động đặt món thất bại rồi. Bạn nhấn nút đặt thủ công trên thẻ giúp mình nhé!`);
 									}
 								}
 							}

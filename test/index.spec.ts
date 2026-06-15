@@ -59,6 +59,15 @@ async function setupDatabase() {
 			key TEXT PRIMARY KEY,
 			value TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS payments (
+			order_code INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			amount INTEGER NOT NULL,
+			status TEXT NOT NULL DEFAULT 'PENDING',
+			order_ids TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id)
+		)`,
 		`INSERT OR IGNORE INTO shops (id, name, active) VALUES (1, 'Quán Cơm Chiên', 1)`,
 		`INSERT OR IGNORE INTO dishes (id, shop_id, name, price, active) VALUES (1, 1, 'Cơm Đùi Gà', 35000, 1)`,
 		`INSERT OR IGNORE INTO toppings (id, shop_id, name, price, active) VALUES (5, 1, 'Trứng ốp la', 5000, 1)`
@@ -73,6 +82,7 @@ describe("ComTrua Backend Tests", () => {
 	beforeEach(async () => {
 		// Clean start for each test
 		await env.DB.exec(`
+			DROP TABLE IF EXISTS payments;
 			DROP TABLE IF EXISTS orders;
 			DROP TABLE IF EXISTS users;
 			DROP TABLE IF EXISTS dishes;
@@ -305,5 +315,104 @@ describe("ComTrua Backend Tests", () => {
 		const arrayBuf = await response.arrayBuffer();
 		expect(new Uint8Array(arrayBuf)[0]).toBe(137); // PNG header check
 	});
+
+	it("should verify webhook signature and mark orders as paid", async () => {
+		const crypto = require("node:crypto");
+		
+		// 1. Setup a user, order, and pending payment in D1
+		await env.DB.prepare("INSERT INTO users (id, name) VALUES (1, 'P.Dương')").run();
+		await env.DB.prepare("INSERT INTO orders (id, date, user_id, dish_id, dish_name, dish_price, paid) VALUES (101, '2026-06-13', 1, 1, 'Cơm Đùi Gà', 35000, 0)").run();
+		await env.DB.prepare("INSERT INTO payments (order_code, user_id, amount, status, order_ids) VALUES (100001, 1, 35000, 'PENDING', '101')").run();
+
+		// 2. Generate a valid webhook payload
+		const webhookData = {
+			orderCode: 100001,
+			amount: 35000,
+			description: "ComTruaPDuong",
+			accountNumber: "123456789",
+			reference: "FT12345",
+			transactionDateTime: "2026-06-13T14:00:00",
+			currency: "VND",
+			paymentLinkId: "link_123",
+			code: "00",
+			desc: "success"
+		};
+
+		// Sort keys alphabetically to construct signData
+		const sortedKeys = Object.keys(webhookData).sort();
+		const signData = sortedKeys
+			.map(key => `${key}=${(webhookData as any)[key]}`)
+			.join('&');
+
+		// Checksum key must match env.PAYOS_CHECKSUM_KEY or fallback
+		const checksumKey = "ad30870d8b98cf51b5c031ad51d2ed6e0c2e8a89ca57542c87e9f1ad61669c35";
+		const signature = crypto
+			.createHmac('sha256', checksumKey)
+			.update(signData)
+			.digest('hex');
+
+		const webhookPayload = {
+			code: "00",
+			desc: "success",
+			data: webhookData,
+			signature
+		};
+
+		// 3. Send the webhook request
+		const request = new Request("http://example.com/api/payment/webhook", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(webhookPayload)
+		});
+
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, {
+			...env,
+			PAYOS_CHECKSUM_KEY: checksumKey
+		}, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const resData = await response.json() as any;
+		expect(resData.success).toBe(true);
+
+		// 4. Verify D1 database updates
+		const paymentRow = await env.DB.prepare("SELECT status FROM payments WHERE order_code = 100001").first<any>();
+		expect(paymentRow.status).toBe("PAID");
+
+		const orderRow = await env.DB.prepare("SELECT paid FROM orders WHERE id = 101").first<any>();
+		expect(orderRow.paid).toBe(1);
+	});
+
+	it("should return the payment status for a given orderCode", async () => {
+		// 1. Setup a user, login to get session cookie, and insert a payment transaction
+		const loginReq = new Request("http://example.com/api/users/login", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ name: "Nguyễn Văn A", register: true, password: "123456" }),
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(loginReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const sessionCookie = response.headers.get("Set-Cookie");
+
+		await env.DB.prepare("INSERT INTO payments (order_code, user_id, amount, status, order_ids) VALUES (200001, 1, 40000, 'PENDING', '102')").run();
+
+		// 2. Fetch the payment status
+		const statusReq = new Request("http://example.com/api/payment/status/200001", {
+			method: "GET",
+			headers: {
+				"Cookie": sessionCookie || "",
+			}
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(statusReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+
+		expect(response.status).toBe(200);
+		const statusData = await response.json() as any;
+		expect(statusData.status).toBe("PENDING");
+	});
 });
+
 

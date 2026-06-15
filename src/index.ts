@@ -1,3 +1,5 @@
+import nodeCrypto from 'node:crypto';
+
 /**
  * Backend API for ComTrua (Lunch Ordering Project)
  * Built on Cloudflare Workers and D1 Database
@@ -11,6 +13,9 @@ export interface Env {
 	GEMINI_API_KEY?: string;
 	CLOUDFLARE_ACCOUNT_ID?: string;
 	CLOUDFLARE_AI_GATEWAY?: string;
+	PAYOS_CLIENT_ID?: string;
+	PAYOS_API_KEY?: string;
+	PAYOS_CHECKSUM_KEY?: string;
 }
 
 // Cookie helpers
@@ -208,6 +213,42 @@ async function isPastDeadline(db: D1Database, orderDate: string): Promise<{ bloc
 	}
 
 	return { blocked: false, deadline };
+}
+
+// payOS Payment Request signature generator
+function generatePaymentRequestSignature(data: { amount: number; cancelUrl: string; description: string; orderCode: number; returnUrl: string }, checksumKey: string): string {
+	const signData = `amount=${data.amount}&cancelUrl=${data.cancelUrl}&description=${data.description}&orderCode=${data.orderCode}&returnUrl=${data.returnUrl}`;
+	return nodeCrypto
+		.createHmac('sha256', checksumKey)
+		.update(signData)
+		.digest('hex');
+}
+
+// payOS Webhook signature verification helper
+function verifyWebhookSignature(body: { data: any; signature: string }, checksumKey: string): boolean {
+	const data = body.data;
+	const signature = body.signature;
+	if (!data || !signature) return false;
+
+	// Sort keys alphabetically
+	const sortedKeys = Object.keys(data).sort();
+	const signData = sortedKeys
+		.map(key => `${key}=${data[key]}`)
+		.join('&');
+
+	const expectedSignature = nodeCrypto
+		.createHmac('sha256', checksumKey)
+		.update(signData)
+		.digest('hex');
+
+	try {
+		return nodeCrypto.timingSafeEqual(
+			Buffer.from(expectedSignature, 'utf8'),
+			Buffer.from(signature, 'utf8')
+		);
+	} catch (err) {
+		return false;
+	}
 }
 
 export default {
@@ -515,6 +556,60 @@ export default {
 			const userUnpaidMatch = pathname.match(/^\/api\/users\/(\d+)\/unpaid$/);
 			if (userUnpaidMatch && method === 'GET') {
 				const userId = parseInt(userUnpaidMatch[1]);
+
+				// Tự động đối soát và tự sửa (self-heal) các giao dịch PENDING cũ của user này
+				const clientId = env.PAYOS_CLIENT_ID;
+				const apiKey = env.PAYOS_API_KEY;
+				if (clientId && apiKey) {
+					try {
+						const { results: pendingPayments } = await env.DB.prepare(
+							"SELECT order_code, order_ids FROM payments WHERE user_id = ? AND status = 'PENDING'"
+						)
+							.bind(userId)
+							.all<{ order_code: number; order_ids: string }>();
+
+						for (const payment of pendingPayments) {
+							const payosResp = await fetch(`https://api-merchant.payos.vn/v2/payment-requests/${payment.order_code}`, {
+								method: 'GET',
+								headers: {
+									'x-client-id': clientId,
+									'x-api-key': apiKey
+								}
+							});
+							if (payosResp.ok) {
+								const payosResult = await payosResp.json() as any;
+								if (payosResult.code === '00' && payosResult.data) {
+									const payosStatus = payosResult.data.status;
+									if (payosStatus === 'PAID') {
+										// Cập nhật bảng payments
+										await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
+											.bind('PAID', payment.order_code)
+											.run();
+
+										// Cập nhật các đơn hàng liên quan
+										if (payment.order_ids) {
+											const orderIds = payment.order_ids.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
+											if (orderIds.length > 0) {
+												const placeholders = orderIds.map(() => '?').join(',');
+												await env.DB.prepare(`UPDATE orders SET paid = 1 WHERE id IN (${placeholders})`)
+													.bind(...orderIds)
+													.run();
+											}
+										}
+										console.log(`Self-healed PENDING payment ${payment.order_code} to PAID during unpaid check for user ${userId}`);
+									} else if (payosStatus === 'CANCELLED') {
+										await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
+											.bind('CANCELLED', payment.order_code)
+											.run();
+										console.log(`Self-healed PENDING payment ${payment.order_code} to CANCELLED during unpaid check for user ${userId}`);
+									}
+								}
+							}
+						}
+					} catch (err) {
+						console.error('Error during self-healing in user unpaid check:', err);
+					}
+				}
 
 				// Tính tổng số tiền chưa thanh toán
 				const totalResult = await env.DB.prepare(
@@ -1091,9 +1186,9 @@ export default {
 					return jsonResponse({ error: 'Không tìm thấy đơn hàng tương ứng.' }, 404);
 				}
 
-				// Kiểm tra phân quyền: Chỉ ID 1 (P.Dương) được sửa cho người khác. Người khác chỉ được tự sửa cho chính mình.
-				if (callerId !== 1 && callerId !== order.user_id) {
-					return jsonResponse({ error: 'Bạn không có quyền cập nhật trạng thái thanh toán cho đơn hàng này.' }, 403);
+				// Kiểm tra phân quyền: Chỉ ID 1 (P.Dương) được thay đổi thủ công trạng thái thanh toán.
+				if (callerId !== 1) {
+					return jsonResponse({ error: 'Bạn không có quyền cập nhật thủ công trạng thái thanh toán cho đơn hàng này. Vui lòng thanh toán qua payOS.' }, 403);
 				}
 
 				const result = await env.DB.prepare('UPDATE orders SET paid = ? WHERE id = ?')
@@ -1246,60 +1341,24 @@ Lưu ý: Nếu không có món ăn nào khả dụng, đặt "recommended_dish" 
 
 				let text = '';
 				try {
-					if (env.GEMINI_API_KEY) {
-						console.log('Using Google AI Studio with Gemini API directly...');
-						const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`;
-						
-						const contents = clientMessages.map(msg => ({
-							role: msg.role === 'assistant' ? 'model' : 'user',
-							parts: [{ text: msg.content }]
-						}));
+					console.log('Using local Cloudflare Workers AI gemma-3-12b-it...');
+					const messages = [
+						{ role: 'system', content: systemPrompt },
+						...clientMessages
+					];
+					const aiResult = await env.AI.run('@cf/google/gemma-3-12b-it', {
+						messages: messages
+					}) as any;
 
-						const reqBody = {
-							contents: contents,
-							systemInstruction: {
-								parts: [{ text: systemPrompt }]
-							},
-							generationConfig: {
-								responseMimeType: "application/json"
-							}
-						};
+					console.log('AI raw result:', typeof aiResult, JSON.stringify(aiResult));
 
-						const response = await fetch(directUrl, {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json'
-							},
-							body: JSON.stringify(reqBody)
-						});
-
-						if (!response.ok) {
-							const errText = await response.text();
-							throw new Error(`Google AI Studio Gemini request failed: ${response.status} ${errText}`);
-						}
-
-						const geminiResult = await response.json() as any;
-						text = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
-					} else {
-						console.log('Falling back to local Cloudflare Workers AI gemma-3-12b-it...');
-						const messages = [
-							{ role: 'system', content: systemPrompt },
-							...clientMessages
-						];
-						const aiResult = await env.AI.run('@cf/google/gemma-3-12b-it', {
-							messages: messages
-						}) as any;
-
-						console.log('AI raw result:', typeof aiResult, JSON.stringify(aiResult));
-
-						if (typeof aiResult === 'string') {
-							text = aiResult;
-						} else if (aiResult && typeof aiResult === 'object') {
-							if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
-								text = aiResult.choices[0].message.content || '';
-							} else {
-								text = aiResult.response || aiResult.text || '';
-							}
+					if (typeof aiResult === 'string') {
+						text = aiResult;
+					} else if (aiResult && typeof aiResult === 'object') {
+						if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
+							text = aiResult.choices[0].message.content || '';
+						} else {
+							text = aiResult.response || aiResult.text || '';
 						}
 					}
 
@@ -1346,6 +1405,281 @@ Lưu ý: Nếu không có món ăn nào khả dụng, đặt "recommended_dish" 
 				} catch (aiErr: any) {
 					console.error('AI run error:', aiErr);
 					return jsonResponse({ error: 'Lỗi khi kết nối đến dịch vụ AI: ' + aiErr.message }, 500);
+				}
+			}
+
+			// ==========================================
+			// 5. API THANH TOÁN ONLINE (PAYOS)
+			// ==========================================
+
+			// POST /api/payment/create
+			if (pathname === '/api/payment/create' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				const userId = payload.id;
+				const clientId = env.PAYOS_CLIENT_ID;
+				const apiKey = env.PAYOS_API_KEY;
+				const checksumKey = env.PAYOS_CHECKSUM_KEY;
+
+				if (!clientId || !apiKey || !checksumKey) {
+					return jsonResponse({ error: 'Hệ thống chưa cấu hình cổng thanh toán payOS.' }, 500);
+				}
+
+				// Lấy danh sách các đơn hàng chưa thanh toán của người dùng này
+				const { results: unpaidOrders } = await env.DB.prepare(
+					'SELECT id, dish_price FROM orders WHERE user_id = ? AND paid = 0'
+				)
+					.bind(userId)
+					.all<{ id: number; dish_price: number }>();
+
+				if (unpaidOrders.length === 0) {
+					return jsonResponse({ error: 'Bạn không có khoản nợ cơm nào chưa thanh toán.' }, 400);
+				}
+
+				const totalAmount = unpaidOrders.reduce((sum, order) => sum + order.dish_price, 0);
+				const orderIdsStr = unpaidOrders.map(order => order.id).join(',');
+
+				// Tạo một giao dịch thanh toán PENDING trong database
+				const insertResult = await env.DB.prepare(
+					'INSERT INTO payments (user_id, amount, status, order_ids) VALUES (?, ?, ?, ?)'
+				)
+					.bind(userId, totalAmount, 'PENDING', orderIdsStr)
+					.run();
+
+				if (!insertResult.success) {
+					return jsonResponse({ error: 'Không thể khởi tạo giao dịch thanh toán.' }, 500);
+				}
+
+				// Lấy order_code tự động sinh ra
+				const orderCodeResult = await env.DB.prepare('SELECT last_insert_rowid() as id').first<{ id: number }>();
+				const orderCode = orderCodeResult?.id;
+
+				if (!orderCode) {
+					return jsonResponse({ error: 'Không thể khởi tạo mã đơn hàng.' }, 500);
+				}
+
+				const origin = url.origin;
+				const cancelUrl = `${origin}/?status=CANCELLED&orderCode=${orderCode}`;
+				const returnUrl = `${origin}/?status=PAID&orderCode=${orderCode}`;
+				
+				// Rút gọn tên không dấu
+				const cleanName = (userName: string) => {
+					let str = userName || 'Member';
+					str = str.replace(/A|À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, 'A');
+					str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
+					str = str.replace(/E|È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, 'E');
+					str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+					str = str.replace(/I|Ì|Í|Ị|Ỉ|Ĩ/g, 'I');
+					str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
+					str = str.replace(/O|Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, 'O');
+					str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
+					str = str.replace(/U|Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, 'U');
+					str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
+					str = str.replace(/Y|Ỳ|Ý|Y|Ỷ|Ỹ/g, 'Y');
+					str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
+					str = str.replace(/D|Đ/g, 'D');
+					str = str.replace(/đ/g, 'd');
+					str = str.replace(/[^A-Za-z0-9]/g, '');
+					return str;
+				};
+
+				// Lấy thông tin user để ghi description
+				const userResult = await env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(userId).first<{ name: string }>();
+				const nameClean = cleanName(userResult?.name || '').substring(0, 15);
+				const description = `ComTrua${nameClean}`.substring(0, 25);
+
+				const payosData = {
+					orderCode,
+					amount: totalAmount,
+					description,
+					cancelUrl,
+					returnUrl
+				};
+
+				const signature = generatePaymentRequestSignature(payosData, checksumKey);
+
+				// Gửi yêu cầu sang payOS
+				const payosResponse = await fetch('https://api-merchant.payos.vn/v2/payment-requests', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'x-client-id': clientId,
+						'x-api-key': apiKey
+					},
+					body: JSON.stringify({
+						...payosData,
+						signature
+					})
+				});
+
+				const payosResult = await payosResponse.json() as any;
+
+				if (!payosResponse.ok || payosResult.code !== '00') {
+					console.error('payOS Error:', payosResult);
+					return jsonResponse({ error: payosResult.desc || 'Lỗi khi gọi API payOS.' }, 500);
+				}
+
+				return jsonResponse({
+					checkoutUrl: payosResult.data.checkoutUrl,
+					qrCode: payosResult.data.qrCode,
+					amount: totalAmount,
+					description,
+					orderCode
+				});
+			}
+
+			// GET /api/payment/status/:orderCode
+			const paymentStatusMatch = pathname.match(/^\/api\/payment\/status\/(\d+)$/);
+			if (paymentStatusMatch && method === 'GET') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				const orderCode = parseInt(paymentStatusMatch[1]);
+				const payment = await env.DB.prepare('SELECT * FROM payments WHERE order_code = ?')
+					.bind(orderCode)
+					.first<{ order_code: number; user_id: number; amount: number; status: string; order_ids: string }>();
+
+				if (!payment) {
+					return jsonResponse({ error: 'Không tìm thấy giao dịch.' }, 404);
+				}
+
+				// Nếu trạng thái trong DB là PENDING, gọi API payOS đối soát dự phòng (self-heal)
+				if (payment.status === 'PENDING') {
+					const clientId = env.PAYOS_CLIENT_ID;
+					const apiKey = env.PAYOS_API_KEY;
+					if (clientId && apiKey) {
+						try {
+							const payosResp = await fetch(`https://api-merchant.payos.vn/v2/payment-requests/${orderCode}`, {
+								method: 'GET',
+								headers: {
+									'x-client-id': clientId,
+									'x-api-key': apiKey
+								}
+							});
+							if (payosResp.ok) {
+								const payosResult = await payosResp.json() as any;
+								if (payosResult.code === '00' && payosResult.data) {
+									const payosStatus = payosResult.data.status; // 'PAID', 'PENDING', 'CANCELLED'
+									if (payosStatus === 'PAID') {
+										await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
+											.bind('PAID', orderCode)
+											.run();
+
+										if (payment.order_ids) {
+											const orderIds = payment.order_ids.split(',').map(Number).filter(id => !isNaN(id) && id > 0);
+											if (orderIds.length > 0) {
+												const placeholders = orderIds.map(() => '?').join(',');
+												await env.DB.prepare(`UPDATE orders SET paid = 1 WHERE id IN (${placeholders})`)
+													.bind(...orderIds)
+													.run();
+											}
+										}
+										console.log(`Self-healed payment status for orderCode ${orderCode} to PAID via payOS API.`);
+										return jsonResponse({ status: 'PAID' });
+									} else if (payosStatus === 'CANCELLED') {
+										await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
+											.bind('CANCELLED', orderCode)
+											.run();
+										console.log(`Self-healed payment status for orderCode ${orderCode} to CANCELLED via payOS API.`);
+										return jsonResponse({ status: 'CANCELLED' });
+									}
+								}
+							}
+						} catch (err) {
+							console.error(`Error querying payOS status for orderCode ${orderCode}:`, err);
+						}
+					}
+				}
+
+				return jsonResponse({ status: payment.status });
+			}
+
+
+			// POST /api/payment/webhook
+			// GET or POST /api/payment/webhook
+			if (pathname === '/api/payment/webhook') {
+				if (method === 'POST') {
+					const checksumKey = env.PAYOS_CHECKSUM_KEY;
+					if (!checksumKey) {
+						return jsonResponse({ error: 'Cổng thanh toán chưa cấu hình Checksum Key.' }, 500);
+					}
+
+					let body: any;
+					try {
+						body = await request.json();
+					} catch (err) {
+						console.log('Webhook received empty or invalid JSON body');
+						// Trả về 200 OK đối với các yêu cầu kiểm tra kết nối từ payOS khi body trống
+						return jsonResponse({ success: true, message: 'Webhook is active but payload is empty.' });
+					}
+
+					console.log('Received payOS Webhook Payload:', JSON.stringify(body));
+
+					// payOS test ping check (họ gửi thành công và message Ok trực tiếp trong body không có data)
+					if (body && body.success === true && body.message === 'Ok' && !body.data) {
+						console.log('Received payOS connection test ping');
+						return jsonResponse({ success: true });
+					}
+
+					const isValid = verifyWebhookSignature(body, checksumKey);
+					if (!isValid) {
+						console.error('Invalid payOS Webhook Signature');
+						return jsonResponse({ error: 'Chữ ký không hợp lệ.' }, 400);
+					}
+
+					const txData = body.data;
+					// Kiểm tra mã kết quả giao dịch
+					if (body.code === '00' && txData) {
+						const orderCode = txData.orderCode;
+
+						// Lấy giao dịch trong DB
+						const payment = await env.DB.prepare('SELECT * FROM payments WHERE order_code = ? AND status = ?')
+							.bind(orderCode, 'PENDING')
+							.first<{ order_code: number; order_ids: string }>();
+
+						if (payment) {
+							// Bắt đầu cập nhật trạng thái đã thanh toán
+							const orderIds = payment.order_ids.split(',').map(Number);
+							
+							// Cập nhật bảng payments
+							await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
+								.bind('PAID', orderCode)
+								.run();
+
+							// Cập nhật các đơn hàng liên quan trong bảng orders
+							if (orderIds.length > 0) {
+								const placeholders = orderIds.map(() => '?').join(',');
+								await env.DB.prepare(`UPDATE orders SET paid = 1 WHERE id IN (${placeholders})`)
+									.bind(...orderIds)
+									.run();
+							}
+
+							console.log(`Successfully updated payment for orderCode: ${orderCode}, marked orders: ${payment.order_ids} as PAID`);
+						} else {
+							console.log(`Payment already processed or not found for orderCode: ${orderCode}`);
+						}
+					}
+
+					return jsonResponse({ success: true });
+				} else {
+					return jsonResponse({ success: true, message: 'Cổng thanh toán payOS webhook đang hoạt động.' });
 				}
 			}
 
