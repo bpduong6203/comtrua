@@ -2417,10 +2417,35 @@
                             </div>
                         </div>
                         <div class="order-actions" style="flex-shrink: 0;">
-                            <label class="switch">
-                                <input type="checkbox" ${order.paid ? 'checked' : ''} ${canToggle ? '' : 'disabled'} onchange="toggleOrderPaid(${order.id}, this.checked)">
-                                <span class="slider"><span class="slider-text"></span></span>
-                            </label>
+                            ${
+															isAdmin
+																? `
+                                <label class="switch">
+                                    <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="toggleOrderPaid(${order.id}, this.checked)">
+                                    <span class="slider"><span class="slider-text"></span></span>
+                                </label>
+                            `
+																: `
+                                <span class="payment-status-badge ${order.paid ? 'paid' : 'unpaid'}" style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 0.72rem;
+                                    font-weight: 800;
+                                    padding: 0.35rem 0.75rem;
+                                    border-radius: 50px;
+                                    user-select: none;
+                                    min-width: 80px;
+                                    text-align: center;
+                                    border: 1.5px solid;
+                                    background-color: ${order.paid ? 'var(--color-success-bg)' : 'var(--color-danger-bg)'};
+                                    color: ${order.paid ? 'var(--color-success)' : 'var(--color-danger)'};
+                                    border-color: ${order.paid ? 'rgba(45, 155, 78, 0.25)' : 'rgba(214, 48, 49, 0.25)'};
+                                ">
+                                    ${order.paid ? 'Đã Trả' : 'Chưa Trả'}
+                                </span>
+                            `
+														}
                             ${
 															showDeleteBtn
 																? `
