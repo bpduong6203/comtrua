@@ -6,6 +6,18 @@
 		<title>ComTrua - Mebi Cơm</title>
 		<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 		<link rel="stylesheet" href="style.css" />
+		<link rel="stylesheet" href="theme-liquid-glass.css" />
+		<link rel="stylesheet" href="theme-midnight-aurora.css" />
+		<link rel="stylesheet" href="theme-sweet-pink.css" />
+		<script>
+			// FOUC Prevention: apply saved theme BEFORE first paint
+			(function () {
+				var t = localStorage.getItem('comtrua-theme');
+				if (t && t !== 'warm-light') {
+					document.documentElement.setAttribute('data-theme', t);
+				}
+			})();
+		</script>
 		<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 	</head>
 
@@ -467,6 +479,24 @@
 									<div class="dropdown-user-details">
 										<span class="dropdown-user-name" id="dropdown-profile-name">...</span>
 										<span class="dropdown-user-role" id="dropdown-profile-role">Thành viên</span>
+									</div>
+								</div>
+								<div class="dropdown-divider"></div>
+								<div class="theme-switcher-section">
+									<span class="theme-switcher-label">🎨 Giao diện</span>
+									<div class="theme-switcher-options">
+										<button class="theme-option-btn active" data-theme-value="warm-light" onclick="setTheme('warm-light')">
+											<span class="theme-tooltip">Warm Light</span>
+										</button>
+										<button class="theme-option-btn" data-theme-value="liquid-glass" onclick="setTheme('liquid-glass')">
+											<span class="theme-tooltip">Liquid Glass</span>
+										</button>
+										<button class="theme-option-btn" data-theme-value="midnight-aurora" onclick="setTheme('midnight-aurora')">
+											<span class="theme-tooltip">Midnight Aurora</span>
+										</button>
+										<button class="theme-option-btn" data-theme-value="sweet-pink" onclick="setTheme('sweet-pink')">
+											<span class="theme-tooltip">Sweet Pink</span>
+										</button>
 									</div>
 								</div>
 								<div class="dropdown-divider"></div>
@@ -3487,6 +3517,39 @@
 				}
 			});
 
+			/* ============================================
+			   THEME MANAGEMENT
+			   ============================================ */
+			function setTheme(themeName) {
+				if (themeName === 'warm-light') {
+					document.documentElement.removeAttribute('data-theme');
+				} else {
+					document.documentElement.setAttribute('data-theme', themeName);
+				}
+				localStorage.setItem('comtrua-theme', themeName);
+				updateThemeButtons(themeName);
+			}
+
+			function loadTheme() {
+				const saved = localStorage.getItem('comtrua-theme') || 'warm-light';
+				if (saved !== 'warm-light') {
+					document.documentElement.setAttribute('data-theme', saved);
+				}
+				updateThemeButtons(saved);
+			}
+
+			function updateThemeButtons(activeTheme) {
+				document.querySelectorAll('.theme-option-btn').forEach((btn) => {
+					if (btn.getAttribute('data-theme-value') === activeTheme) {
+						btn.classList.add('active');
+					} else {
+						btn.classList.remove('active');
+					}
+				});
+			}
+
+			// Initialize theme on DOM ready
+			loadTheme();
 		</script>
 	</body>
 </html>
