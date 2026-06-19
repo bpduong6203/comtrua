@@ -10,15 +10,31 @@
 		<link rel="stylesheet" href="theme-midnight-aurora.css" />
 		<link rel="stylesheet" href="theme-sweet-pink.css" />
 		<script>
-			// FOUC Prevention: apply saved theme BEFORE first paint
-			(function () {
+			// Set theme and 3D mode early to avoid FOUC
+			(() => {
 				var t = localStorage.getItem('comtrua-theme');
 				if (t && t !== 'warm-light') {
 					document.documentElement.setAttribute('data-theme', t);
 				}
+				var fx3d = localStorage.getItem('comtrua-3d-effects');
+				if (fx3d === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+					document.documentElement.setAttribute('data-no-3d', 'true');
+				}
 			})();
 		</script>
 		<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+		<!-- Three.js 3D Engine with CDN Fallback -->
+		<script src="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.min.js"></script>
+		<script>
+			if (typeof THREE === 'undefined') {
+				console.warn('Three.js failed to load from jsdelivr. Trying unpkg...');
+				var fallbackScript = document.createElement('script');
+				fallbackScript.src = "https://unpkg.com/three@0.170.0/build/three.min.js";
+				document.head.appendChild(fallbackScript);
+			}
+		</script>
+		<script src="three-scene.js"></script>
+		<script src="three-particles.js"></script>
 	</head>
 
 	<body>
@@ -505,6 +521,17 @@
 											<span class="theme-tooltip">Sweet Pink</span>
 										</button>
 									</div>
+								</div>
+								<div class="dropdown-divider"></div>
+								<div class="fx-toggle-section">
+									<button
+										class="dropdown-item-btn"
+										id="toggle-3d-btn"
+										onclick="toggle3DEffects()"
+									>
+										<span class="icon">🎮</span>
+										<span id="toggle-3d-label">Hiệu ứng 3D: Bật</span>
+									</button>
 								</div>
 								<div class="dropdown-divider"></div>
 								<button
@@ -1403,6 +1430,7 @@
 				if (payosStatus) {
 					if (payosStatus === 'PAID') {
 						showToast('Thanh toán thành công qua payOS!');
+						if (typeof ComTruaFX !== 'undefined') ComTruaFX.coinRain();
 					} else if (payosStatus === 'CANCELLED') {
 						showToast('Thanh toán đã bị hủy.', 'error');
 					}
@@ -2665,6 +2693,7 @@
 										clearInterval(payosPollInterval);
 										payosPollInterval = null;
 										showToast('Thanh toán thành công qua payOS!');
+										if (typeof ComTruaFX !== 'undefined') ComTruaFX.coinRain();
 										debtQrBox.style.display = 'none';
 										// Refresh UI components
 										await Promise.all([loadDailyOrders(), loadPersonalDebt(), loadSpendingStats()]);
@@ -2803,6 +2832,7 @@
 
 					if (resp.ok) {
 						showToast('Ghi nhận đặt cơm thành công!');
+						if (typeof ComTruaFX !== 'undefined') ComTruaFX.confetti();
 						selectedToppingIds = [];
 						loadDailyOrders();
 						loadPersonalDebt();
@@ -3573,6 +3603,8 @@
 				}
 				localStorage.setItem('comtrua-theme', themeName);
 				updateThemeButtons(themeName);
+				// Sync 3D scene colors with theme
+				if (typeof ComTrua3D !== 'undefined') ComTrua3D.setTheme(themeName);
 			}
 
 			function loadTheme() {
@@ -3595,6 +3627,46 @@
 
 			// Initialize theme on DOM ready
 			loadTheme();
+
+			// ============================================
+			// THREE.JS 3D EFFECTS MANAGEMENT
+			// ============================================
+			function toggle3DEffects() {
+				if (typeof ComTrua3D === 'undefined') return;
+				const isOn = ComTrua3D.toggle();
+				const label = document.getElementById('toggle-3d-label');
+				if (label) {
+					label.textContent = isOn ? 'Hiệu ứng 3D: Bật' : 'Hiệu ứng 3D: Tắt';
+				}
+				if (isOn) {
+					document.documentElement.removeAttribute('data-no-3d');
+				} else {
+					document.documentElement.setAttribute('data-no-3d', 'true');
+				}
+			}
+
+			function update3DToggleUI() {
+				const label = document.getElementById('toggle-3d-label');
+				if (label && typeof ComTrua3D !== 'undefined') {
+					const isEnabled = ComTrua3D.isEnabled();
+					label.textContent = isEnabled ? 'Hiệu ứng 3D: Bật' : 'Hiệu ứng 3D: Tắt';
+					if (isEnabled) {
+						document.documentElement.removeAttribute('data-no-3d');
+					} else {
+						document.documentElement.setAttribute('data-no-3d', 'true');
+					}
+				}
+			}
+
+			// Initialize 3D scene after page load
+			window.addEventListener('load', () => {
+				setTimeout(() => {
+					if (typeof ComTrua3D !== 'undefined') {
+						ComTrua3D.init();
+						update3DToggleUI();
+					}
+				}, 500); // Delay to not block initial render
+			});
 		</script>
 	</body>
 </html>

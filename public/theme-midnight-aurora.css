@@ -823,3 +823,48 @@
     background: var(--primary-gradient) !important;
     color: #0B0E1A !important;
 }
+
+/* ============================================
+   3D EFFECTS — Midnight Aurora Theme Overrides
+   ============================================ */
+
+/* Neon glow on panel hover */
+[data-theme="midnight-aurora"] .panel:hover {
+    transform: rotateX(-1.5deg) rotateY(1deg) translateZ(6px);
+    box-shadow: var(--panel-shadow-hover),
+        0 0 30px rgba(0, 229, 160, 0.05),
+        inset 0 1px 0 rgba(0, 229, 160, 0.06);
+}
+
+[data-theme="midnight-aurora"] .panel::after {
+    background: linear-gradient(135deg, transparent 30%, rgba(0, 229, 160, 0.12) 50%, rgba(0, 180, 216, 0.08) 60%, transparent 75%);
+}
+
+/* Neon button 3D press */
+[data-theme="midnight-aurora"] .btn-primary:hover {
+    transform: translateY(-3px) translateZ(8px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 229, 160, 0.35), 0 0 30px rgba(0, 229, 160, 0.15);
+}
+
+[data-theme="midnight-aurora"] .btn-primary:active {
+    transform: translateY(1px) translateZ(-2px) scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 229, 160, 0.2);
+}
+
+/* Neon leaderboard hover */
+[data-theme="midnight-aurora"] .leaderboard-item:hover {
+    transform: translateX(3px) translateZ(3px);
+    box-shadow: -4px 0 12px rgba(0, 229, 160, 0.06);
+}
+
+/* Aurora menu card 3D */
+[data-theme="midnight-aurora"] .menu-option-card:hover {
+    transform: translateY(-4px) rotateX(-2deg) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0, 229, 160, 0.08), 0 0 0 1px rgba(0, 229, 160, 0.15);
+}
+
+/* Neon header link 3D */
+[data-theme="midnight-aurora"] .header-link-btn:hover {
+    transform: translateY(-3px) translateZ(6px) rotate(-2deg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), var(--neon-glow-sm);
+}

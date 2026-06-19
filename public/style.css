@@ -2149,4 +2149,345 @@ body,
     animation: attention-shake 0.8s ease-in-out;
 }
 
+/* ============================================
+   3D EFFECTS — Perspective & Card Tilt
+   ============================================ */
 
+/* Global perspective for 3D transforms */
+.dashboard-grid {
+    perspective: 1200px;
+}
+
+/* 3D Card tilt hover — panels */
+.panel {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.panel:hover {
+    transform: rotateX(-1.5deg) rotateY(1deg) translateZ(6px);
+    box-shadow: var(--panel-shadow-hover), 0 8px 32px rgba(232, 97, 60, 0.06);
+}
+
+/* 3D Card tilt — menu option cards */
+.menu-option-card {
+    transform-style: preserve-3d;
+    perspective: 600px;
+    will-change: transform;
+}
+
+.menu-option-card:hover {
+    transform: translateY(-4px) rotateX(-2deg) scale(1.02);
+    box-shadow: 0 8px 20px rgba(244, 162, 97, 0.15), 0 0 0 1px var(--accent);
+}
+
+.menu-option-card.selected {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 0 0 2px var(--primary), 0 6px 20px rgba(232, 97, 60, 0.15);
+}
+
+/* 3D Order item hover */
+.order-item {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.order-item:hover {
+    transform: translateX(4px) translateZ(4px) rotateY(0.5deg);
+}
+
+/* 3D Leaderboard item hover */
+.leaderboard-item {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.leaderboard-item:hover {
+    transform: translateX(3px) translateZ(3px);
+    box-shadow: -4px 0 12px rgba(232, 97, 60, 0.08);
+}
+
+/* ============================================
+   3D BUTTONS — Press Effect
+   ============================================ */
+.btn-primary {
+    transform-style: preserve-3d;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px) translateZ(8px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(232, 97, 60, 0.35), 0 0 20px rgba(232, 97, 60, 0.1);
+}
+
+.btn-primary:active {
+    transform: translateY(1px) translateZ(-2px) scale(0.98);
+    box-shadow: 0 2px 8px rgba(232, 97, 60, 0.2);
+    transition-duration: 0.08s;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px) translateZ(4px);
+}
+
+.btn-secondary:active {
+    transform: translateY(0) translateZ(-1px);
+}
+
+/* ============================================
+   3D MODAL — Flip Entrance Animation
+   ============================================ */
+@keyframes modalFlipIn {
+    0% {
+        opacity: 0;
+        transform: perspective(600px) rotateX(-15deg) translateY(40px) scale(0.92);
+    }
+    60% {
+        opacity: 1;
+        transform: perspective(600px) rotateX(3deg) translateY(-5px) scale(1.01);
+    }
+    100% {
+        opacity: 1;
+        transform: perspective(600px) rotateX(0) translateY(0) scale(1);
+    }
+}
+
+.modal-panel {
+    animation: modalFlipIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-style: preserve-3d;
+}
+
+/* ============================================
+   3D STAGGERED CARD ENTRY
+   ============================================ */
+@keyframes card3DSlideIn {
+    0% {
+        opacity: 0;
+        transform: perspective(800px) rotateY(-8deg) translateX(-30px) translateZ(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: perspective(800px) rotateY(0) translateX(0) translateZ(0);
+    }
+}
+
+.dashboard-grid > div {
+    animation: card3DSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.dashboard-grid > div:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+/* ============================================
+   GLOWING EDGES ON HOVER (Panels)
+   ============================================ */
+.panel::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, transparent 40%, var(--primary-glow) 50%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.panel {
+    position: relative;
+    overflow: visible;
+}
+
+.panel:hover::after {
+    opacity: 1;
+}
+
+/* ============================================
+   3D SHOP TAB BUTTONS
+   ============================================ */
+.shop-tab-btn {
+    transform-style: preserve-3d;
+    perspective: 400px;
+}
+
+.shop-tab-btn:hover {
+    transform: translateY(-2px) rotateX(-3deg);
+}
+
+.shop-tab-btn.active {
+    transform: translateY(-1px) scale(1.02);
+}
+
+/* ============================================
+   3D TOPPING CHECKBOX HOVER
+   ============================================ */
+.topping-checkbox-label:hover {
+    transform: translateY(-2px) translateZ(4px);
+}
+
+/* ============================================
+   3D SUMMARY ITEM HOVER
+   ============================================ */
+.summary-item {
+    transform-style: preserve-3d;
+}
+
+.summary-item:hover {
+    transform: translateY(-2px) rotateX(-1deg) translateZ(4px);
+}
+
+/* ============================================
+   3D AUTH PANEL — Login Float
+   ============================================ */
+.auth-panel {
+    transform-style: preserve-3d;
+    animation: card3DSlideIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ============================================
+   3D PERSONAL DEBT CARD
+   ============================================ */
+.personal-debt-card {
+    transform-style: preserve-3d;
+}
+
+.personal-debt-card:hover {
+    transform: rotateX(-1deg) rotateY(0.5deg) translateZ(4px);
+}
+
+/* ============================================
+   3D SPENDING DASHBOARD
+   ============================================ */
+.spending-dashboard-card {
+    transform-style: preserve-3d;
+}
+
+.spending-dashboard-card:hover {
+    transform: rotateX(-0.5deg) translateZ(4px);
+}
+
+/* ============================================
+   3D HEADER LINK BUTTONS
+   ============================================ */
+.header-link-btn:hover {
+    transform: translateY(-3px) translateZ(6px) rotate(-2deg);
+}
+
+/* ============================================
+   3D DATE SELECTOR
+   ============================================ */
+.date-btn:hover {
+    transform: translateY(-2px) translateZ(4px);
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    .panel:hover,
+    .menu-option-card:hover,
+    .order-item:hover,
+    .leaderboard-item:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover,
+    .shop-tab-btn:hover,
+    .topping-checkbox-label:hover,
+    .summary-item:hover,
+    .header-link-btn:hover,
+    .date-btn:hover,
+    .personal-debt-card:hover,
+    .spending-dashboard-card:hover {
+        transform: none !important;
+    }
+
+    .modal-panel {
+        animation: modalSlideUp 0.25s ease !important;
+    }
+
+    .dashboard-grid > div {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+
+    .auth-panel {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+}
+
+/* ============================================
+   DISABLE CSS 3D EFFECTS WHEN TOGGLED OFF
+   ============================================ */
+html[data-no-3d="true"] .panel:hover,
+html[data-no-3d="true"] .menu-option-card:hover,
+html[data-no-3d="true"] .order-item:hover,
+html[data-no-3d="true"] .leaderboard-item:hover,
+html[data-no-3d="true"] .btn-primary:hover,
+html[data-no-3d="true"] .btn-secondary:hover,
+html[data-no-3d="true"] .shop-tab-btn:hover,
+html[data-no-3d="true"] .topping-checkbox-label:hover,
+html[data-no-3d="true"] .summary-item:hover,
+html[data-no-3d="true"] .header-link-btn:hover,
+html[data-no-3d="true"] .date-btn:hover,
+html[data-no-3d="true"] .personal-debt-card:hover,
+html[data-no-3d="true"] .spending-dashboard-card:hover {
+    transform: none !important;
+}
+
+html[data-no-3d="true"] .panel::after {
+    display: none !important;
+}
+
+html[data-no-3d="true"] .modal-panel {
+    animation: modalSlideUp 0.25s ease !important;
+}
+
+html[data-no-3d="true"] .dashboard-grid > div {
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+html[data-no-3d="true"] .auth-panel {
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+html[data-no-3d="true"] #three-bg-canvas,
+html[data-no-3d="true"] #three-fx-canvas {
+    display: none !important;
+}
+
+/* ============================================
+   3D TOGGLE SECTION IN DROPDOWN
+   ============================================ */
+.fx-toggle-section {
+    padding: 0.15rem 0;
+}
+
+.fx-toggle-section .dropdown-item-btn {
+    font-size: 0.82rem;
+}
+
+/* ============================================
+   THREE.JS CANVAS STYLING
+   ============================================ */
+#three-bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+
+#three-fx-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    pointer-events: none;
+}

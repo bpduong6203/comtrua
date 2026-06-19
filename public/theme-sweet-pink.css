@@ -829,3 +829,41 @@
     background: var(--primary-gradient) !important;
     color: #fff !important;
 }
+
+/* ============================================
+   3D EFFECTS — Sweet Pink Theme Overrides
+   ============================================ */
+
+/* Sakura glow on panel hover */
+[data-theme="sweet-pink"] .panel:hover {
+    transform: rotateX(-1.5deg) rotateY(1deg) translateZ(6px);
+    box-shadow: var(--panel-shadow-hover), var(--glass-highlight),
+        0 0 25px rgba(255, 77, 109, 0.05);
+}
+
+[data-theme="sweet-pink"] .panel::after {
+    background: linear-gradient(135deg, transparent 35%, rgba(255, 133, 161, 0.12) 50%, transparent 65%);
+}
+
+/* Pink button 3D */
+[data-theme="sweet-pink"] .btn-primary:hover {
+    transform: translateY(-3px) translateZ(8px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(255, 77, 109, 0.35), 0 0 20px rgba(255, 133, 161, 0.12);
+}
+
+[data-theme="sweet-pink"] .btn-primary:active {
+    transform: translateY(1px) translateZ(-2px) scale(0.98);
+    box-shadow: 0 2px 8px rgba(255, 77, 109, 0.2);
+}
+
+/* Pink leaderboard hover */
+[data-theme="sweet-pink"] .leaderboard-item:hover {
+    transform: translateX(3px) translateZ(3px);
+    box-shadow: -4px 0 12px rgba(255, 77, 109, 0.05);
+}
+
+/* Sakura menu card 3D */
+[data-theme="sweet-pink"] .menu-option-card:hover {
+    transform: translateY(-4px) rotateX(-2deg) scale(1.02);
+    box-shadow: 0 8px 20px rgba(255, 77, 109, 0.08), 0 0 0 1px rgba(255, 133, 161, 0.2);
+}

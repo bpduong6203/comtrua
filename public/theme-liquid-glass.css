@@ -641,3 +641,41 @@
 [data-theme="liquid-glass"] .switch-status input:checked + .slider .slider-text {
     color: var(--color-success);
 }
+
+/* ============================================
+   3D EFFECTS — Liquid Glass Theme Overrides
+   ============================================ */
+
+/* Glass refraction glow on panel hover */
+[data-theme="liquid-glass"] .panel:hover {
+    transform: rotateX(-1.5deg) rotateY(1deg) translateZ(6px);
+    box-shadow: var(--panel-shadow-hover), var(--glass-highlight),
+        0 0 30px rgba(0, 122, 255, 0.06);
+}
+
+[data-theme="liquid-glass"] .panel::after {
+    background: linear-gradient(135deg, transparent 35%, rgba(90, 200, 250, 0.15) 50%, transparent 65%);
+}
+
+/* Blue-tinted button 3D */
+[data-theme="liquid-glass"] .btn-primary:hover {
+    transform: translateY(-3px) translateZ(8px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.35), 0 0 20px rgba(90, 200, 250, 0.12);
+}
+
+[data-theme="liquid-glass"] .btn-primary:active {
+    transform: translateY(1px) translateZ(-2px) scale(0.98);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+/* Glass leaderboard hover glow */
+[data-theme="liquid-glass"] .leaderboard-item:hover {
+    transform: translateX(3px) translateZ(3px);
+    box-shadow: -4px 0 12px rgba(0, 122, 255, 0.06);
+}
+
+/* Glass menu card 3D */
+[data-theme="liquid-glass"] .menu-option-card:hover {
+    transform: translateY(-4px) rotateX(-2deg) scale(1.02);
+    box-shadow: 0 8px 20px rgba(0, 122, 255, 0.1), 0 0 0 1px rgba(90, 200, 250, 0.3);
+}
