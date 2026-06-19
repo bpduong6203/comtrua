@@ -97,8 +97,6 @@
 /* ---- USER PROFILE PILL ---- */
 [data-theme="liquid-glass"] .user-profile {
     background: rgba(255, 255, 255, 0.5);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    backdrop-filter: blur(20px) saturate(150%);
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow: 0 1px 6px rgba(0, 50, 120, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }

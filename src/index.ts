@@ -160,15 +160,12 @@ async function verifyJwt(token: string, secret: string): Promise<any | null> {
 }
 
 
-// Helper to return a JSON response with CORS headers
+// Helper to return a JSON response (internal use only, no external CORS)
 function jsonResponse(data: any, status: number = 200) {
 	return new Response(JSON.stringify(data), {
 		status,
 		headers: {
 			'Content-Type': 'application/json; charset=utf-8',
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type',
 		},
 	});
 }
@@ -257,12 +254,37 @@ export default {
 		const { pathname } = url;
 		const method = request.method;
 
-		// Handle CORS Preflight requests
+		// Chặn không cho bên ngoài truy cập, chỉ dùng nội bộ (Same-Origin restriction)
+		// Ngoại lệ đối với payOS Webhook gọi từ server của payOS
+		if (pathname !== '/api/payment/webhook') {
+			const origin = request.headers.get('Origin');
+			if (origin && origin !== url.origin) {
+				return new Response('Truy cập bị chặn (Origin không hợp lệ)', { status: 403 });
+			}
+
+			const referer = request.headers.get('Referer');
+			if (referer) {
+				try {
+					const refererUrl = new URL(referer);
+					if (refererUrl.origin !== url.origin) {
+						return new Response('Truy cập bị chặn (Referer không hợp lệ)', { status: 403 });
+					}
+				} catch (e) {
+					return new Response('Truy cập bị chặn (Referer không hợp lệ)', { status: 403 });
+				}
+			}
+		}
+
+		// Handle CORS Preflight requests (chỉ cho phép từ cùng origin)
 		if (method === 'OPTIONS') {
+			const requestOrigin = request.headers.get('Origin');
+			if (requestOrigin && requestOrigin !== url.origin) {
+				return new Response('CORS Not Allowed', { status: 403 });
+			}
 			return new Response(null, {
 				status: 204,
 				headers: {
-					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Origin': url.origin,
 					'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
 					'Access-Control-Allow-Headers': 'Content-Type',
 				},

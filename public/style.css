@@ -1488,6 +1488,29 @@ input:checked + .slider .slider-text::after { content: "Đã Trả"; }
     color: var(--color-pending);
 }
 
+.header-link-btn.github {
+    border-color: rgba(100, 120, 180, 0.15);
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.header-link-btn.github:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.header-link-btn.github svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+}
+
 @media (max-width: 600px) {
     header { flex-direction: column; align-items: stretch; }
     .header-right { justify-content: flex-end; }
@@ -2089,4 +2112,41 @@ body,
     width: 18px;
     height: 18px;
 }
+
+/* ============================================
+   ANIMATION & INTERACTIVE HIGHLIGHTS
+   ============================================ */
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 4px 12px var(--primary-glow), 0 0 0 0 var(--primary-glow);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 20px var(--primary-glow), 0 0 0 12px transparent;
+        transform: scale(1.05);
+    }
+    100% {
+        box-shadow: 0 4px 12px var(--primary-glow), 0 0 0 0 transparent;
+        transform: scale(1);
+    }
+}
+
+.pulse-btn {
+    animation: pulse-highlight 2s infinite ease-in-out;
+}
+
+@keyframes attention-shake {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    15% { transform: scale(1.08) rotate(-4deg); }
+    30% { transform: scale(1.08) rotate(4deg); }
+    45% { transform: scale(1.08) rotate(-4deg); }
+    60% { transform: scale(1.08) rotate(4deg); }
+    75% { transform: scale(1.04) rotate(-2deg); }
+    90% { transform: scale(1.04) rotate(2deg); }
+}
+
+.attention-shake {
+    animation: attention-shake 0.8s ease-in-out;
+}
+
 

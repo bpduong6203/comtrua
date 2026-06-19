@@ -76,7 +76,7 @@
 											justify-content: center;
 											font-size: 2rem;
 											color: white;
-											box-shadow: 0 4px 12px rgba(232, 97, 60, 0.2);
+											box-shadow: 0 4px 12px var(--primary-glow);
 											flex-shrink: 0;
 											overflow: hidden;
 										"
@@ -458,11 +458,18 @@
 					</div>
 
 					<div class="header-right">
-						<a href="https://zalo.me/g/vubktafat2bqvftxrbja" target="_blank" rel="noopener noreferrer" class="header-link-btn tra">
-							🍵 Mebi Trà
-						</a>
-						<a href="https://zalo.me/g/egspxp6jde17fd5w0nyd" target="_blank" rel="noopener noreferrer" class="header-link-btn com">
-							🍛 Mebi Cơm
+						<a
+							href="https://github.com/bpduong6203/comtrua.git"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="header-link-btn github"
+							title="GitHub"
+						>
+							<svg height="22" width="22" viewBox="0 0 16 16" fill="currentColor">
+								<path
+									d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+								></path>
+							</svg>
 						</a>
 
 						<div class="user-profile" id="user-profile-widget" onclick="toggleProfileDropdown(event)">
@@ -538,17 +545,13 @@
 							<div style="margin-top: 1rem; text-align: center">
 								<button
 									type="button"
-									class="btn"
+									class="btn btn-primary pulse-btn"
 									style="
 										width: auto;
 										padding: 0.6rem 1.5rem;
 										font-size: 0.95rem;
 										border-radius: 10px;
 										font-weight: 700;
-										background: linear-gradient(135deg, #e8613c, #cb4824);
-										color: white;
-										border: none;
-										box-shadow: 0 4px 12px rgba(232, 97, 60, 0.25);
 										cursor: pointer;
 										display: inline-flex;
 										align-items: center;
@@ -571,15 +574,15 @@
 									align-items: center;
 									justify-content: center;
 									gap: 0.75rem;
-									border: 2px solid #e8613c;
+									border: 2px solid var(--primary);
 									padding: 1.25rem;
 									border-radius: 14px;
-									background: rgba(232, 97, 60, 0.02);
+									background: var(--primary-glow);
 									margin-top: 1rem;
 									position: relative;
 								"
 							>
-								<div class="qr-title" style="font-weight: 700; color: #e8613c; font-size: 1rem; text-align: center">
+								<div class="qr-title" style="font-weight: 700; color: var(--primary); font-size: 1rem; text-align: center">
 									Quét Mã VietQR Để Thanh Toán
 								</div>
 								<img
@@ -598,7 +601,7 @@
 								<div
 									class="qr-payment-amount"
 									id="debt-qr-amount"
-									style="font-size: 1.25rem; font-weight: 800; color: #2d9b4e; margin: 0.25rem 0"
+									style="font-size: 1.25rem; font-weight: 800; color: var(--color-success); margin: 0.25rem 0"
 								>
 									0 đ
 								</div>
@@ -613,7 +616,7 @@
 										id="payos-checkout-link"
 										href="#"
 										target="_blank"
-										style="color: #e8613c; font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 0.5rem"
+										style="color: var(--primary); font-weight: 600; text-decoration: underline; display: inline-block; margin-top: 0.5rem"
 										>Hoặc click để mở trang thanh toán</a
 									>
 								</div>
@@ -738,7 +741,14 @@
 
 								<div
 									id="order-summary-price"
-									style="margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: 700; color: #e8613c; text-align: right; display: none"
+									style="
+										margin-bottom: 1.5rem;
+										font-size: 1.1rem;
+										font-weight: 700;
+										color: var(--primary);
+										text-align: right;
+										display: none;
+									"
 								>
 									Tổng cộng: <span id="temp-total-price">0 đ</span>
 								</div>
@@ -1128,6 +1138,28 @@
 			// =======================================================
 			// HELPER FUNCTIONS (TOASTS, FORMATTING)
 			// =======================================================
+			// Custom slow smooth scroll to top
+			function smoothScrollToTop(duration = 1000) {
+				const start = window.scrollY || document.documentElement.scrollTop;
+				const startTime = performance.now();
+
+				function scrollStep(timestamp) {
+					const elapsed = timestamp - startTime;
+					const progress = Math.min(elapsed / duration, 1);
+
+					// Easing function: easeInOutCubic
+					const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+					window.scrollTo(0, start * (1 - ease));
+
+					if (progress < 1) {
+						requestAnimationFrame(scrollStep);
+					}
+				}
+
+				requestAnimationFrame(scrollStep);
+			}
+
 			function showToast(message, type = 'success') {
 				const container = document.getElementById('toast-container');
 				const toast = document.createElement('div');
@@ -2390,9 +2422,9 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 1.2rem;">🏪</span>
                             <span style="font-weight: 600; font-size: 0.95rem;">${shopName}</span>
-                            <span class="badge" style="background: rgba(232, 97, 60, 0.1); color: #E8613C; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 50px; font-weight: 600;">${summary.count} suất</span>
+                            <span class="badge" style="background: var(--primary-glow); color: var(--primary); font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 50px; font-weight: 600;">${summary.count} suất</span>
                         </div>
-                        <span style="font-weight: 700; color: #2D9B4E; font-size: 1.05rem;">${formatCurrency(summary.total)}</span>
+                        <span style="font-weight: 700; color: var(--color-success); font-size: 1.05rem;">${formatCurrency(summary.total)}</span>
                     `;
 						shopSummaryList.appendChild(item);
 					}
@@ -2416,14 +2448,14 @@
 					const avatar = order.user_avatar || '👤';
 					const phoneHtml = order.user_phone
 						? `
-                    <a href="tel:${order.user_phone}" class="user-phone-link" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; margin-top: 0.15rem;" title="Gọi điện">
+                    <a href="tel:${order.user_phone}" class="user-phone-link" style="color: var(--primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; margin-top: 0.15rem;" title="Gọi điện">
                         📞 ${order.user_phone}
                     </a>
                 `
 						: '';
 					const noteHtml = order.note
 						? `
-                    <div class="order-note" style="margin-top: 0.35rem; font-size: 0.8rem; color: #fbbf24; font-style: italic; display: flex; align-items: center; gap: 0.25rem;">
+                    <div class="order-note" style="margin-top: 0.35rem; font-size: 0.8rem; color: var(--color-pending); font-style: italic; display: flex; align-items: center; gap: 0.25rem;">
                         📝 <span>Ghi chú: ${order.note}</span>
                     </div>
                 `
@@ -2553,7 +2585,7 @@
 						item.className = 'debt-list-item';
 						item.innerHTML = `
                             <span>📅 Ngày ${formatDateDisplay(o.date)} (${o.dish_name})</span>
-                            <span style="font-weight:700; color:#D4890B">${formatCurrency(o.dish_price)}</span>
+                            <span style="font-weight:700; color:var(--color-pending)">${formatCurrency(o.dish_price)}</span>
                         `;
 						personalDebtOrdersList.appendChild(item);
 					});
@@ -2690,7 +2722,7 @@
 					item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem; ${dish.active === 0 ? 'text-decoration: line-through; color: var(--text-muted); opacity: 0.6;' : ''}">
                             ${dish.name}
-                            <span style="color:#E8613C; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
+                            <span style="color:var(--primary); font-size:0.8rem; font-weight:500;">[${shopName}]</span>
                             <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(dish.price)})</span>
                         </div>
                         ${controlsHtml}
@@ -2712,7 +2744,7 @@
 					item.style.padding = '0.75rem 1rem';
 
 					const userPhone = user.phone
-						? `<a href="tel:${user.phone}" style="color: var(--color-primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.15rem; margin-top: 0.15rem;" title="Gọi điện">📞 ${user.phone}</a>`
+						? `<a href="tel:${user.phone}" style="color: var(--primary); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.15rem; margin-top: 0.15rem;" title="Gọi điện">📞 ${user.phone}</a>`
 						: '';
 					const userNote = user.default_note
 						? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; font-style: italic; display: flex; align-items: center; gap: 0.2rem;">📝 Mặc định: ${user.default_note}</div>`
@@ -2775,6 +2807,19 @@
 						loadDailyOrders();
 						loadPersonalDebt();
 						loadSpendingStats();
+
+						// Cuộn nhẹ lên đầu trang để người dùng nhấn thanh toán (chậm và mượt hơn)
+						smoothScrollToTop(1000);
+
+						// Tạo hiệu ứng rung lắc nút Thanh toán để gây chú ý
+						setTimeout(() => {
+							const payBtn = document.getElementById('pay-debt-payos-btn');
+							if (payBtn) {
+								payBtn.classList.remove('attention-shake');
+								void payBtn.offsetWidth; // force reflow
+								payBtn.classList.add('attention-shake');
+							}
+						}, 900); // Trigger near the end of scroll
 					} else {
 						showToast(data.error || 'Lỗi khi đặt cơm.', 'error');
 					}
@@ -3044,7 +3089,7 @@
 					item.innerHTML = `
                         <div style="font-weight:600; font-size:0.9rem;">
                             🥚 ${topping.name} 
-                            <span style="color:#E8613C; font-size:0.8rem; font-weight:500;">[${shopName}]</span>
+                            <span style="color:var(--primary); font-size:0.8rem; font-weight:500;">[${shopName}]</span>
                             <span style="color:var(--text-muted); font-size:0.8rem;">(${formatCurrency(topping.price)})</span>
                         </div>
                         ${controlsHtml}
