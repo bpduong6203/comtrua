@@ -334,11 +334,12 @@
     box-shadow: 0 0 10px rgba(255, 77, 109, 0.15);
 }
 
-/* ---- PERSONAL DEBT CARD ---- */
 [data-theme="sweet-pink"] .personal-debt-card {
-    background: rgba(224, 159, 0, 0.04);
-    border: 1.5px solid rgba(224, 159, 0, 0.2);
-    box-shadow: 0 4px 16px rgba(224, 159, 0, 0.05);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow), var(--glass-highlight);
 }
 
 [data-theme="sweet-pink"] .debt-title {

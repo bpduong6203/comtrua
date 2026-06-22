@@ -1078,6 +1078,115 @@ export default {
 			}
 
 			// ==========================================
+			// 2.9 API CHỌN NGƯỜI ĐI LẤY CƠM (LUNCH PICKERS)
+			// ==========================================
+
+			// GET /api/lunch-pickers?date=YYYY-MM-DD
+			if (pathname === '/api/lunch-pickers' && method === 'GET') {
+				const dateParam = url.searchParams.get('date') || getVNDateString();
+				const key = `lunch_pickers_${dateParam}`;
+				
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const result = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(key)
+					.first<{ value: string }>();
+
+				return jsonResponse({ pickers: result ? JSON.parse(result.value) : [] });
+			}
+
+			// POST /api/lunch-pickers
+			if (pathname === '/api/lunch-pickers' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				const body = await request.json() as { date?: string };
+				const dateParam = body.date?.trim() || getVNDateString();
+				const key = `lunch_pickers_${dateParam}`;
+
+				// Kiểm tra nếu đã có kết quả chọn trước đó
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const existing = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(key)
+					.first<{ value: string }>();
+
+				// Nếu đã có kết quả và người dùng không phải admin (ID !== 1)
+				if (existing && payload.id !== 1) {
+					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép quay số chọn lại.' }, 403);
+				}
+
+				// Lấy danh sách những người đã đặt cơm ngày đó
+				const { results: orderedUsers } = await env.DB.prepare(`
+					SELECT DISTINCT u.id, u.name, u.avatar
+					FROM orders o
+					JOIN users u ON o.user_id = u.id
+					WHERE o.date = ? AND u.active = 1
+				`)
+					.bind(dateParam)
+					.all<{ id: number; name: string; avatar: string }>();
+
+				if (orderedUsers.length === 0) {
+					return jsonResponse({ error: 'Không có ai đặt cơm vào ngày này để chọn.' }, 400);
+				}
+
+				let picked: { id: number; name: string; avatar: string }[] = [];
+
+				if (orderedUsers.length === 1) {
+					// Chỉ có 1 người đặt
+					picked = [orderedUsers[0]];
+				} else {
+					// Có >= 2 người đặt, xáo trộn ngẫu nhiên và chọn 2 người
+					const shuffled = [...orderedUsers].sort(() => Math.random() - 0.5);
+					picked = shuffled.slice(0, 2);
+				}
+
+				const valueStr = JSON.stringify(picked);
+				await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(key, valueStr)
+					.run();
+
+				return jsonResponse({ pickers: picked });
+			}
+
+			// DELETE /api/lunch-pickers?date=YYYY-MM-DD
+			if (pathname === '/api/lunch-pickers' && method === 'DELETE') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				// Chỉ cho phép admin hủy kết quả chọn
+				if (payload.id !== 1) {
+					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép hủy kết quả chọn.' }, 403);
+				}
+
+				const dateParam = url.searchParams.get('date') || getVNDateString();
+				const key = `lunch_pickers_${dateParam}`;
+
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				await env.DB.prepare('DELETE FROM settings WHERE key = ?')
+					.bind(key)
+					.run();
+
+				return jsonResponse({ success: true, message: 'Đã xóa danh sách người đi lấy cơm.' });
+			}
+
+			// ==========================================
 			// 3. API ĐẶT CƠM (ORDERS)
 			// ==========================================
 

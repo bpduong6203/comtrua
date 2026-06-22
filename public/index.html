@@ -686,8 +686,6 @@
 									display: none;
 									padding: 1.25rem;
 									border-radius: 12px;
-									border: 1px dashed var(--color-pending);
-									background: rgba(212, 137, 11, 0.05);
 									text-align: center;
 									justify-content: center;
 									align-items: center;
@@ -763,6 +761,26 @@
 								📋 Danh Sách Đặt Cơm
 								<span class="badge" id="orders-list-badge">0</span>
 							</h2>
+
+							<!-- Lunch Picker Section -->
+							<div id="lunch-picker-widget" class="lunch-picker-card" style="display: none;">
+								<div class="lunch-picker-header">
+									<div class="lunch-picker-title">
+										<span>🚗 Người Đi Lấy Cơm</span>
+									</div>
+									<div class="lunch-picker-actions">
+										<button type="button" id="lunch-picker-spin-btn" class="lunch-picker-btn spin" onclick="spinLunchPicker()">
+											🎲 Quay Số Chọn
+										</button>
+										<button type="button" id="lunch-picker-reset-btn" class="lunch-picker-btn reset" onclick="resetLunchPicker()" style="display: none;">
+											❌ Hủy Chọn
+										</button>
+									</div>
+								</div>
+								<div class="lunch-picker-body" id="lunch-picker-body">
+									<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>
+								</div>
+							</div>
 
 							<!-- Quick Summary Table -->
 							<div id="orders-summary-widget" class="orders-summary-card" style="display: none">
@@ -1970,6 +1988,7 @@
 					if (resp.ok) {
 						renderDailyOrders();
 						calculateStats();
+						await loadLunchPickers();
 					}
 				} catch (err) {
 					showToast('Không thể tải danh sách đặt cơm ngày này.', 'error');
@@ -3591,6 +3610,218 @@
 						btn.classList.remove('active');
 					}
 				});
+			}
+
+			/* ============================================
+			   LUNCH PICKER FEATURE
+			   ============================================ */
+			let lunchPickers = [];
+			let isShufflingPickers = false;
+
+			const lunchPickerWidget = document.getElementById('lunch-picker-widget');
+			const lunchPickerBody = document.getElementById('lunch-picker-body');
+			const lunchPickerSpinBtn = document.getElementById('lunch-picker-spin-btn');
+			const lunchPickerResetBtn = document.getElementById('lunch-picker-reset-btn');
+
+			async function loadLunchPickers() {
+				if (!selectedDate) return;
+				try {
+					const resp = await fetch(`/api/lunch-pickers?date=${selectedDate}`);
+					const data = await resp.json();
+					if (resp.ok) {
+						lunchPickers = data.pickers || [];
+						renderLunchPickers();
+					}
+				} catch (err) {
+					console.error('Lỗi khi tải người đi lấy cơm:', err);
+				}
+			}
+
+			function renderLunchPickers() {
+				if (!lunchPickerWidget || !lunchPickerBody) return;
+
+				// Hide widget if no orders
+				if (orders.length === 0) {
+					lunchPickerWidget.style.display = 'none';
+					return;
+				}
+
+				lunchPickerWidget.style.display = 'block';
+
+				// If shuffling, don't overwrite the shuffling layout
+				if (isShufflingPickers) return;
+
+				if (lunchPickers.length === 0) {
+					lunchPickerBody.innerHTML = '<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>';
+					lunchPickerSpinBtn.textContent = '🎲 Quay Số Chọn';
+					lunchPickerSpinBtn.disabled = false;
+					lunchPickerSpinBtn.style.display = 'inline-flex';
+					lunchPickerResetBtn.style.display = 'none';
+				} else {
+					lunchPickerBody.innerHTML = '';
+					const container = document.createElement('div');
+					container.className = 'lunch-picker-spin-container';
+
+					lunchPickers.forEach(user => {
+						const card = document.createElement('div');
+						card.className = 'lunch-picker-user-card';
+						card.innerHTML = `
+							<div class="lunch-picker-user-avatar">
+								${getAvatarHtml(user.avatar, 'avatar')}
+							</div>
+							<div class="lunch-picker-user-info">
+								<div class="lunch-picker-user-name">${user.name}</div>
+								<div class="lunch-picker-user-role">🚗 Đi lấy cơm</div>
+							</div>
+						`;
+						container.appendChild(card);
+					});
+
+					lunchPickerBody.appendChild(container);
+					
+					// Chỉ hiển thị nút Quay Số Lại và Hủy Chọn cho Admin (ID 1)
+					const isAdmin = currentUser && currentUser.id === 1;
+					if (isAdmin) {
+						lunchPickerSpinBtn.textContent = '🔄 Quay Số Lại';
+						lunchPickerSpinBtn.disabled = false;
+						lunchPickerSpinBtn.style.display = 'inline-flex';
+						lunchPickerResetBtn.style.display = 'inline-flex';
+					} else {
+						lunchPickerSpinBtn.style.display = 'none';
+						lunchPickerResetBtn.style.display = 'none';
+					}
+				}
+			}
+
+			function spinLunchPicker() {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
+					return;
+				}
+				if (orders.length === 0) {
+					showToast('Không có đơn hàng nào hôm nay để chọn.', 'error');
+					return;
+				}
+				if (isShufflingPickers) return;
+
+				isShufflingPickers = true;
+				lunchPickerSpinBtn.disabled = true;
+				lunchPickerResetBtn.style.display = 'none';
+
+				// Start the shuffling animation locally using candidates from orders list
+				const candidates = orders.map(o => ({
+					name: o.user_name,
+					avatar: o.user_avatar
+				}));
+
+				const shuffleInterval = setInterval(() => {
+					lunchPickerBody.innerHTML = '';
+					const container = document.createElement('div');
+					container.className = 'lunch-picker-spin-container';
+
+					// Pick 1 or 2 random candidates to show in the spin animation
+					const numToShow = Math.min(2, candidates.length);
+					const pickedIndices = new Set();
+					while (pickedIndices.size < numToShow) {
+						pickedIndices.add(Math.floor(Math.random() * candidates.length));
+					}
+
+					Array.from(pickedIndices).forEach(idx => {
+						const candidate = candidates[idx];
+						const card = document.createElement('div');
+						card.className = 'lunch-picker-user-card lunch-picker-shuffling';
+						card.innerHTML = `
+							<div class="lunch-picker-user-avatar">
+								${getAvatarHtml(candidate.avatar, 'avatar')}
+							</div>
+							<div class="lunch-picker-user-info">
+								<div class="lunch-picker-user-name">${candidate.name}</div>
+								<div class="lunch-picker-user-role">🎲 Đang chọn...</div>
+							</div>
+						`;
+						container.appendChild(card);
+					});
+					lunchPickerBody.appendChild(container);
+				}, 80);
+
+				// Call backend API to pick
+				let apiError = null;
+				let apiResult = null;
+
+				fetch('/api/lunch-pickers', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ date: selectedDate })
+				})
+				.then(resp => {
+					if (!resp.ok) {
+						return resp.json().then(d => { throw new Error(d.error || 'Lỗi hệ thống'); });
+					}
+					return resp.json();
+				})
+				.then(data => {
+					apiResult = data.pickers;
+				})
+				.catch(err => {
+					apiError = err.message;
+				});
+
+				// Let the animation run for at least 1.5 - 2 seconds for dramatic effect
+				setTimeout(() => {
+					clearInterval(shuffleInterval);
+					isShufflingPickers = false;
+
+					if (apiError) {
+						showToast(apiError, 'error');
+						isShufflingPickers = false;
+						renderLunchPickers();
+					} else if (apiResult) {
+						lunchPickers = apiResult;
+						renderLunchPickers();
+						showToast('🎉 Đã chọn xong người đi lấy cơm hôm nay!', 'success');
+					} else {
+						// Fallback if API hasn't resolved yet
+						const checkInterval = setInterval(() => {
+							if (apiResult || apiError) {
+								clearInterval(checkInterval);
+								if (apiError) {
+									showToast(apiError, 'error');
+								} else {
+									lunchPickers = apiResult;
+									showToast('🎉 Đã chọn xong người đi lấy cơm hôm nay!', 'success');
+								}
+								renderLunchPickers();
+							}
+						}, 100);
+					}
+				}, 1800);
+			}
+
+			async function resetLunchPicker() {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
+					return;
+				}
+				if (!confirm('Bạn có chắc chắn muốn hủy kết quả chọn người đi lấy cơm không?')) {
+					return;
+				}
+				try {
+					const resp = await fetch(`/api/lunch-pickers?date=${selectedDate}`, {
+						method: 'DELETE'
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						lunchPickers = [];
+						renderLunchPickers();
+						showToast('🗑️ Đã hủy kết quả chọn người đi lấy cơm.', 'success');
+					} else {
+						showToast(data.error || 'Không thể hủy kết quả chọn.', 'error');
+					}
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
 			}
 
 			// Initialize theme on DOM ready

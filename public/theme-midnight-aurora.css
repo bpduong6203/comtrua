@@ -327,11 +327,10 @@
     box-shadow: 0 0 10px rgba(0, 229, 160, 0.15);
 }
 
-/* ---- PERSONAL DEBT CARD ---- */
 [data-theme="midnight-aurora"] .personal-debt-card {
-    background: rgba(255, 179, 0, 0.04);
-    border: 1.5px solid rgba(255, 179, 0, 0.15);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    background: var(--panel-bg);
+    border: var(--aurora-border);
+    box-shadow: var(--panel-shadow);
 }
 
 [data-theme="midnight-aurora"] .debt-title {
