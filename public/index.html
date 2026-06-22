@@ -29,7 +29,7 @@
 			if (typeof THREE === 'undefined') {
 				console.warn('Three.js failed to load from jsdelivr. Trying unpkg...');
 				var fallbackScript = document.createElement('script');
-				fallbackScript.src = "https://unpkg.com/three@0.170.0/build/three.min.js";
+				fallbackScript.src = 'https://unpkg.com/three@0.170.0/build/three.min.js';
 				document.head.appendChild(fallbackScript);
 			}
 		</script>
@@ -524,11 +524,7 @@
 								</div>
 								<div class="dropdown-divider"></div>
 								<div class="fx-toggle-section">
-									<button
-										class="dropdown-item-btn"
-										id="toggle-3d-btn"
-										onclick="toggle3DEffects()"
-									>
+									<button class="dropdown-item-btn" id="toggle-3d-btn" onclick="toggle3DEffects()">
 										<span class="icon">🎮</span>
 										<span id="toggle-3d-label">Hiệu ứng 3D: Bật</span>
 									</button>
