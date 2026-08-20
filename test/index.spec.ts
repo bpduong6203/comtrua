@@ -115,6 +115,7 @@ describe('ComTrua Backend Tests', () => {
 		await env.DB.prepare('DELETE FROM dishes').run();
 		await env.DB.prepare('DELETE FROM shops').run();
 		await env.DB.prepare('DELETE FROM settings').run();
+		await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('order_deadline', '23:59')").run();
 		await env.DB.prepare('PRAGMA foreign_keys = ON').run();
 		await env.DB.prepare("INSERT OR IGNORE INTO shops (id, name, active) VALUES (1, 'Quán Cơm Chiên', 1)").run();
 		await env.DB.prepare("INSERT OR IGNORE INTO dishes (id, shop_id, name, price, active) VALUES (1, 1, 'Cơm Đùi Gà', 35000, 1)").run();

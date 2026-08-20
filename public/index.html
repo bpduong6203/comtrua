@@ -699,9 +699,12 @@
 
 						<!-- ORDERING FORM -->
 						<div class="panel">
-							<h2 class="section-title">
-								✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span>
-								<span class="badge-deadline" id="deadline-badge" style="display: none"></span>
+							<h2 class="section-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+								<span>✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span></span>
+								<div style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+									<span class="badge-deadline" id="deadline-badge" style="display: none"></span>
+									<span class="live-deadline-banner" id="live-countdown-banner" style="display: none">⏱️ Đang tính...</span>
+								</div>
 							</h2>
 
 							<!-- Personal Order Status Alert -->
@@ -825,6 +828,33 @@
 								</div>
 								<div class="lunch-picker-body" id="lunch-picker-body">
 									<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>
+								</div>
+							</div>
+
+							<!-- Office Meme Soundboard Card -->
+							<div class="soundboard-card" id="office-soundboard-widget">
+								<div class="soundboard-header">
+									<div class="soundboard-title">
+										<span>🎺 Soundboard Meme Văn Phòng</span>
+									</div>
+									<span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">(Bấm để phát tiếng)</span>
+								</div>
+								<div class="soundboard-grid">
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playDinnerBell)" title="Chuông báo giờ cơm">
+										<span>🔔</span> Chuông Cơm
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playBugleCharge)" title="Kèn xung trận kịch tính">
+										<span>🎺</span> Xung Trận
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playApplause)" title="Tiếng vỗ tay hoan hô">
+										<span>👏</span> Vỗ Tay
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playAirHorn)" title="Còi hú báo động">
+										<span>🚨</span> Còi Hú
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playTingTingJackpot)" title="Ting ting ăn mừng">
+										<span>✨</span> Ting Ting
+									</button>
 								</div>
 							</div>
 
@@ -1571,6 +1601,45 @@
 					}
 				}
 
+				// 1.5 Update the live countdown banner
+				const liveCountdownBanner = document.getElementById('live-countdown-banner');
+				if (liveCountdownBanner) {
+					const todayStr = getLocalVNDateString();
+					if (selectedDate < todayStr) {
+						liveCountdownBanner.style.display = 'inline-flex';
+						liveCountdownBanner.className = 'live-deadline-banner locked';
+						liveCountdownBanner.innerHTML = '🔒 Ngày Đã Qua';
+					} else if (selectedDate > todayStr) {
+						liveCountdownBanner.style.display = 'inline-flex';
+						liveCountdownBanner.className = 'live-deadline-banner open';
+						liveCountdownBanner.innerHTML = `📅 Đặt Trước (${orderDeadline})`;
+					} else {
+						const vnNow = getVNCurrentTime();
+						const [deadlineHour, deadlineMin] = orderDeadline.split(':').map(Number);
+						const nowTotalSec = (vnNow.hour * 3600) + (vnNow.minute * 60) + (new Date().getSeconds());
+						const deadlineTotalSec = (deadlineHour * 3600) + (deadlineMin * 60);
+						const diffSec = deadlineTotalSec - nowTotalSec;
+
+						liveCountdownBanner.style.display = 'inline-flex';
+						if (diffSec <= 0) {
+							liveCountdownBanner.className = 'live-deadline-banner locked';
+							liveCountdownBanner.innerHTML = `🔒 Đã Chốt Sổ (${orderDeadline})`;
+						} else {
+							const mins = Math.floor(diffSec / 60);
+							const secs = diffSec % 60;
+							const formattedTime = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+							if (diffSec <= 600) {
+								liveCountdownBanner.className = 'live-deadline-banner urgent';
+								liveCountdownBanner.innerHTML = `🔥 Sắp chốt! Còn ${formattedTime} ⚡`;
+							} else {
+								liveCountdownBanner.className = 'live-deadline-banner open';
+								liveCountdownBanner.innerHTML = `⏱️ Còn ${mins}p ${secs}s (Chốt: ${orderDeadline})`;
+							}
+						}
+					}
+				}
+
 				// 2. Update ordering form inputs & buttons
 				if (submitOrderBtn) {
 					if (shouldLock) {
@@ -1706,12 +1775,12 @@
 					}
 				});
 
-				// Periodically check deadline status (every 5 seconds) for real-time locking
+				// Periodically check deadline status and countdown ticks (every 1 second)
 				setInterval(() => {
 					if (currentUser && selectedDate) {
 						checkAndUpdateDeadlineUI();
 					}
-				}, 5000);
+				}, 1000);
 			});
 
 			// Function to clear login input field
@@ -2784,6 +2853,39 @@
 					renderDishesOptions();
 					updateOrderSummaryPrice();
 				}
+			}
+
+			function getUserBadgesHtml(order, allOrders, pickers) {
+				if (!allOrders || allOrders.length === 0) return '';
+				const badges = [];
+
+				// 1. Thánh Đặt Sớm: First order placed today (when >= 2 orders)
+				if (allOrders.length >= 2 && allOrders[0].id === order.id) {
+					badges.push('<span class="user-badge badge-early-bird" title="🚀 Thánh Đặt Sớm: Người mở bát đầu tiên hôm nay!">🚀 Đặt Sớm</span>');
+				}
+
+				// 2. Sát Thủ Deadline: Last order placed today (when >= 3 orders)
+				if (allOrders.length >= 3 && allOrders[allOrders.length - 1].id === order.id) {
+					badges.push('<span class="user-badge badge-deadline-sniper" title="⏰ Sát Thủ Deadline: Chốt đơn sát nút!">⏰ Sát Thủ Deadline</span>');
+				}
+
+				// 3. Đại Gia Topping: Order contains topping
+				const hasTopping = order.dish_name.includes('+') || order.dish_name.includes('Trứng') || order.dish_name.includes('thêm');
+				if (hasTopping) {
+					badges.push('<span class="user-badge badge-topping-king" title="🥩 Đại Gia Topping: Có thêm món phụ ngon lành!">🥩 Có Topping</span>');
+				}
+
+				// 4. Shipper Hôm Nay: If in current lunch pickers
+				if (pickers && Array.isArray(pickers) && pickers.some((p) => p.id === order.user_id)) {
+					badges.push('<span class="user-badge badge-today-picker" title="🚗 Shipper Hôm Nay: Người nhận nhiệm vụ đi lấy cơm!">🚗 Đi Lấy Cơm</span>');
+				}
+
+				if (badges.length === 0) return '';
+				return `<div class="user-badges-container">${badges.join('')}</div>`;
+			}
+
+			function renderOrdersList() {
+				ordersListBadge.textContent = orders.length;
 
 				// Populate the Quick Summary grid and toggle its visibility
 				if (orders.length === 0) {
@@ -2863,6 +2965,7 @@
 				orders.forEach((order) => {
 					const isMe = currentUser && order.user_id === currentUser.id;
 					const canToggle = currentUser && currentUser.id === 1;
+                    const badgesHtml = getUserBadgesHtml(order, orders, lunchPickers);
 					const item = document.createElement('div');
 					item.className = 'order-item';
 
@@ -2893,6 +2996,7 @@
                                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                                         <span style="font-weight: 700; font-size: 1.05rem;">${order.user_name}</span>
                                         ${isMe ? '<span class="badge-me">Bạn</span>' : ''}
+                                        ${badgesHtml}
                                     </div>
                                     ${phoneHtml}
                                 </div>
@@ -4337,6 +4441,145 @@
 						gain.connect(ctx.destination);
 						osc.start(startTime);
 						osc.stop(startTime + 0.5);
+					});
+				} catch (e) {}
+			}
+
+			// =======================================================
+			// MEME SOUNDBOARD SYNTHESIZER FUNCTIONS
+			// =======================================================
+			function handleSoundboardClick(btn, soundFn) {
+				if (typeof soundFn === 'function') {
+					soundFn();
+				}
+				if (btn) {
+					btn.classList.add('playing');
+					setTimeout(() => btn.classList.remove('playing'), 450);
+				}
+			}
+
+			function playDinnerBell() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					// Dual resonant dinner bell: C5 + E5 + G5
+					[830.6, 1046.5, 1318.5].forEach((freq, i) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const startTime = now + i * 0.14;
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(freq, startTime);
+						gain.gain.setValueAtTime(0.22, startTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(startTime);
+						osc.stop(startTime + 1.25);
+					});
+				} catch (e) {}
+			}
+
+			function playBugleCharge() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const notes = [
+						{ f: 392.00, d: 0.11 },
+						{ f: 523.25, d: 0.11 },
+						{ f: 659.25, d: 0.11 },
+						{ f: 783.99, d: 0.25 },
+						{ f: 659.25, d: 0.11 },
+						{ f: 783.99, d: 0.4 }
+					];
+					let currTime = now;
+					notes.forEach((n) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sawtooth';
+						osc.frequency.setValueAtTime(n.f, currTime);
+						gain.gain.setValueAtTime(0.16, currTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, currTime + n.d);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(currTime);
+						osc.stop(currTime + n.d);
+						currTime += n.d * 0.88;
+					});
+				} catch (e) {}
+			}
+
+			function playApplause() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const bufferSize = Math.floor(ctx.sampleRate * 1.4);
+					const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+					const data = buffer.getChannelData(0);
+					for (let i = 0; i < bufferSize; i++) {
+						data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.7));
+					}
+					const noise = ctx.createBufferSource();
+					noise.buffer = buffer;
+					const filter = ctx.createBiquadFilter();
+					filter.type = 'bandpass';
+					filter.frequency.value = 1100;
+					filter.Q.value = 1.4;
+					const gain = ctx.createGain();
+					gain.gain.setValueAtTime(0.24, ctx.currentTime);
+					gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.35);
+					noise.connect(filter);
+					filter.connect(gain);
+					gain.connect(ctx.destination);
+					noise.start();
+				} catch (e) {}
+			}
+
+			function playAirHorn() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const freqs = [466.16, 470.0, 622.25];
+					freqs.forEach((freq) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sawtooth';
+						osc.frequency.setValueAtTime(freq, now);
+						gain.gain.setValueAtTime(0.18, now);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(now);
+						osc.stop(now + 0.55);
+					});
+				} catch (e) {}
+			}
+
+			function playTingTingJackpot() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const freqs = [587.33, 739.99, 880.0, 1174.66, 1760.0];
+					freqs.forEach((freq, idx) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const startTime = now + idx * 0.08;
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(freq, startTime);
+						gain.gain.setValueAtTime(0.18, startTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.55);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(startTime);
+						osc.stop(startTime + 0.6);
 					});
 				} catch (e) {}
 			}

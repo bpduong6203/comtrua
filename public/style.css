@@ -2866,3 +2866,185 @@ body,
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
+/* ============================================
+   USER ACHIEVEMENTS & BADGES
+   ============================================ */
+.user-badges-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-left: 0.25rem;
+}
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: transform 0.15s ease;
+    white-space: nowrap;
+}
+
+.user-badge:hover {
+    transform: scale(1.08);
+}
+
+.badge-early-bird {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.badge-deadline-sniper {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
+    animation: urgentBlink 2.5s infinite;
+}
+
+.badge-topping-king {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+    border-color: rgba(168, 85, 247, 0.35);
+}
+
+.badge-today-picker {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.badge-loyal-vip {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+@keyframes urgentBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+/* ============================================
+   LIVE DEADLINE COUNTDOWN & PULSE
+   ============================================ */
+.live-deadline-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    color: var(--text-main);
+    transition: all 0.3s ease;
+}
+
+.live-deadline-banner.open {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.live-deadline-banner.urgent {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: #ef4444;
+    color: #ef4444;
+    animation: countdownHeartbeat 1.4s infinite ease-in-out;
+}
+
+.live-deadline-banner.locked {
+    background: rgba(100, 116, 139, 0.15);
+    border-color: #64748b;
+    color: #64748b;
+}
+
+@keyframes countdownHeartbeat {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.35);
+    }
+}
+
+/* ============================================
+   OFFICE MEME SOUNDBOARD
+   ============================================ */
+.soundboard-card {
+    margin-top: 1rem;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.soundboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.soundboard-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 800;
+    font-size: 0.88rem;
+    color: var(--text-main);
+}
+
+.soundboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.5rem;
+}
+
+.soundboard-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: 8px;
+    border: 1.5px solid var(--panel-border);
+    background: var(--card-bg, #ffffff);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    user-select: none;
+}
+
+.soundboard-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    border-color: var(--primary);
+    background: var(--primary-light, rgba(232, 97, 60, 0.1));
+    color: var(--primary);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.soundboard-btn:active {
+    transform: scale(0.95);
+}
+
+.soundboard-btn.playing {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+
