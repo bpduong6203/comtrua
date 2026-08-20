@@ -16,6 +16,8 @@ export interface Env {
 	PAYOS_CLIENT_ID?: string;
 	PAYOS_API_KEY?: string;
 	PAYOS_CHECKSUM_KEY?: string;
+	CLERK_PUBLISHABLE_KEY?: string;
+	CLERK_SECRET_KEY?: string;
 }
 
 // Cookie helpers
@@ -159,6 +161,73 @@ async function verifyJwt(token: string, secret: string): Promise<any | null> {
 	}
 }
 
+function parseJwtPayload(token: string): any | null {
+	try {
+		const parts = token.split('.');
+		if (parts.length !== 3) return null;
+		const payloadJson = new TextDecoder().decode(base64urlDecode(parts[1]));
+		return JSON.parse(payloadJson);
+	} catch {
+		return null;
+	}
+}
+
+interface UserAuth {
+	id: number;
+	name: string;
+	phone: string | null;
+	avatar: string;
+	default_note: string | null;
+	active: number;
+	clerk_id?: string | null;
+}
+
+async function ensureClerkIdColumn(db: D1Database) {
+	try {
+		await db.prepare('SELECT clerk_id FROM users LIMIT 1').first();
+	} catch (e) {
+		try {
+			await db.prepare('ALTER TABLE users ADD COLUMN clerk_id TEXT').run();
+			await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id)').run();
+		} catch (err) { }
+	}
+}
+
+async function getUserFromRequest(request: Request, env: Env): Promise<UserAuth | null> {
+	await ensureClerkIdColumn(env.DB);
+
+	// 1. Authorization: Bearer <clerk_token>
+	const authHeader = request.headers.get('Authorization');
+	if (authHeader && authHeader.startsWith('Bearer ')) {
+		const token = authHeader.substring(7).trim();
+		const payload = parseJwtPayload(token);
+		if (payload && payload.sub) {
+			if (payload.exp && (Date.now() / 1000) > payload.exp) {
+				return null;
+			}
+			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+				.bind(payload.sub)
+				.first<UserAuth>();
+			if (user && user.active === 1) return user;
+		}
+	}
+
+	// 2. Cookie session
+	const cookieVal = getCookie(request, 'session');
+	if (cookieVal) {
+		const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+		const payload = await verifyJwt(cookieVal, secret);
+		if (payload && payload.id) {
+			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE id = ?')
+				.bind(payload.id)
+				.first<UserAuth>();
+			if (user && user.active === 1) return user;
+		}
+	}
+
+	return null;
+}
+
 
 // Helper to return a JSON response (internal use only, no external CORS)
 function jsonResponse(data: any, status: number = 200) {
@@ -175,6 +244,25 @@ function getVNDateString() {
 	const offset = 7 * 60; // ICT is UTC + 7
 	const date = new Date(Date.now() + offset * 60 * 1000);
 	return date.toISOString().split('T')[0];
+}
+
+// Helper to get Monday and Sunday date strings (YYYY-MM-DD) for the week containing dateStr
+function getWeekDateRange(dateStr: string): { mondayStr: string; sundayStr: string } {
+	const [year, month, day] = dateStr.split('-').map(Number);
+	const d = new Date(Date.UTC(year, month - 1, day));
+	const dayOfWeek = d.getUTCDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+	const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+	const mondayDate = new Date(d);
+	mondayDate.setUTCDate(d.getUTCDate() - diffToMonday);
+
+	const sundayDate = new Date(mondayDate);
+	sundayDate.setUTCDate(mondayDate.getUTCDate() + 6);
+
+	return {
+		mondayStr: mondayDate.toISOString().split('T')[0],
+		sundayStr: sundayDate.toISOString().split('T')[0],
+	};
 }
 
 // Helper to check if past order deadline (returns true if past deadline or past date)
@@ -258,7 +346,7 @@ export default {
 		// Ngoại lệ đối với payOS Webhook gọi từ server của payOS
 		if (pathname !== '/api/payment/webhook') {
 			const origin = request.headers.get('Origin');
-			if (origin && origin !== url.origin) {
+			if (origin && origin !== url.origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
 				return new Response('Truy cập bị chặn (Origin không hợp lệ)', { status: 403 });
 			}
 
@@ -266,7 +354,7 @@ export default {
 			if (referer) {
 				try {
 					const refererUrl = new URL(referer);
-					if (refererUrl.origin !== url.origin) {
+					if (refererUrl.origin !== url.origin && !refererUrl.origin.includes('localhost') && !refererUrl.origin.includes('127.0.0.1')) {
 						return new Response('Truy cập bị chặn (Referer không hợp lệ)', { status: 403 });
 					}
 				} catch (e) {
@@ -278,15 +366,20 @@ export default {
 		// Handle CORS Preflight requests (chỉ cho phép từ cùng origin)
 		if (method === 'OPTIONS') {
 			const requestOrigin = request.headers.get('Origin');
-			if (requestOrigin && requestOrigin !== url.origin) {
+			const allowedOrigins = [url.origin, 'http://localhost:3000', 'https://mebicom.pages.dev'];
+			const isAllowed = requestOrigin && (allowedOrigins.includes(requestOrigin) || requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1'));
+
+			if (requestOrigin && !isAllowed) {
 				return new Response('CORS Not Allowed', { status: 403 });
 			}
+
 			return new Response(null, {
 				status: 204,
 				headers: {
-					'Access-Control-Allow-Origin': url.origin,
+					'Access-Control-Allow-Origin': requestOrigin && isAllowed ? requestOrigin : url.origin,
 					'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
 					'Access-Control-Allow-Headers': 'Content-Type',
+					'Access-Control-Allow-Credentials': 'true',
 				},
 			});
 		}
@@ -375,129 +468,107 @@ export default {
 				}
 			}
 
-			// Đăng nhập / Đăng ký
+			// Vô hiệu hóa trang Đăng nhập cũ (Legacy login disabled)
 			// POST /api/users/login
 			if (pathname === '/api/users/login' && method === 'POST') {
-				const body = await request.json() as { name?: string; password?: string; register?: boolean };
-				const name = body.name?.trim();
-				const password = body.password || '';
+				return jsonResponse({
+					error: 'Hệ thống đã nâng cấp sang đăng nhập qua Clerk. Vui lòng sử dụng nút Đăng nhập Clerk trên trang web.'
+				}, 400);
+			}
 
-				if (!name) {
-					return jsonResponse({ error: 'Tên người dùng không được bỏ trống.' }, 400);
+			// POST /api/users/clerk-auth
+			if (pathname === '/api/users/clerk-auth' && method === 'POST') {
+				await ensureClerkIdColumn(env.DB);
+				const body = await request.json() as { clerkId?: string; name?: string; avatar?: string };
+				const clerkId = body.clerkId?.trim();
+				if (!clerkId) {
+					return jsonResponse({ error: 'Thiếu thông tin clerkId.' }, 400);
 				}
 
-				interface UserRow {
-					id: number;
-					name: string;
-					phone: string | null;
-					avatar: string;
-					default_note: string | null;
-					active: number;
-					password_hash: string | null;
-				}
+				// 1. Kiểm tra xem clerk_id đã được liên kết với user trong D1 chưa
+				const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+					.bind(clerkId)
+					.first<UserAuth>();
 
-				// Kiểm tra người dùng đã tồn tại chưa
-				let user = await env.DB.prepare('SELECT * FROM users WHERE name = ?')
-					.bind(name)
-					.first<UserRow>();
-
-				if (!user) {
-					// Nếu chưa tồn tại, chỉ tự động tạo nếu có cờ register=true
-					if (body.register) {
-						const pwdToHash = password || '123456';
-						const salt = generateSalt();
-						const hash = await hashPassword(pwdToHash, salt);
-						const passwordHashValue = `${salt}:${hash}`;
-
-						const result = await env.DB.prepare('INSERT INTO users (name, password_hash) VALUES (?, ?)')
-							.bind(name, passwordHashValue)
-							.run();
-
-						if (!result.success) {
-							return jsonResponse({ error: 'Không thể tạo tài khoản người dùng.' }, 500);
-						}
-
-						user = await env.DB.prepare('SELECT * FROM users WHERE name = ?')
-							.bind(name)
-							.first<UserRow>();
-					} else {
-						// Trả về 404 để thông báo cho Frontend hỏi ý kiến đăng ký tài khoản mới
-						return jsonResponse({ error: 'Tài khoản chưa tồn tại.' }, 404);
+				if (user) {
+					if (user.active === 0) {
+						return jsonResponse({ error: 'Tài khoản này đã bị khóa hoặc tạm ngưng hoạt động.' }, 403);
 					}
+					const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+					const token = await signJwt({ id: user.id, name: user.name, clerk_id: user.clerk_id }, secret);
+					const response = jsonResponse({ user, unlinkedUsers: [], requiresLinking: false });
+					const isSecure = url.protocol === 'https:';
+					response.headers.append('Set-Cookie', `session=${token}; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Max-Age=31536000`);
+					return response;
 				}
 
-				if (!user) {
-					return jsonResponse({ error: 'Không thể tạo hoặc tìm thấy tài khoản người dùng.' }, 500);
+				// 2. Chưa được liên kết -> Trả về danh sách tài khoản cũ chưa liên kết để người dùng chọn
+				const { results: unlinkedUsers } = await env.DB.prepare(
+					'SELECT id, name, avatar FROM users WHERE (clerk_id IS NULL OR clerk_id = "") AND active = 1 ORDER BY name ASC'
+				).all();
+
+				return jsonResponse({
+					user: null,
+					unlinkedUsers: unlinkedUsers || [],
+					requiresLinking: true
+				});
+			}
+
+			// POST /api/users/link-clerk
+			if (pathname === '/api/users/link-clerk' && method === 'POST') {
+				await ensureClerkIdColumn(env.DB);
+				const body = await request.json() as { clerkId?: string; userId?: number; newName?: string };
+				const clerkId = body.clerkId?.trim();
+				if (!clerkId) {
+					return jsonResponse({ error: 'Thiếu thông tin clerkId.' }, 400);
 				}
 
-				if (user.active === 0) {
-					return jsonResponse({ error: 'Tài khoản này đã bị khóa hoặc tạm ngưng hoạt động.' }, 403);
-				}
+				let targetUser: UserAuth | null = null;
 
-				// Xác thực mật khẩu
-				let isPasswordCorrect = false;
-				if (user.password_hash === null) {
-					// Chưa đổi mật khẩu lần nào -> Mặc định là '123456'
-					if (password === '123456') {
-						isPasswordCorrect = true;
+				if (body.userId) {
+					// Gán clerk_id vào tài khoản cũ được chọn
+					await env.DB.prepare('UPDATE users SET clerk_id = ? WHERE id = ?')
+						.bind(clerkId, body.userId)
+						.run();
+
+					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE id = ?')
+						.bind(body.userId)
+						.first<UserAuth>();
+				} else if (body.newName?.trim()) {
+					// Tạo tài khoản mới hoàn toàn với tên mới
+					const name = body.newName.trim();
+					const result = await env.DB.prepare('INSERT INTO users (name, clerk_id) VALUES (?, ?)')
+						.bind(name, clerkId)
+						.run();
+					if (!result.success) {
+						return jsonResponse({ error: 'Không thể tạo tài khoản mới.' }, 500);
 					}
+					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+						.bind(clerkId)
+						.first<UserAuth>();
 				} else {
-					const [salt, storedHash] = user.password_hash.split(':');
-					if (salt && storedHash) {
-						const enteredHash = await hashPassword(password, salt);
-						if (enteredHash === storedHash) {
-							isPasswordCorrect = true;
-						}
-					}
+					return jsonResponse({ error: 'Vui lòng chọn tài khoản cũ hoặc nhập tên mới.' }, 400);
 				}
 
-				if (!isPasswordCorrect) {
-					return jsonResponse({ error: 'Mật khẩu không chính xác.' }, 401);
+				if (!targetUser) {
+					return jsonResponse({ error: 'Không thể xử lý liên kết tài khoản.' }, 500);
 				}
 
-				// Đăng nhập thành công -> Tạo JWT token
 				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
-				const token = await signJwt({ id: user.id, name: user.name }, secret);
-
-				// Loại bỏ password_hash khỏi dữ liệu trả về trước khi gửi cho client
-				const safeUser = {
-					id: user.id,
-					name: user.name,
-					phone: user.phone,
-					avatar: user.avatar || '👤',
-					default_note: user.default_note,
-					active: user.active
-				};
-
-				const response = jsonResponse({ message: 'Đăng nhập thành công', user: safeUser });
-				// Set cookie có hiệu lực trong 1 năm (chỉ đặt Secure khi dùng HTTPS)
+				const token = await signJwt({ id: targetUser.id, name: targetUser.name, clerk_id: targetUser.clerk_id }, secret);
+				const response = jsonResponse({ user: targetUser, message: 'Liên kết tài khoản thành công!' });
 				const isSecure = url.protocol === 'https:';
 				response.headers.append('Set-Cookie', `session=${token}; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Max-Age=31536000`);
 				return response;
 			}
 
-			// Lấy thông tin tài khoản hiện tại từ cookie
+			// Lấy thông tin tài khoản hiện tại
 			// GET /api/users/me
 			if (pathname === '/api/users/me' && method === 'GET') {
-				const cookieVal = getCookie(request, 'session');
-				if (!cookieVal) {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
 					return jsonResponse({ user: null });
 				}
-
-				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
-				const payload = await verifyJwt(cookieVal, secret);
-				if (!payload || !payload.id) {
-					return jsonResponse({ user: null });
-				}
-
-				const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active FROM users WHERE id = ?')
-					.bind(payload.id)
-					.first<{ id: number; name: string; phone: string | null; avatar: string; default_note: string | null; active: number }>();
-
-				if (!user || user.active === 0) {
-					return jsonResponse({ user: null });
-				}
-
 				return jsonResponse({ user });
 			}
 
@@ -1085,7 +1156,7 @@ export default {
 			if (pathname === '/api/lunch-pickers' && method === 'GET') {
 				const dateParam = url.searchParams.get('date') || getVNDateString();
 				const key = `lunch_pickers_${dateParam}`;
-				
+
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
 				const result = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
 					.bind(key)
@@ -1142,9 +1213,57 @@ export default {
 					// Chỉ có 1 người đặt
 					picked = [orderedUsers[0]];
 				} else {
-					// Có >= 2 người đặt, xáo trộn ngẫu nhiên và chọn 2 người
-					const shuffled = [...orderedUsers].sort(() => Math.random() - 0.5);
-					picked = shuffled.slice(0, 2);
+					// Lấy danh sách những người đã đi lấy cơm trong tuần này (trừ ngày hiện tại đang quay)
+					const { mondayStr, sundayStr } = getWeekDateRange(dateParam);
+					const startKey = `lunch_pickers_${mondayStr}`;
+					const endKey = `lunch_pickers_${sundayStr}`;
+
+					const { results: weekPickersSettings } = await env.DB.prepare(`
+						SELECT key, value FROM settings
+						WHERE key >= ? AND key <= ? AND key != ?
+					`)
+						.bind(startKey, endKey, key)
+						.all<{ key: string; value: string }>();
+
+					// Đếm số lần mỗi người dùng đã đi lấy cơm trong tuần
+					const timesPickedThisWeek = new Map<number, number>();
+					if (weekPickersSettings && weekPickersSettings.length > 0) {
+						for (const row of weekPickersSettings) {
+							try {
+								const pickers = JSON.parse(row.value) as { id: number; name: string; avatar: string }[];
+								if (Array.isArray(pickers)) {
+									for (const p of pickers) {
+										if (p && typeof p.id === 'number') {
+											timesPickedThisWeek.set(p.id, (timesPickedThisWeek.get(p.id) || 0) + 1);
+										}
+									}
+								}
+							} catch {
+								// Bỏ qua nếu dữ liệu không đúng chuẩn JSON
+							}
+						}
+					}
+
+					// Nhóm người đặt cơm theo số lần đã đi trong tuần (0 lần -> 1 lần -> 2 lần...)
+					const grouped = new Map<number, typeof orderedUsers>();
+					for (const user of orderedUsers) {
+						const count = timesPickedThisWeek.get(user.id) || 0;
+						if (!grouped.has(count)) {
+							grouped.set(count, []);
+						}
+						grouped.get(count)!.push(user);
+					}
+
+					// Ưu tiên chọn những người có số lần đi ít nhất (0 lần ưu tiên trước)
+					const sortedCounts = Array.from(grouped.keys()).sort((a, b) => a - b);
+					const prioritizedUsers: typeof orderedUsers = [];
+					for (const count of sortedCounts) {
+						const group = grouped.get(count)!;
+						const shuffledGroup = [...group].sort(() => Math.random() - 0.5);
+						prioritizedUsers.push(...shuffledGroup);
+					}
+
+					picked = prioritizedUsers.slice(0, 2);
 				}
 
 				const valueStr = JSON.stringify(picked);
@@ -1319,7 +1438,7 @@ export default {
 
 				// Kiểm tra phân quyền: Chỉ ID 1 (P.Dương) được thay đổi thủ công trạng thái thanh toán.
 				if (callerId !== 1) {
-					return jsonResponse({ error: 'Bạn không có quyền cập nhật thủ công trạng thái thanh toán cho đơn hàng này. Vui lòng thanh toán qua payOS.' }, 403);
+					return jsonResponse({ error: 'Bạn không có quyền cập nhật thủ công trạng thái thanh toán cho đơn hàng này.' }, 403);
 				}
 
 				const result = await env.DB.prepare('UPDATE orders SET paid = ? WHERE id = ?')
@@ -1429,7 +1548,7 @@ export default {
 				const origin = url.origin;
 				const cancelUrl = `${origin}/?status=CANCELLED&orderCode=${orderCode}`;
 				const returnUrl = `${origin}/?status=PAID&orderCode=${orderCode}`;
-				
+
 				// Rút gọn tên không dấu
 				const cleanName = (userName: string) => {
 					let str = userName || 'Member';
@@ -1616,7 +1735,7 @@ export default {
 						if (payment) {
 							// Bắt đầu cập nhật trạng thái đã thanh toán
 							const orderIds = payment.order_ids.split(',').map(Number);
-							
+
 							// Cập nhật bảng payments
 							await env.DB.prepare('UPDATE payments SET status = ? WHERE order_code = ?')
 								.bind('PAID', orderCode)
