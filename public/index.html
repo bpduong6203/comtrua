@@ -762,20 +762,27 @@
 								<span class="badge" id="orders-list-badge">0</span>
 							</h2>
 
-							<!-- Lunch Picker Section -->
+							<!-- Lunch Picker & Duck Race Section -->
 							<div id="lunch-picker-widget" class="lunch-picker-card" style="display: none;">
 								<div class="lunch-picker-header">
 									<div class="lunch-picker-title">
 										<span>🚗 Người Đi Lấy Cơm</span>
 									</div>
 									<div class="lunch-picker-actions">
-										<button type="button" id="lunch-picker-spin-btn" class="lunch-picker-btn spin" onclick="spinLunchPicker()">
-											🎲 Quay Số Chọn
+										<button type="button" id="lunch-picker-race-btn" class="lunch-picker-btn spin" onclick="handleDuckRaceBtnClick()">
+											🏁 Đua Chọn Người
 										</button>
-										<button type="button" id="lunch-picker-reset-btn" class="lunch-picker-btn reset" onclick="resetLunchPicker()" style="display: none;">
-											❌ Hủy Chọn
+										<button type="button" id="lunch-picker-reset-btn" class="lunch-picker-btn reset" onclick="handleMainResetBtnClick()" style="display: none;">
+											❌ Hủy Kết Quả
 										</button>
 									</div>
+								</div>
+								<!-- Live Sync Race Banner (appears when a race is active in real-time) -->
+								<div id="lunch-picker-live-banner" class="lunch-picker-live-banner" style="display: none;" onclick="openDuckRaceModal()">
+									<div class="lunch-picker-live-banner-text">
+										<span>🔴 Đang diễn ra cuộc đua trực tiếp trên server!</span>
+									</div>
+									<button type="button" class="lunch-picker-live-banner-btn">👉 Vào Xem Trực Tiếp</button>
 								</div>
 								<div class="lunch-picker-body" id="lunch-picker-body">
 									<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>
@@ -948,7 +955,83 @@
 											Sau giờ này, các thành viên (ngoại trừ quản trị viên) sẽ không thể đặt món, đổi món hoặc hủy đơn của ngày hôm nay.
 										</div>
 									</div>
-									<button type="submit" class="btn btn-secondary">Lưu Cài Đặt</button>
+
+									<!-- Chế độ chọn người đi lấy cơm -->
+									<div class="form-group" style="margin-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.25rem;">
+										<label>🎲 Phương Thức Chọn Người Đi Lấy Cơm</label>
+										<div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
+											<label style="display: flex; align-items: flex-start; gap: 0.65rem; cursor: pointer; background: rgba(255, 255, 255, 0.04); padding: 0.75rem 0.9rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+												<input type="radio" name="lunch_picker_mode" id="mode-duck-race" value="duck_race" checked style="accent-color: var(--primary); width: 18px; height: 18px; margin-top: 2px;" onchange="togglePickerModeSettingsUI()" />
+												<div>
+													<strong style="color: var(--text-main); font-size: 0.95rem;">🏆 Trường Đua Linh Vật Trực Tuyến (Mặc định)</strong>
+													<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4;">
+														Có hoạt hình đường đua linh vật (Vịt, Ngựa, Thỏ, Rùa, Chim), hiệu ứng chuyển động, âm thanh sinh động, khán đài người xem, nút cổ vũ realtime và tự động chạy theo giờ định sẵn.
+													</div>
+												</div>
+											</label>
+											<label style="display: flex; align-items: flex-start; gap: 0.65rem; cursor: pointer; background: rgba(255, 255, 255, 0.04); padding: 0.75rem 0.9rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+												<input type="radio" name="lunch_picker_mode" id="mode-classic-roll" value="classic_roll" style="accent-color: var(--primary); width: 18px; height: 18px; margin-top: 2px;" onchange="togglePickerModeSettingsUI()" />
+												<div>
+													<strong style="color: var(--text-main); font-size: 0.95rem;">🎲 Quay Số Ngẫu Nhiên (Roll truyền thống)</strong>
+													<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4;">
+														Bấm nút để quay số chọn ngẫu nhiên người lấy cơm trực tiếp trên danh sách, không mở trường đua linh vật.
+													</div>
+												</div>
+											</label>
+										</div>
+									</div>
+
+									<!-- Cấu hình giờ tự động (Chỉ áp dụng khi chọn chế độ Đua Vịt/Thú) -->
+									<div id="duck-race-settings-group" class="form-group" style="margin-top: 1rem; background: rgba(2, 132, 199, 0.08); border: 1px solid rgba(2, 132, 199, 0.25); padding: 1rem; border-radius: 10px;">
+										<!-- Chọn chủ đề linh vật cuộc đua -->
+										<div class="form-group" style="margin-bottom: 1.15rem;">
+											<label style="font-weight: 700; color: #38bdf8; display: block; margin-bottom: 0.4rem;">🎨 Chủ Đề Linh Vật Cuộc Đua</label>
+											<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem;">
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="duck" checked style="accent-color: var(--primary);" />
+													<span>🦆 Đua Vịt</span>
+												</label>
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="horse" style="accent-color: var(--primary);" />
+													<span>🐎 Đua Ngựa</span>
+												</label>
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="rabbit" style="accent-color: var(--primary);" />
+													<span>🐰 Đua Thỏ</span>
+												</label>
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="turtle" style="accent-color: var(--primary);" />
+													<span>🐢 Đua Rùa</span>
+												</label>
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="bird" style="accent-color: var(--primary);" />
+													<span>🦅 Đua Chim</span>
+												</label>
+												<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: rgba(255, 255, 255, 0.05); padding: 0.55rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+													<input type="radio" name="lunch_race_theme" value="random" style="accent-color: var(--primary);" />
+													<span>🎲 Ngẫu Nhiên</span>
+												</label>
+											</div>
+											<div class="autocomplete-hint" style="margin-top: 0.4rem;">
+												Mỗi chủ đề sẽ có đồ họa đường đua, linh vật động vật, chuyển động hoạt hình và âm thanh riêng biệt!
+											</div>
+										</div>
+
+										<label for="settings-race-auto-time" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+											<span style="font-weight: 700; color: #38bdf8;">⏰ Giờ Tự Động Chạy Đua Chính Thức</span>
+											<label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--primary);">
+												<input type="checkbox" id="settings-race-auto-enabled" checked style="accent-color: var(--primary); width: 16px; height: 16px;" />
+												<span id="settings-race-auto-enabled-label">Bật tự động</span>
+											</label>
+										</label>
+										<input type="time" id="settings-race-auto-time" class="input-ctrl" value="11:30" required style="margin-top: 0.5rem;" />
+										<div class="autocomplete-hint" style="margin-top: 0.5rem; line-height: 1.45;">
+											⏰ Đến đúng giờ này, hệ thống sẽ <strong>tự động chạy cuộc đua chính thức</strong> trên toàn bộ màn hình của tất cả mọi người.<br />
+											🔒 <strong>Quy tắc khóa:</strong> Trước giờ này, Admin có thể bấm chạy thử thủ công (trận thử nghiệm). Khi đến đúng giờ setup, cuộc đua chính thức sẽ tự chạy và sau đó <strong>khóa vĩnh viễn trong ngày, không thể chạy lại hay hủy kết quả</strong>.
+										</div>
+									</div>
+
+									<button type="submit" class="btn btn-secondary" style="margin-top: 1.25rem;">Lưu Cài Đặt</button>
 								</form>
 							</div>
 						</div>
@@ -1027,6 +1110,77 @@
 								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+			</div>
+		<!-- DUCK RACE ARENA MODAL -->
+		<div id="duck-race-modal-overlay" class="duck-race-modal-overlay">
+			<div class="duck-race-modal" role="dialog" aria-modal="true" aria-labelledby="duck-race-modal-title">
+				<div class="duck-race-header">
+					<div class="duck-race-header-title">
+						<span id="duck-race-modal-title">🏁 TRƯỜNG ĐUA LINH VẬT CƠM TRƯA</span>
+						<span class="duck-race-live-tag" id="duck-race-live-badge">🔴 LIVE SYNC</span>
+						<span class="duck-race-spectators-pill" id="duck-race-spectators-pill" title="Người đang theo dõi trực tiếp">👀 <span id="duck-race-spectators-count">1</span> đang xem</span>
+					</div>
+					<div class="duck-race-header-controls">
+						<div class="duck-race-timer" id="duck-race-timer-display">⏱️ 00:00 / 15s</div>
+						<button type="button" class="duck-race-btn-icon" id="duck-race-sound-toggle" title="Bật/Tắt âm thanh" onclick="toggleDuckSound()">🔊</button>
+						<button type="button" class="duck-race-btn-icon" id="duck-race-close-btn" title="Đóng" onclick="closeDuckRaceModal()">✕</button>
+					</div>
+				</div>
+
+				<!-- Mini-Map Track Overview Bar -->
+				<div class="duck-race-minimap-container">
+					<div class="duck-race-minimap-label">🏁 0m</div>
+					<div class="duck-race-minimap-track" id="duck-race-minimap-track">
+						<div class="duck-race-minimap-fill" id="duck-race-minimap-fill"></div>
+						<div class="duck-race-minimap-pin" id="duck-race-minimap-pin" style="left: 0%;">🏁</div>
+					</div>
+					<div class="duck-race-minimap-label">🏆 ĐÍCH (1000m)</div>
+				</div>
+
+				<div class="duck-race-arena-container" id="duck-race-arena-container">
+					<canvas id="duck-race-canvas"></canvas>
+
+					<!-- Countdown Overlay -->
+					<div id="duck-race-countdown" class="duck-race-countdown-overlay" style="display: none;">
+						<div class="duck-race-countdown-number" id="duck-race-countdown-num">3</div>
+						<div class="duck-race-countdown-label" id="duck-race-countdown-label">CÁC VẬN ĐỘNG VIÊN CHUẨN BỊ XUẤT PHÁT...</div>
+					</div>
+
+					<!-- Results Overlay -->
+					<div id="duck-race-results" class="duck-race-results-overlay" style="display: none;">
+						<div class="duck-race-results-box">
+							<div class="duck-race-results-title" id="duck-race-results-title">🏆 KẾT THÚC CUỘC ĐUA!</div>
+							<div class="duck-race-results-sub" id="duck-race-results-sub">2 người về chót đã lộ diện và sẽ đi lấy cơm hôm nay:</div>
+							<div class="duck-race-losers-grid" id="duck-race-losers-container">
+								<!-- Populated by JS -->
+							</div>
+							<div class="duck-race-results-actions">
+								<button type="button" class="btn btn-primary" onclick="closeDuckRaceModal()">🎉 Đã Hiểu (Đóng)</button>
+								<button type="button" class="btn btn-secondary" id="duck-race-admin-reset-btn" onclick="resetDuckRace()" style="display: none;">🔄 Đua Lại (Admin)</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Real-time Danger Panel / Standings & Interactive Cheer Bar -->
+				<div class="duck-race-danger-panel">
+					<div class="duck-race-danger-title">
+						<span>⚠️ Vị trí chót (Đi lấy cơm):</span>
+					</div>
+					<div class="duck-race-leaderboard-strip" id="duck-race-leaderboard-strip">
+						<!-- Badges populated by JS -->
+					</div>
+					<!-- Cheer Action Buttons -->
+					<div class="duck-race-cheer-bar" id="duck-race-cheer-bar">
+						<div class="duck-race-cheer-title">📣 CỔ VŨ:</div>
+						<button type="button" class="cheer-btn" data-emoji="👏" title="Vỗ tay" onclick="triggerCheer('👏', 'Vỗ tay nhiệt tình! 👏')">👏</button>
+						<button type="button" class="cheer-btn" data-emoji="🔥" title="Cố lên" onclick="triggerCheer('🔥', 'CỐ LÊN ANH EM! 🔥')">🔥</button>
+						<button type="button" class="cheer-btn" data-emoji="🦆" title="Quack Quack" onclick="triggerCheer('🦆', 'QUACK QUACK! 🦆')">🦆</button>
+						<button type="button" class="cheer-btn" data-emoji="🚀" title="Tăng tốc" onclick="triggerCheer('🚀', 'TĂNG TỐC ĐI! 🚀')">🚀</button>
+						<button type="button" class="cheer-btn" data-emoji="❤️" title="Thả tim" onclick="triggerCheer('❤️', 'THẢ TIM! ❤️')">❤️</button>
+						<button type="button" class="cheer-btn" data-emoji="🎺" title="Thổi kèn" onclick="triggerCheer('🎺', 'TOE TOE TOE! 🎺')">🎺</button>
 					</div>
 				</div>
 			</div>
@@ -1140,6 +1294,8 @@
 			const tabContentSettings = document.getElementById('tab-content-settings');
 			const settingsForm = document.getElementById('settings-form');
 			const settingsDeadlineInput = document.getElementById('settings-deadline');
+			const settingsRaceAutoTime = document.getElementById('settings-race-auto-time');
+			const settingsRaceAutoEnabled = document.getElementById('settings-race-auto-enabled');
 			const deadlineBadge = document.getElementById('deadline-badge');
 
 			const todayOrderQrBox = document.getElementById('today-order-qr-box');
@@ -1449,29 +1605,25 @@
 				settingsForm.addEventListener('submit', handleSettingsSubmit);
 
 				// Autocomplete suggestions listener
-				loginNameInput.addEventListener('input', () => {
+				function triggerLoginSuggestions() {
 					const query = loginNameInput.value.trim();
-
 					if (query.length > 0) {
 						loginNameClear.style.display = 'flex';
+						const normalizedQuery = removeVietnameseTones(query).toLowerCase();
+						const matches = allExistingUsers.filter((user) => {
+							const normalizedName = removeVietnameseTones(user.name).toLowerCase();
+							return normalizedName.includes(normalizedQuery);
+						});
+						renderSuggestions(matches, query);
 					} else {
 						loginNameClear.style.display = 'none';
+						renderSuggestions(allExistingUsers, '');
 					}
+				}
 
-					if (!query) {
-						loginSuggestions.style.display = 'none';
-						loginSuggestions.innerHTML = '';
-						return;
-					}
-
-					const normalizedQuery = removeVietnameseTones(query).toLowerCase();
-					const matches = allExistingUsers.filter((user) => {
-						const normalizedName = removeVietnameseTones(user.name).toLowerCase();
-						return normalizedName.includes(normalizedQuery);
-					});
-
-					renderSuggestions(matches, query);
-				});
+				loginNameInput.addEventListener('input', triggerLoginSuggestions);
+				loginNameInput.addEventListener('focus', triggerLoginSuggestions);
+				loginNameInput.addEventListener('click', triggerLoginSuggestions);
 
 				// Close dropdowns and suggestions on outside clicks
 				document.addEventListener('click', (e) => {
@@ -1506,7 +1658,7 @@
 			function renderSuggestions(matches, query) {
 				loginSuggestions.innerHTML = '';
 
-				const queryClean = query.trim().toLowerCase();
+				const queryClean = query ? query.trim().toLowerCase() : '';
 				const queryNormalized = removeVietnameseTones(queryClean);
 
 				const isExistingName = allUsersFullList.some((user) => {
@@ -1515,7 +1667,7 @@
 				});
 
 				if (matches.length === 0) {
-					if (isExistingName) {
+					if (isExistingName || !query) {
 						loginSuggestions.style.display = 'none';
 						return;
 					}
@@ -1526,7 +1678,10 @@
 						loginNameInput.value = query;
 						loginNameClear.style.display = 'flex';
 						const pwdInput = document.getElementById('login-password');
-						if (pwdInput) pwdInput.focus();
+						if (pwdInput) {
+							if (!pwdInput.value) pwdInput.value = '123456';
+							pwdInput.focus();
+						}
 						loginSuggestions.style.display = 'none';
 					});
 					loginSuggestions.appendChild(item);
@@ -1543,14 +1698,17 @@
 					item.innerHTML = `
                     <div class="suggestion-avatar">${getAvatarHtml(avatar)}</div>
                     <span class="suggestion-name">${user.name}</span>
-                    <span class="suggestion-badge">Thành viên</span>
+                    <span class="suggestion-badge">${user.id === 1 ? 'Quản trị viên' : 'Thành viên'}</span>
                 `;
 
 					item.addEventListener('click', () => {
 						loginNameInput.value = user.name;
 						loginNameClear.style.display = 'flex';
 						const pwdInput = document.getElementById('login-password');
-						if (pwdInput) pwdInput.focus();
+						if (pwdInput) {
+							pwdInput.value = '123456';
+							pwdInput.focus();
+						}
 						loginSuggestions.style.display = 'none';
 					});
 
@@ -1616,6 +1774,19 @@
 
 			let announcementText = '';
 			let isEditingAnnouncement = false;
+			let serverAutoRaceTime = '11:30';
+			let serverAutoRaceEnabled = true;
+			let serverLunchPickerMode = 'duck_race';
+			let configuredRaceTheme = 'duck';
+			let serverRaceTheme = 'duck';
+
+			function togglePickerModeSettingsUI() {
+				const duckModeRadio = document.getElementById('mode-duck-race');
+				const duckSettingsGroup = document.getElementById('duck-race-settings-group');
+				if (duckSettingsGroup) {
+					duckSettingsGroup.style.display = (duckModeRadio && duckModeRadio.checked) ? 'block' : 'none';
+				}
+			}
 
 			async function loadSettings() {
 				try {
@@ -1624,11 +1795,38 @@
 					if (resp.ok) {
 						if (data.order_deadline) {
 							orderDeadline = data.order_deadline;
-							settingsDeadlineInput.value = orderDeadline;
+							if (settingsDeadlineInput) settingsDeadlineInput.value = orderDeadline;
 							checkAndUpdateDeadlineUI();
+						}
+						if (data.lunch_race_auto_time) {
+							serverAutoRaceTime = data.lunch_race_auto_time;
+							if (settingsRaceAutoTime) settingsRaceAutoTime.value = serverAutoRaceTime;
+						}
+						if (data.lunch_race_auto_enabled !== undefined) {
+							serverAutoRaceEnabled = data.lunch_race_auto_enabled !== '0';
+							if (settingsRaceAutoEnabled) settingsRaceAutoEnabled.checked = serverAutoRaceEnabled;
+						}
+						if (data.lunch_picker_mode) {
+							serverLunchPickerMode = data.lunch_picker_mode;
+							const duckRadio = document.getElementById('mode-duck-race');
+							const rollRadio = document.getElementById('mode-classic-roll');
+							if (duckRadio && rollRadio) {
+								if (serverLunchPickerMode === 'classic_roll') {
+									rollRadio.checked = true;
+								} else {
+									duckRadio.checked = true;
+								}
+								togglePickerModeSettingsUI();
+							}
+						}
+						if (data.lunch_race_theme) {
+							configuredRaceTheme = data.lunch_race_theme;
+							const themeRadio = document.querySelector(`input[name="lunch_race_theme"][value="${configuredRaceTheme}"]`);
+							if (themeRadio) themeRadio.checked = true;
 						}
 						announcementText = data.announcement || '';
 						renderAnnouncement();
+						renderLunchPickers();
 					}
 				} catch (err) {
 					console.error('Lỗi khi tải cài đặt:', err);
@@ -1735,25 +1933,80 @@
 
 			async function handleSettingsSubmit(e) {
 				e.preventDefault();
-				const value = settingsDeadlineInput.value;
-				if (!value) return;
+				const deadlineVal = settingsDeadlineInput.value;
+				const raceAutoTimeVal = settingsRaceAutoTime ? settingsRaceAutoTime.value : '11:30';
+				const raceAutoEnabledVal = settingsRaceAutoEnabled && settingsRaceAutoEnabled.checked ? '1' : '0';
+				const duckRadio = document.getElementById('mode-duck-race');
+				const pickerModeVal = (duckRadio && duckRadio.checked) ? 'duck_race' : 'classic_roll';
+				const selectedThemeRadio = document.querySelector('input[name="lunch_race_theme"]:checked');
+				const raceThemeVal = selectedThemeRadio ? selectedThemeRadio.value : 'duck';
 
 				try {
-					const resp = await fetch('/api/settings', {
+					// Lưu giờ chốt đặt cơm
+					await fetch('/api/settings', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
 							key: 'order_deadline',
-							value: value,
+							value: deadlineVal,
+							caller_id: currentUser.id,
+						}),
+					});
+
+					// Lưu giờ tự động đua
+					await fetch('/api/settings', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							key: 'lunch_race_auto_time',
+							value: raceAutoTimeVal,
+							caller_id: currentUser.id,
+						}),
+					});
+
+					// Lưu trạng thái bật/tắt tự động đua
+					await fetch('/api/settings', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							key: 'lunch_race_auto_enabled',
+							value: raceAutoEnabledVal,
+							caller_id: currentUser.id,
+						}),
+					});
+
+					// Lưu chủ đề linh vật cuộc đua
+					await fetch('/api/settings', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							key: 'lunch_race_theme',
+							value: raceThemeVal,
+							caller_id: currentUser.id,
+						}),
+					});
+
+					// Lưu chế độ chọn người đi lấy cơm (Đua Vịt/Thú / Quay Số Roll)
+					const resp = await fetch('/api/settings', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							key: 'lunch_picker_mode',
+							value: pickerModeVal,
 							caller_id: currentUser.id,
 						}),
 					});
 
 					const data = await resp.json();
 					if (resp.ok) {
-						showToast('Đã lưu thiết lập hệ thống thành công!');
-						orderDeadline = value;
+						showToast('Đã lưu toàn bộ thiết lập hệ thống thành công!', 'success');
+						orderDeadline = deadlineVal;
+						serverAutoRaceTime = raceAutoTimeVal;
+						serverAutoRaceEnabled = raceAutoEnabledVal === '1';
+						serverLunchPickerMode = pickerModeVal;
+						configuredRaceTheme = raceThemeVal;
 						checkAndUpdateDeadlineUI();
+						renderLunchPickers();
 					} else {
 						showToast(data.error || 'Lỗi khi lưu cài đặt.', 'error');
 					}
@@ -1777,7 +2030,8 @@
 					const data = await resp.json();
 					if (resp.ok) {
 						allUsersFullList = data;
-						allExistingUsers = data.filter((user) => user.id !== 1);
+						// Đưa Admin lên đầu danh sách để dễ chọn khi test
+						allExistingUsers = [...data].sort((a, b) => (a.id === 1 ? -1 : (b.id === 1 ? 1 : 0)));
 						if (userQuickSelect) {
 							userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
 							data.forEach((user) => {
@@ -3613,34 +3867,567 @@
 			}
 
 			/* ============================================
-			   LUNCH PICKER FEATURE
+			   DUCK RACE & LUNCH PICKER SYSTEM (30S REAL-TIME)
 			   ============================================ */
 			let lunchPickers = [];
-			let isShufflingPickers = false;
+			let activeRaceData = null;
+			let raceAnimationId = null;
+			let raceSyncInterval = null;
+			let serverClockSkew = 0; // ms offset between client and server
+			let isSoundEnabled = localStorage.getItem('duck_race_sound') !== 'false';
+			let lastViewedRaceId = null;
+			let hasAutoOpenedModalForCurrentRace = false;
 
+			// DOM Elements
 			const lunchPickerWidget = document.getElementById('lunch-picker-widget');
 			const lunchPickerBody = document.getElementById('lunch-picker-body');
-			const lunchPickerSpinBtn = document.getElementById('lunch-picker-spin-btn');
+			const lunchPickerRaceBtn = document.getElementById('lunch-picker-race-btn');
 			const lunchPickerResetBtn = document.getElementById('lunch-picker-reset-btn');
+			const lunchPickerLiveBanner = document.getElementById('lunch-picker-live-banner');
 
+			const duckRaceModalOverlay = document.getElementById('duck-race-modal-overlay');
+			const duckRaceCanvas = document.getElementById('duck-race-canvas');
+			const duckRaceCountdown = document.getElementById('duck-race-countdown');
+			const duckRaceCountdownNum = document.getElementById('duck-race-countdown-num');
+			const duckRaceResults = document.getElementById('duck-race-results');
+			const duckRaceLosersContainer = document.getElementById('duck-race-losers-container');
+			const duckRaceTimerDisplay = document.getElementById('duck-race-timer-display');
+			const duckRaceSoundToggle = document.getElementById('duck-race-sound-toggle');
+			const duckRaceLeaderboardStrip = document.getElementById('duck-race-leaderboard-strip');
+			const duckRaceAdminResetBtn = document.getElementById('duck-race-admin-reset-btn');
+			const duckRaceMinimapFill = document.getElementById('duck-race-minimap-fill');
+			const duckRaceMinimapPin = document.getElementById('duck-race-minimap-pin');
+			const duckRaceSpectatorsPill = document.getElementById('duck-race-spectators-pill');
+			const duckRaceSpectatorsCount = document.getElementById('duck-race-spectators-count');
+			const grandstandAudienceList = document.getElementById('grandstand-audience-list');
+
+			let activeSpectators = [];
+
+			function updateSpectatorsUI() {
+				const list = (activeSpectators && activeSpectators.length > 0)
+					? activeSpectators
+					: (currentUser ? [{ id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar || '👤', cheerEmoji: '🚩' }] : [{ id: 1, name: 'P.Dương (Admin)', avatar: '👑', cheerEmoji: '🚩' }]);
+
+				if (duckRaceSpectatorsCount) duckRaceSpectatorsCount.textContent = list.length;
+
+				if (grandstandAudienceList) {
+					grandstandAudienceList.innerHTML = '';
+					list.forEach(spec => {
+						const badge = document.createElement('div');
+						badge.className = 'grandstand-spectator-badge';
+						badge.innerHTML = `
+							<span class="grandstand-spectator-avatar">${spec.avatar && !spec.avatar.startsWith('http') ? spec.avatar : '👤'}</span>
+							<span class="grandstand-spectator-name">${spec.name}</span>
+							<span class="grandstand-spectator-prop">${spec.cheerEmoji || '🚩'}</span>
+						`;
+						grandstandAudienceList.appendChild(badge);
+					});
+				}
+			}
+
+			async function sendPresenceHeartbeat() {
+				if (!currentUser) return;
+				try {
+					const resp = await fetch('/api/lunch-race/presence', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({})
+					});
+					if (resp.ok) {
+						const data = await resp.json();
+						if (data.spectators) {
+							activeSpectators = data.spectators;
+							updateSpectatorsUI();
+						}
+					}
+				} catch (e) {
+					// Ignore heartbeat network drops
+				}
+			}
+
+			// Presence Heartbeat every 2.5 seconds
+			setInterval(() => {
+				if (currentUser) {
+					sendPresenceHeartbeat();
+				}
+			}, 2500);
+
+			// Sound Synthesizer via Web Audio API
+			let audioCtx = null;
+			function getAudioContext() {
+				if (!audioCtx) {
+					const AudioContext = window.AudioContext || window.webkitAudioContext;
+					if (AudioContext) audioCtx = new AudioContext();
+				}
+				if (audioCtx && audioCtx.state === 'suspended') {
+					audioCtx.resume();
+				}
+				return audioCtx;
+			}
+
+			function toggleDuckSound() {
+				isSoundEnabled = !isSoundEnabled;
+				localStorage.setItem('duck_race_sound', isSoundEnabled ? 'true' : 'false');
+				updateSoundBtn();
+				if (isSoundEnabled) {
+					playCountdownBeep(true);
+				}
+			}
+
+			function updateSoundBtn() {
+				if (duckRaceSoundToggle) {
+					duckRaceSoundToggle.textContent = isSoundEnabled ? '🔊' : '🔇';
+					duckRaceSoundToggle.title = isSoundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh';
+				}
+			}
+
+			function playCountdownBeep(isHigh = false) {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const osc = ctx.createOscillator();
+					const gain = ctx.createGain();
+					osc.type = 'sine';
+					osc.frequency.setValueAtTime(isHigh ? 880 : 440, ctx.currentTime);
+					gain.gain.setValueAtTime(0.15, ctx.currentTime);
+					gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isHigh ? 0.4 : 0.2));
+					osc.connect(gain);
+					gain.connect(ctx.destination);
+					osc.start();
+					osc.stop(ctx.currentTime + (isHigh ? 0.4 : 0.2));
+				} catch (e) {
+					// AudioContext may be blocked before interaction
+				}
+			}
+
+			function playDuckQuack() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const osc = ctx.createOscillator();
+					const filter = ctx.createBiquadFilter();
+					const gain = ctx.createGain();
+
+					osc.type = 'sawtooth';
+					osc.frequency.setValueAtTime(320, now);
+					osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+
+					filter.type = 'bandpass';
+					filter.frequency.setValueAtTime(800, now);
+					filter.Q.setValueAtTime(4, now);
+
+					gain.gain.setValueAtTime(0.2, now);
+					gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+					osc.connect(filter);
+					filter.connect(gain);
+					gain.connect(ctx.destination);
+
+					osc.start(now);
+					osc.stop(now + 0.22);
+				} catch (e) {}
+			}
+
+			function playHorseWhinny() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const osc = ctx.createOscillator();
+					const gain = ctx.createGain();
+					osc.type = 'sawtooth';
+					osc.frequency.setValueAtTime(600, now);
+					osc.frequency.linearRampToValueAtTime(950, now + 0.15);
+					osc.frequency.linearRampToValueAtTime(700, now + 0.35);
+					osc.frequency.linearRampToValueAtTime(450, now + 0.55);
+					gain.gain.setValueAtTime(0.18, now);
+					gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+					osc.connect(gain);
+					gain.connect(ctx.destination);
+					osc.start(now);
+					osc.stop(now + 0.65);
+				} catch (e) {}
+			}
+
+			function playRabbitBoing() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const osc = ctx.createOscillator();
+					const gain = ctx.createGain();
+					osc.type = 'sine';
+					osc.frequency.setValueAtTime(250, now);
+					osc.frequency.exponentialRampToValueAtTime(750, now + 0.22);
+					gain.gain.setValueAtTime(0.22, now);
+					gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+					osc.connect(gain);
+					gain.connect(ctx.destination);
+					osc.start(now);
+					osc.stop(now + 0.3);
+				} catch (e) {}
+			}
+
+			function playTurtlePlop() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const osc = ctx.createOscillator();
+					const gain = ctx.createGain();
+					osc.type = 'sine';
+					osc.frequency.setValueAtTime(500, now);
+					osc.frequency.exponentialRampToValueAtTime(180, now + 0.18);
+					gain.gain.setValueAtTime(0.2, now);
+					gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+					osc.connect(gain);
+					gain.connect(ctx.destination);
+					osc.start(now);
+					osc.stop(now + 0.22);
+				} catch (e) {}
+			}
+
+			function playBirdChirp() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					[0, 0.11].forEach((offset, idx) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const t = now + offset;
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(idx === 0 ? 1600 : 2200, t);
+						osc.frequency.exponentialRampToValueAtTime(idx === 0 ? 2400 : 2900, t + 0.08);
+						gain.gain.setValueAtTime(0.15, t);
+						gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(t);
+						osc.stop(t + 0.1);
+					});
+				} catch (e) {}
+			}
+
+			function playThemeStartSound(themeId) {
+				if (themeId === 'horse') playHorseWhinny();
+				else if (themeId === 'rabbit') playRabbitBoing();
+				else if (themeId === 'turtle') playTurtlePlop();
+				else if (themeId === 'bird') playBirdChirp();
+				else playDuckQuack();
+			}
+
+			function playFanfare() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+					notes.forEach((freq, i) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const startTime = ctx.currentTime + i * 0.12;
+						osc.type = 'triangle';
+						osc.frequency.setValueAtTime(freq, startTime);
+						gain.gain.setValueAtTime(0.18, startTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(startTime);
+						osc.stop(startTime + 0.5);
+					});
+				} catch (e) {}
+			}
+
+			let lastCheerSoundTime = 0;
+			function playCheerSound(emoji) {
+				if (!isSoundEnabled) return;
+				const nowReal = Date.now();
+				if (nowReal - lastCheerSoundTime < 60) return; // Debounce audio spam
+				lastCheerSoundTime = nowReal;
+
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					if (emoji === '🦆') {
+						playDuckQuack();
+					} else if (emoji === '🎺') {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sawtooth';
+						osc.frequency.setValueAtTime(659.25, now);
+						osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+						gain.gain.setValueAtTime(0.12, now);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(now);
+						osc.stop(now + 0.32);
+					} else if (emoji === '👏') {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'triangle';
+						osc.frequency.setValueAtTime(450, now);
+						gain.gain.setValueAtTime(0.15, now);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(now);
+						osc.stop(now + 0.09);
+					} else {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(784, now);
+						osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.18);
+						gain.gain.setValueAtTime(0.12, now);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(now);
+						osc.stop(now + 0.28);
+					}
+				} catch (e) {}
+			}
+
+			let activeCheerParticles = [];
+			let processedCheerIds = new Set();
+			let cheerNetworkTimer = null;
+			let pendingCheerData = null;
+
+			function queueCheerNetworkSync(emoji, text) {
+				if (!currentUser) return;
+				pendingCheerData = { emoji, text };
+				if (!cheerNetworkTimer) {
+					cheerNetworkTimer = setTimeout(async () => {
+						cheerNetworkTimer = null;
+						if (!pendingCheerData) return;
+						const payload = pendingCheerData;
+						pendingCheerData = null;
+						try {
+							await fetch('/api/lunch-race/cheer', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify(payload)
+							});
+						} catch (e) {}
+					}, 180);
+				}
+			}
+
+			function spawnCheerParticles(emoji, userName, isLocal = true) {
+				const canvas = duckRaceCanvas;
+				if (!canvas) return;
+				const rect = canvas.parentElement.getBoundingClientRect();
+				const width = rect.width;
+				const height = rect.height;
+
+				const spawnBaseX = isLocal ? width - 130 + (Math.random() - 0.5) * 80 : width * 0.5 + (Math.random() - 0.5) * (width * 0.6);
+				const spawnBaseY = height - 20;
+
+				for (let i = 0; i < 5; i++) {
+					activeCheerParticles.push({
+						x: spawnBaseX + (Math.random() - 0.5) * 40,
+						y: spawnBaseY - i * 12,
+						vx: (Math.random() - 0.5) * 2.5,
+						vy: 3.5 + Math.random() * 3,
+						size: 20 + Math.random() * 12,
+						alpha: 1.0,
+						emoji: emoji,
+						userName: i === 0 ? userName : null,
+						rot: (Math.random() - 0.5) * 0.4,
+						rotSpeed: (Math.random() - 0.5) * 0.05
+					});
+				}
+			}
+
+			function triggerCheer(emoji, text) {
+				playCheerSound(emoji);
+				const userName = currentUser ? currentUser.name : 'Bạn';
+				spawnCheerParticles(emoji, userName, true);
+				queueCheerNetworkSync(emoji, text);
+			}
+
+			function drawCheerParticles(ctx, width, height) {
+				for (let i = activeCheerParticles.length - 1; i >= 0; i--) {
+					const p = activeCheerParticles[i];
+					p.y -= p.vy;
+					p.x += p.vx;
+					p.rot += p.rotSpeed;
+					p.alpha -= 0.015;
+
+					if (p.alpha <= 0 || p.y < -30) {
+						activeCheerParticles.splice(i, 1);
+						continue;
+					}
+
+					ctx.save();
+					ctx.globalAlpha = Math.max(0, p.alpha);
+					ctx.translate(p.x, p.y);
+					ctx.rotate(p.rot);
+
+					ctx.font = `${p.size}px sans-serif`;
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'middle';
+					ctx.fillText(p.emoji, 0, 0);
+
+					if (p.userName) {
+						ctx.rotate(-p.rot);
+						ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+						const nameW = ctx.measureText(p.userName).width;
+						ctx.beginPath();
+						ctx.roundRect(-nameW / 2 - 4, -p.size - 4, nameW + 8, 12, 3);
+						ctx.fill();
+						ctx.fillStyle = '#facc15';
+						ctx.font = 'bold 8px sans-serif';
+						ctx.fillText(p.userName, 0, -p.size + 2);
+					}
+
+					ctx.restore();
+				}
+			}
+
+			const RACE_THEMES = {
+				duck: {
+					id: 'duck',
+					name: 'Đua Vịt',
+					icon: '🦆',
+					arenaTitle: '🦆 TRƯỜNG ĐUA SÔNG VỊT',
+					unitName: 'chú vịt',
+					actionVerb: 'bơi'
+				},
+				horse: {
+					id: 'horse',
+					name: 'Đua Ngựa',
+					icon: '🐎',
+					arenaTitle: '🐎 TRƯỜNG ĐUA NGỰA TUẤN MÃ',
+					unitName: 'chiến mã',
+					actionVerb: 'phi'
+				},
+				rabbit: {
+					id: 'rabbit',
+					name: 'Đua Thỏ',
+					icon: '🐰',
+					arenaTitle: '🐰 ĐỒNG CỎ ĐUA THỎ',
+					unitName: 'chú thỏ',
+					actionVerb: 'nhảy'
+				},
+				turtle: {
+					id: 'turtle',
+					name: 'Đua Rùa',
+					icon: '🐢',
+					arenaTitle: '🐢 BỜ BIỂN ĐUA RÙA',
+					unitName: 'chú rùa',
+					actionVerb: 'bò'
+				},
+				bird: {
+					id: 'bird',
+					name: 'Đua Chim',
+					icon: '🦅',
+					arenaTitle: '🦅 ĐƯỜNG BAY CHIM ƯNG',
+					unitName: 'chú chim',
+					actionVerb: 'bay'
+				}
+			};
+
+			function getActiveRaceTheme() {
+				const themeKey = (activeRaceData && activeRaceData.theme) || serverRaceTheme || configuredRaceTheme || 'duck';
+				return RACE_THEMES[themeKey] || RACE_THEMES.duck;
+			}
+
+			// Main Lunch Picker & Duck Race Sync Function
 			async function loadLunchPickers() {
+				await loadLunchPickersAndRace();
+			}
+
+			async function loadLunchPickersAndRace() {
 				if (!selectedDate) return;
 				try {
-					const resp = await fetch(`/api/lunch-pickers?date=${selectedDate}`);
+					const resp = await fetch(`/api/lunch-race?date=${selectedDate}`);
+					if (!resp.ok) return;
 					const data = await resp.json();
-					if (resp.ok) {
-						lunchPickers = data.pickers || [];
-						renderLunchPickers();
+					serverClockSkew = (data.serverTime || Date.now()) - Date.now();
+					lunchPickers = data.pickers || [];
+					activeRaceData = data.race || null;
+					if (data.autoRaceTime) serverAutoRaceTime = data.autoRaceTime;
+					if (data.autoRaceEnabled !== undefined) serverAutoRaceEnabled = data.autoRaceEnabled;
+					if (data.raceTheme) serverRaceTheme = data.raceTheme;
+					if (data.configuredTheme) configuredRaceTheme = data.configuredTheme;
+
+					if (data.spectators) {
+						activeSpectators = data.spectators;
+						updateSpectatorsUI();
 					}
+					if (data.cheers && Array.isArray(data.cheers)) {
+						data.cheers.forEach(cheer => {
+							if (!processedCheerIds.has(cheer.id)) {
+								processedCheerIds.add(cheer.id);
+								if (cheer.userId !== (currentUser ? currentUser.id : null)) {
+									spawnCheerParticles(cheer.emoji, cheer.userName, false);
+									playCheerSound(cheer.emoji);
+								}
+							}
+						});
+					}
+
+					renderLunchPickers();
+					checkAutoJoinActiveRace();
 				} catch (err) {
-					console.error('Lỗi khi tải người đi lấy cơm:', err);
+					console.error('Lỗi tải dữ liệu Cuộc Đua:', err);
+				}
+			}
+
+			let userClosedRaceModalId = null;
+
+			function checkAutoJoinActiveRace() {
+				if (serverLunchPickerMode === 'classic_roll') {
+					if (lunchPickerLiveBanner) lunchPickerLiveBanner.style.display = 'none';
+					return;
+				}
+
+				if (!activeRaceData) {
+					if (lunchPickerLiveBanner) lunchPickerLiveBanner.style.display = 'none';
+					return;
+				}
+
+				const adjustedNow = Date.now() + serverClockSkew;
+				const raceStart = activeRaceData.startTime;
+				const raceEnd = raceStart + (activeRaceData.durationMs || 15000);
+				const isCurrentlyRacing = adjustedNow >= (raceStart - (activeRaceData.countdownMs || 4000)) && adjustedNow < raceEnd + 4000;
+				const theme = getActiveRaceTheme();
+
+				if (lunchPickerLiveBanner) {
+					lunchPickerLiveBanner.style.display = isCurrentlyRacing ? 'flex' : 'none';
+					const bannerText = activeRaceData.isOfficial ? `🔴 ĐANG DIỄN RA CUỘC ${theme.name.toUpperCase()} CHÍNH THỨC!` : `🧪 ĐANG DIỄN RA CUỘC ${theme.name.toUpperCase()} THỬ NGHIỆM!`;
+					const bannerSpan = lunchPickerLiveBanner.querySelector('span:last-child');
+					if (bannerSpan) bannerSpan.textContent = bannerText;
+				}
+
+				// If a new race has started from server:
+				if (activeRaceData.raceId && activeRaceData.raceId !== lastViewedRaceId) {
+					lastViewedRaceId = activeRaceData.raceId;
+					hasAutoOpenedModalForCurrentRace = false;
+					userClosedRaceModalId = null;
+				}
+
+				// Auto-open modal ONLY ONCE on detection of an active race, unless user explicitly closed it
+				if (isCurrentlyRacing && !hasAutoOpenedModalForCurrentRace && userClosedRaceModalId !== activeRaceData.raceId) {
+					hasAutoOpenedModalForCurrentRace = true;
+					openDuckRaceModal(false);
 				}
 			}
 
 			function renderLunchPickers() {
 				if (!lunchPickerWidget || !lunchPickerBody) return;
 
-				// Hide widget if no orders
 				if (orders.length === 0) {
 					lunchPickerWidget.style.display = 'none';
 					return;
@@ -3648,19 +4435,123 @@
 
 				lunchPickerWidget.style.display = 'block';
 
-				// If shuffling, don't overwrite the shuffling layout
-				if (isShufflingPickers) return;
+				const isAdmin = currentUser && currentUser.id === 1;
+				const isClassicRoll = serverLunchPickerMode === 'classic_roll';
+				const theme = getActiveRaceTheme();
+
+				// Cập nhật tiêu đề widget theo chế độ
+				const widgetTitleSpan = document.querySelector('.lunch-picker-title span');
+				if (widgetTitleSpan) {
+					widgetTitleSpan.textContent = isClassicRoll ? '🎲 Người Đi Lấy Cơm' : `${theme.icon} Người Đi Lấy Cơm (${theme.name})`;
+				}
+
+				if (isClassicRoll) {
+					// ============================================
+					// CHẾ ĐỘ QUAY SỐ ROLL NGẪU NHIÊN TRUYỀN THỐNG
+					// ============================================
+					if (lunchPickerLiveBanner) lunchPickerLiveBanner.style.display = 'none';
+
+					if (lunchPickers.length === 0) {
+						lunchPickerBody.innerHTML = '<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>';
+						lunchPickerRaceBtn.textContent = '🎲 Quay Số Ngẫu Nhiên';
+						lunchPickerRaceBtn.title = 'Quay số ngẫu nhiên người đi lấy cơm';
+						lunchPickerRaceBtn.disabled = !isAdmin && orders.length === 0;
+						lunchPickerRaceBtn.style.display = 'inline-flex';
+						lunchPickerResetBtn.style.display = 'none';
+					} else {
+						lunchPickerBody.innerHTML = '';
+						const container = document.createElement('div');
+						container.className = 'lunch-picker-spin-container';
+
+						lunchPickers.forEach(user => {
+							const card = document.createElement('div');
+							card.className = 'lunch-picker-user-card';
+							card.innerHTML = `
+								<div class="lunch-picker-user-avatar">
+									${getAvatarHtml(user.avatar, 'avatar')}
+								</div>
+								<div class="lunch-picker-user-info">
+									<div class="lunch-picker-user-name">${user.name}</div>
+									<div class="lunch-picker-user-role">🚗 Đi lấy cơm</div>
+								</div>
+							`;
+							container.appendChild(card);
+						});
+
+						lunchPickerBody.appendChild(container);
+
+						if (isAdmin) {
+							lunchPickerRaceBtn.textContent = '🔄 Quay Số Lại';
+							lunchPickerRaceBtn.disabled = false;
+							lunchPickerRaceBtn.style.display = 'inline-flex';
+							lunchPickerResetBtn.style.display = 'inline-flex';
+							lunchPickerResetBtn.textContent = '❌ Hủy Kết Quả';
+						} else {
+							lunchPickerRaceBtn.style.display = 'none';
+							lunchPickerResetBtn.style.display = 'none';
+						}
+					}
+					return;
+				}
+
+				// ============================================
+				// CHẾ ĐỘ TRƯỜNG ĐUA LINH VẬT (RACE ARENA)
+				// ============================================
+				const adjustedNow = Date.now() + serverClockSkew;
+				const isRaceInProgress = activeRaceData && (adjustedNow < (activeRaceData.startTime || 0) + (activeRaceData.durationMs || 15000));
+				const isLocked = activeRaceData && (activeRaceData.isLocked || activeRaceData.isOfficial);
+				const autoTime = serverAutoRaceTime || '11:30';
+
+				if (isRaceInProgress) {
+					// Cuộc đua đang diễn ra -> Chưa trả/hiển thị kết quả ra ngoài màn hình chính!
+					lunchPickerBody.innerHTML = `
+						<div class="lunch-picker-empty" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center; text-align: center; padding: 1.25rem 0.5rem;">
+							<div style="font-size: 1.8rem; animation: bounce 0.8s infinite alternate;">🏁 ${theme.icon}</div>
+							<div style="font-weight: 700; color: #38bdf8; font-size: 0.98rem;">
+								Cuộc ${theme.name.toLowerCase()} đang diễn ra trực tiếp!
+							</div>
+							<div style="font-size: 0.82rem; color: var(--text-muted);">
+								Kết quả sẽ được công bố sau khi cuộc đua kết thúc (15s).
+							</div>
+						</div>`;
+					lunchPickerRaceBtn.textContent = `📺 Vào Xem ${theme.name} Trực Tiếp`;
+					lunchPickerRaceBtn.disabled = false;
+					lunchPickerRaceBtn.style.display = 'inline-flex';
+					lunchPickerResetBtn.style.display = 'none';
+					return;
+				}
 
 				if (lunchPickers.length === 0) {
-					lunchPickerBody.innerHTML = '<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>';
-					lunchPickerSpinBtn.textContent = '🎲 Quay Số Chọn';
-					lunchPickerSpinBtn.disabled = false;
-					lunchPickerSpinBtn.style.display = 'inline-flex';
+					lunchPickerBody.innerHTML = `
+						<div class="lunch-picker-empty" style="display: flex; flex-direction: column; gap: 0.35rem; align-items: center; text-align: center;">
+							<div>Chưa chọn người đi lấy cơm hôm nay.</div>
+							<div style="font-size: 0.82rem; color: #f59e0b; font-weight: 700;">
+								⏰ Tự động ${theme.name.toLowerCase()} chính thức lúc: <strong>${autoTime}</strong>
+							</div>
+						</div>`;
+					if (isAdmin) {
+						lunchPickerRaceBtn.textContent = `🏁 ${theme.name} Thử Nghiệm`;
+						lunchPickerRaceBtn.title = 'Chạy thử nghiệm trước giờ chính thức';
+					} else {
+						lunchPickerRaceBtn.textContent = `🏁 Chờ ${theme.name}`;
+					}
+					lunchPickerRaceBtn.disabled = false;
+					lunchPickerRaceBtn.style.display = 'inline-flex';
 					lunchPickerResetBtn.style.display = 'none';
 				} else {
 					lunchPickerBody.innerHTML = '';
 					const container = document.createElement('div');
 					container.className = 'lunch-picker-spin-container';
+
+					// Hiển thị huy hiệu trạng thái: CHÍNH THỨC (ĐÃ KHÓA) hoặc ĐUA THỬ
+					const statusBadge = document.createElement('div');
+					statusBadge.style.cssText = 'width: 100%; text-align: center; margin-bottom: 0.6rem; font-size: 0.82rem; font-weight: 700;';
+					if (isLocked) {
+						statusBadge.innerHTML = '<span style="background: rgba(16, 185, 129, 0.18); color: #10b981; border: 1.5px solid #10b981; padding: 0.25rem 0.75rem; border-radius: 9999px; display: inline-flex; align-items: center; gap: 0.35rem;">🔒 KẾT QUẢ CHÍNH THỨC (ĐÃ KHÓA)</span>';
+					} else {
+						statusBadge.innerHTML = `<span style="background: rgba(245, 158, 11, 0.18); color: #f59e0b; border: 1.5px solid #f59e0b; padding: 0.25rem 0.75rem; border-radius: 9999px; display: inline-flex; align-items: center; gap: 0.35rem;">🧪 KẾT QUẢ ĐUA THỬ (Chính thức lúc ${autoTime})</span>`;
+					}
+					container.appendChild(statusBadge);
 
 					lunchPickers.forEach(user => {
 						const card = document.createElement('div');
@@ -3678,135 +4569,130 @@
 					});
 
 					lunchPickerBody.appendChild(container);
-					
-					// Chỉ hiển thị nút Quay Số Lại và Hủy Chọn cho Admin (ID 1)
-					const isAdmin = currentUser && currentUser.id === 1;
-					if (isAdmin) {
-						lunchPickerSpinBtn.textContent = '🔄 Quay Số Lại';
-						lunchPickerSpinBtn.disabled = false;
-						lunchPickerSpinBtn.style.display = 'inline-flex';
-						lunchPickerResetBtn.style.display = 'inline-flex';
-					} else {
-						lunchPickerSpinBtn.style.display = 'none';
+
+					if (isLocked) {
+						// Khi đã có kết quả chính thức: Khóa hoàn toàn, chỉ cho xem lại
+						lunchPickerRaceBtn.textContent = `📺 Xem Lại ${theme.name} (Chính Thức)`;
+						lunchPickerRaceBtn.disabled = false;
+						lunchPickerRaceBtn.style.display = 'inline-flex';
 						lunchPickerResetBtn.style.display = 'none';
+					} else {
+						// Khi chỉ là trận đua thử trước giờ chính thức
+						if (isAdmin) {
+							lunchPickerRaceBtn.textContent = `🔄 ${theme.name} Thử Lại`;
+							lunchPickerRaceBtn.disabled = false;
+							lunchPickerRaceBtn.style.display = 'inline-flex';
+							lunchPickerResetBtn.style.display = 'inline-flex';
+							lunchPickerResetBtn.textContent = '❌ Hủy Kết Quả';
+						} else {
+							lunchPickerRaceBtn.textContent = `📺 Xem Lại ${theme.name} Thử`;
+							lunchPickerRaceBtn.disabled = false;
+							lunchPickerRaceBtn.style.display = 'inline-flex';
+							lunchPickerResetBtn.style.display = 'none';
+						}
 					}
 				}
 			}
 
-			function spinLunchPicker() {
+			let localReplayOffset = null;
+
+			async function handleDuckRaceBtnClick() {
 				if (!currentUser) {
 					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
 					return;
 				}
 				if (orders.length === 0) {
-					showToast('Không có đơn hàng nào hôm nay để chọn.', 'error');
+					showToast('Không có đơn hàng nào hôm nay.', 'error');
 					return;
 				}
-				if (isShufflingPickers) return;
 
-				isShufflingPickers = true;
-				lunchPickerSpinBtn.disabled = true;
-				lunchPickerResetBtn.style.display = 'none';
+				if (serverLunchPickerMode === 'classic_roll') {
+					await handleClassicRoll();
+					return;
+				}
 
-				// Start the shuffling animation locally using candidates from orders list
-				const candidates = orders.map(o => ({
-					name: o.user_name,
-					avatar: o.user_avatar
-				}));
+				const adjustedNow = Date.now() + serverClockSkew;
+				const isRaceInProgress = activeRaceData && (adjustedNow < (activeRaceData.startTime || 0) + (activeRaceData.durationMs || 15000));
+				if (isRaceInProgress) {
+					openDuckRaceModal(false); // Vào xem trực tiếp đồng bộ thời gian thực
+					return;
+				}
 
-				const shuffleInterval = setInterval(() => {
-					lunchPickerBody.innerHTML = '';
-					const container = document.createElement('div');
-					container.className = 'lunch-picker-spin-container';
+				const isAdmin = currentUser && currentUser.id === 1;
+				const isLocked = activeRaceData && (activeRaceData.isLocked || activeRaceData.isOfficial);
 
-					// Pick 1 or 2 random candidates to show in the spin animation
-					const numToShow = Math.min(2, candidates.length);
-					const pickedIndices = new Set();
-					while (pickedIndices.size < numToShow) {
-						pickedIndices.add(Math.floor(Math.random() * candidates.length));
-					}
+				// Nếu cuộc đua đã bị khóa hoặc người dùng không phải Admin -> Mở modal ở chế độ xem lại
+				if (activeRaceData && (isLocked || !isAdmin)) {
+					openDuckRaceModal(true);
+					return;
+				}
 
-					Array.from(pickedIndices).forEach(idx => {
-						const candidate = candidates[idx];
-						const card = document.createElement('div');
-						card.className = 'lunch-picker-user-card lunch-picker-shuffling';
-						card.innerHTML = `
-							<div class="lunch-picker-user-avatar">
-								${getAvatarHtml(candidate.avatar, 'avatar')}
-							</div>
-							<div class="lunch-picker-user-info">
-								<div class="lunch-picker-user-name">${candidate.name}</div>
-								<div class="lunch-picker-user-role">🎲 Đang chọn...</div>
-							</div>
-						`;
-						container.appendChild(card);
-					});
-					lunchPickerBody.appendChild(container);
-				}, 80);
-
-				// Call backend API to pick
-				let apiError = null;
-				let apiResult = null;
-
-				fetch('/api/lunch-pickers', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({ date: selectedDate })
-				})
-				.then(resp => {
-					if (!resp.ok) {
-						return resp.json().then(d => { throw new Error(d.error || 'Lỗi hệ thống'); });
-					}
-					return resp.json();
-				})
-				.then(data => {
-					apiResult = data.pickers;
-				})
-				.catch(err => {
-					apiError = err.message;
-				});
-
-				// Let the animation run for at least 1.5 - 2 seconds for dramatic effect
-				setTimeout(() => {
-					clearInterval(shuffleInterval);
-					isShufflingPickers = false;
-
-					if (apiError) {
-						showToast(apiError, 'error');
-						isShufflingPickers = false;
-						renderLunchPickers();
-					} else if (apiResult) {
-						lunchPickers = apiResult;
-						renderLunchPickers();
-						showToast('🎉 Đã chọn xong người đi lấy cơm hôm nay!', 'success');
-					} else {
-						// Fallback if API hasn't resolved yet
-						const checkInterval = setInterval(() => {
-							if (apiResult || apiError) {
-								clearInterval(checkInterval);
-								if (apiError) {
-									showToast(apiError, 'error');
-								} else {
-									lunchPickers = apiResult;
-									showToast('🎉 Đã chọn xong người đi lấy cơm hôm nay!', 'success');
-								}
-								renderLunchPickers();
-							}
-						}, 100);
-					}
-				}, 1800);
+				// Admin bấm chạy đua thử hoặc kích hoạt
+				await startDuckRace();
 			}
 
-			async function resetLunchPicker() {
+			async function handleMainResetBtnClick() {
+				if (serverLunchPickerMode === 'classic_roll') {
+					await resetClassicRoll();
+				} else {
+					await resetDuckRace();
+				}
+			}
+
+			async function handleClassicRoll() {
 				if (!currentUser) {
 					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
 					return;
 				}
-				if (!confirm('Bạn có chắc chắn muốn hủy kết quả chọn người đi lấy cơm không?')) {
+				if (orders.length === 0) {
+					showToast('Không có ai đặt cơm hôm nay để quay số.', 'error');
 					return;
 				}
+
+				try {
+					lunchPickerRaceBtn.disabled = true;
+					if (lunchPickerBody) {
+						lunchPickerBody.innerHTML = `
+							<div class="lunch-picker-empty" style="animation: pulse 0.5s infinite alternate; font-weight: 700; color: var(--primary);">
+								🎲 Đang quay số ngẫu nhiên chọn người may mắn...
+							</div>`;
+					}
+
+					const resp = await fetch('/api/lunch-pickers', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ date: selectedDate })
+					});
+
+					const data = await resp.json();
+					if (!resp.ok) {
+						showToast(data.error || 'Lỗi khi quay số.', 'error');
+						renderLunchPickers();
+						return;
+					}
+
+					setTimeout(() => {
+						lunchPickers = data.pickers || [];
+						renderLunchPickers();
+						showToast('🎉 Đã quay số chọn người đi lấy cơm hôm nay!', 'success');
+					}, 700);
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+					renderLunchPickers();
+				} finally {
+					lunchPickerRaceBtn.disabled = false;
+				}
+			}
+
+			async function resetClassicRoll() {
+				if (!currentUser || currentUser.id !== 1) {
+					showToast('Chỉ Quản trị viên mới được phép hủy kết quả.', 'error');
+					return;
+				}
+				if (!confirm('Bạn có chắc chắn muốn hủy kết quả quay số người đi lấy cơm không?')) {
+					return;
+				}
+
 				try {
 					const resp = await fetch(`/api/lunch-pickers?date=${selectedDate}`, {
 						method: 'DELETE'
@@ -3815,14 +4701,1844 @@
 					if (resp.ok) {
 						lunchPickers = [];
 						renderLunchPickers();
-						showToast('🗑️ Đã hủy kết quả chọn người đi lấy cơm.', 'success');
+						showToast('🗑️ Đã hủy kết quả quay số.', 'success');
 					} else {
-						showToast(data.error || 'Không thể hủy kết quả chọn.', 'error');
+						showToast(data.error || 'Không thể hủy kết quả.', 'error');
 					}
 				} catch (err) {
 					showToast('Lỗi kết nối máy chủ.', 'error');
 				}
 			}
+
+			async function startDuckRace() {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
+					return;
+				}
+				if (orders.length === 0) {
+					showToast('Không có ai đặt cơm hôm nay để đua.', 'error');
+					return;
+				}
+
+				const theme = getActiveRaceTheme();
+
+				try {
+					lunchPickerRaceBtn.disabled = true;
+					const resp = await fetch('/api/lunch-race/start', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ date: selectedDate })
+					});
+
+					const data = await resp.json();
+					if (!resp.ok) {
+						showToast(data.error || `Lỗi khi bắt đầu cuộc ${theme.name.toLowerCase()}.`, 'error');
+						lunchPickerRaceBtn.disabled = false;
+						return;
+					}
+
+					serverClockSkew = (data.serverTime || Date.now()) - Date.now();
+					activeRaceData = data.race;
+					lunchPickers = data.pickers;
+					hasAutoOpenedModalForCurrentRace = true;
+					userClosedRaceModalId = null;
+					lastViewedRaceId = activeRaceData.raceId;
+					localReplayOffset = null;
+
+					openDuckRaceModal(false);
+					const isOfficial = activeRaceData.isOfficial;
+					showToast(isOfficial ? `🏁 Cuộc ${theme.name.toLowerCase()} CHÍNH THỨC đã bắt đầu! Đang đồng bộ...` : `🧪 Bắt đầu cuộc ${theme.name.toLowerCase()} THỬ NGHIỆM! Đang đồng bộ...`, 'success');
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				} finally {
+					lunchPickerRaceBtn.disabled = false;
+				}
+			}
+
+			async function resetDuckRace() {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để thực hiện thao tác này.', 'error');
+					return;
+				}
+				const theme = getActiveRaceTheme();
+				if (!confirm(`Bạn có chắc chắn muốn hủy kết quả cuộc ${theme.name.toLowerCase()} và chọn lại không?`)) {
+					return;
+				}
+				try {
+					const resp = await fetch('/api/lunch-race/reset', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ date: selectedDate })
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						lunchPickers = [];
+						activeRaceData = null;
+						hasAutoOpenedModalForCurrentRace = false;
+						userClosedRaceModalId = null;
+						closeDuckRaceModal();
+						renderLunchPickers();
+						showToast(`🗑️ Đã hủy kết quả ${theme.name.toLowerCase()}.`, 'success');
+					} else {
+						showToast(data.error || 'Không thể hủy kết quả.', 'error');
+					}
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
+			// ============================================
+			// DUCK & ANIMAL RACE ARENA CANVAS ENGINE
+			// ============================================
+			let lastCountdownSecond = -1;
+			let hasPlayedVictorySound = false;
+			let confettiParticles = [];
+
+			function openDuckRaceModal(isReplay = false) {
+				if (!duckRaceModalOverlay) return;
+				userClosedRaceModalId = null; // Reset flag when explicitly opened
+				updateSoundBtn();
+				duckRaceModalOverlay.classList.add('active');
+				duckRaceResults.style.display = 'none';
+
+				const isAdmin = currentUser && currentUser.id === 1;
+				const isLocked = activeRaceData && (activeRaceData.isLocked || activeRaceData.isOfficial);
+				if (duckRaceAdminResetBtn) {
+					duckRaceAdminResetBtn.style.display = (isAdmin && !isLocked) ? 'inline-flex' : 'none';
+				}
+
+				const theme = getActiveRaceTheme();
+				const modalTitle = document.getElementById('duck-race-modal-title');
+				if (modalTitle) {
+					modalTitle.textContent = `${theme.arenaTitle}`;
+				}
+				const countdownLabel = document.getElementById('duck-race-countdown-label');
+				if (countdownLabel) {
+					countdownLabel.textContent = `CÁC VẬN ĐỘNG VIÊN CHUẨN BỊ XUẤT PHÁT...`;
+				}
+				const minimapPin = document.getElementById('duck-race-minimap-pin');
+				if (minimapPin) {
+					minimapPin.textContent = theme.icon;
+				}
+
+				const liveBadge = document.getElementById('duck-race-live-badge');
+				if (liveBadge) {
+					if (isLocked) {
+						liveBadge.textContent = '🔒 CHÍNH THỨC';
+						liveBadge.style.background = '#10b981';
+					} else {
+						liveBadge.textContent = '🧪 ĐUA THỬ';
+						liveBadge.style.background = '#f59e0b';
+					}
+				}
+
+				if (isReplay && activeRaceData) {
+					// Start a clean synchronized client-side replay from t = 0
+					localReplayOffset = (Date.now() + serverClockSkew) - (activeRaceData.startTime - (activeRaceData.countdownMs || 4000));
+				} else {
+					localReplayOffset = null;
+				}
+
+				resizeRaceCanvas();
+				hasPlayedVictorySound = false;
+				lastCountdownSecond = -1;
+				initConfetti();
+
+				if (raceAnimationId) cancelAnimationFrame(raceAnimationId);
+				raceAnimationLoop();
+			}
+
+			function closeDuckRaceModal() {
+				if (!duckRaceModalOverlay) return;
+				if (activeRaceData) {
+					userClosedRaceModalId = activeRaceData.raceId; // Remember user intentionally closed this modal
+				}
+				duckRaceModalOverlay.classList.remove('active');
+				if (raceAnimationId) {
+					cancelAnimationFrame(raceAnimationId);
+					raceAnimationId = null;
+				}
+				renderLunchPickers();
+			}
+
+			function resizeRaceCanvas() {
+				if (!duckRaceCanvas) return;
+				const container = duckRaceCanvas.parentElement;
+				if (!container) return;
+				const rect = container.getBoundingClientRect();
+				const dpr = window.devicePixelRatio || 1;
+
+				const race = activeRaceData;
+				const totalDucks = race && race.ducks ? Math.max(1, race.ducks.length) : (orders.length > 0 ? orders.length : 8);
+				const topMargin = 68;
+				const bottomMargin = 40;
+				// Dynamic lane height: for <= 8 ducks, fill container; for > 8 ducks, use comfortable 54px with vertical scroll
+				const laneH = totalDucks <= 8 ? Math.max(54, Math.floor((rect.height - topMargin - bottomMargin) / totalDucks)) : 54;
+				const totalCanvasHeight = Math.max(rect.height, topMargin + bottomMargin + totalDucks * laneH);
+
+				duckRaceCanvas.style.height = `${totalCanvasHeight}px`;
+				duckRaceCanvas.width = rect.width * dpr;
+				duckRaceCanvas.height = totalCanvasHeight * dpr;
+				const ctx = duckRaceCanvas.getContext('2d');
+					ctx.scale(dpr, dpr);
+			}
+			window.addEventListener('resize', resizeRaceCanvas);
+
+			// Strictly forward-only deterministic movement physics (15 seconds)
+			// ALL participants cross the finish line (progress >= 1.0) before race concludes!
+			function getDuckProgress(duck, tNorm, totalDucks) {
+				if (tNorm <= 0) return 0;
+
+				// Rank ratio: 0.0 for rank 1 (leader), 1.0 for last place
+				const rankRatio = (duck.finishRank - 1) / Math.max(1, totalDucks - 1);
+				// Target final position at tNorm = 1.0: Leader reaches 1.18, last place reaches 1.02 (both have crossed the finish line 1.0)
+				const targetEnd = 1.18 - rankRatio * 0.16;
+
+				const s = duck.duckSeed;
+				// Dynamic mid-race overtakes & fluctuations (fades to 0 at start and finish line)
+				const midEnvelope = Math.sin(Math.min(1.0, tNorm) * Math.PI);
+				const wave1 = midEnvelope * (Math.sin(tNorm * 6.5 + s * 0.08) * 0.045);
+				const wave2 = midEnvelope * (Math.cos(tNorm * 11.5 + s * 0.12) * 0.025);
+				
+				// Fatigue / sprint shaping in final stretch:
+				// Top ranks sprint across line at tNorm ~ 0.80 - 0.85 (12s - 12.8s)
+				// Trailing ranks tire slightly but steadily cross finish line at tNorm ~ 0.96 - 0.99 (14.4s - 14.85s)
+				const baseProgress = targetEnd * Math.pow(tNorm, 0.95 + rankRatio * 0.12);
+				const progress = baseProgress + wave1 + wave2;
+
+				if (tNorm >= 1.0) {
+					return Math.max(1.01, targetEnd);
+				}
+				return Math.max(0, progress);
+			}
+
+			// Get event badge for duck synchronized with actual instantaneous speed
+			function getDuckEvent(duck, tNorm, totalDucks) {
+				if (tNorm < 0.10 || tNorm > 0.98) return null;
+
+				const s = duck.duckSeed;
+				const isLoser = duck.finishRank > Math.max(1, totalDucks - 2);
+				
+				// Final sprint events
+				if (tNorm > 0.72) {
+					if (duck.finishRank === 1) {
+						return { text: '🏆 BỨT TỐC CÁN ĐÍCH!', color: '#facc15', type: 'boost' };
+					} else if (isLoser) {
+						return { text: '😮‍💨 ĐUỐI SỨC (CỐ VỀ ĐÍCH)!', color: '#f87171', type: 'tired' };
+					}
+				}
+
+				// Mid-race dynamic bursts
+				const midPhase = Math.sin(tNorm * 8 + s * 0.1);
+				if (midPhase > 0.65) {
+					return { text: '⚡ BOOST TĂNG TỐC!', color: '#facc15', type: 'boost' };
+				} else if (midPhase < -0.65) {
+					return { text: '😮‍💨 ĐUỐI SỨC (CHẬM)!', color: '#fb923c', type: 'tired' };
+				}
+				return null;
+			}
+
+			function initConfetti() {
+				confettiParticles = [];
+				const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+				for (let i = 0; i < 90; i++) {
+					confettiParticles.push({
+						x: Math.random(),
+						y: -0.1 - Math.random() * 0.5,
+						vx: (Math.random() - 0.5) * 0.008,
+						vy: 0.005 + Math.random() * 0.012,
+						size: 6 + Math.random() * 8,
+						color: colors[Math.floor(Math.random() * colors.length)],
+						rotation: Math.random() * 360,
+						rotSpeed: (Math.random() - 0.5) * 10
+					});
+				}
+			}
+
+			// Main Canvas Animation Loop with Side-Scrolling Camera
+			function raceAnimationLoop() {
+				if (!duckRaceModalOverlay.classList.contains('active')) return;
+
+				const canvas = duckRaceCanvas;
+				if (!canvas) return;
+				const ctx = canvas.getContext('2d');
+				const container = canvas.parentElement;
+				const viewportWidth = container.getBoundingClientRect().width;
+
+				// Calculate time parameters (synchronized with server time)
+				let now = Date.now() + serverClockSkew;
+				if (localReplayOffset !== null) {
+					now -= localReplayOffset;
+				}
+
+				let race = activeRaceData;
+
+				// Fallback dummy race if testing with no backend race data
+				if (!race) {
+					const dummyDucks = (orders.length > 0 ? orders : [{ user_name: 'P.Dương', user_avatar: '👤' }]).map((o, idx) => ({
+						id: idx + 1,
+						name: o.user_name || `Người ${idx+1}`,
+						avatar: o.user_avatar || '🦆',
+						lane: idx,
+						finishRank: idx + 1,
+						duckSeed: (idx + 1) * 7919
+					}));
+					race = {
+						raceId: 'preview',
+						startTime: Date.now() + 1000,
+						countdownMs: 4000,
+						durationMs: 15000,
+						totalDucks: dummyDucks.length,
+						ducks: dummyDucks,
+						losers: dummyDucks.slice(-2)
+					};
+				}
+
+				const activeTheme = getActiveRaceTheme();
+				const countdownMs = race.countdownMs || 4000;
+				const durationMs = race.durationMs || 15000;
+				const timeSinceStart = now - race.startTime;
+				const totalDucks = Math.max(1, race.ducks.length);
+
+				const topMargin = 68;
+				const bottomMargin = 40;
+				const laneH = totalDucks <= 8 ? Math.max(54, Math.floor((container.getBoundingClientRect().height - topMargin - bottomMargin) / totalDucks)) : 54;
+				const totalHeight = topMargin + bottomMargin + totalDucks * laneH;
+
+				// World Dimensions (Track with generous post-finish celebration buffer)
+				const worldWidth = 3900;
+				const worldStartX = 140;
+				const worldFinishX = 3300;
+				const trackLength = worldFinishX - worldStartX;
+
+				let tNorm = 0;
+
+				if (timeSinceStart < 0) {
+					// Countdown phase
+					tNorm = 0;
+					const secondsLeft = Math.ceil(-timeSinceStart / 1000);
+					duckRaceCountdown.style.display = 'flex';
+					duckRaceCountdownNum.textContent = secondsLeft > 0 ? secondsLeft : 'GO!';
+					duckRaceTimerDisplay.textContent = `⏱️ 00:00 / 15s`;
+
+					if (secondsLeft !== lastCountdownSecond && secondsLeft > 0) {
+						lastCountdownSecond = secondsLeft;
+						playCountdownBeep(false);
+					}
+				} else if (timeSinceStart <= durationMs) {
+					// Racing phase (15s total)
+					tNorm = Math.min(1.0, timeSinceStart / durationMs);
+					duckRaceCountdown.style.display = 'none';
+					const elapsedSec = (timeSinceStart / 1000).toFixed(1);
+					duckRaceTimerDisplay.textContent = `⏱️ ${elapsedSec < 10 ? '0' : ''}${elapsedSec}s / 15s`;
+
+					if (lastCountdownSecond !== 0) {
+						lastCountdownSecond = 0;
+						playCountdownBeep(true);
+						playThemeStartSound(activeTheme.id);
+					}
+				} else {
+					// Finished phase
+					tNorm = 1.0;
+					duckRaceCountdown.style.display = 'none';
+					duckRaceTimerDisplay.textContent = `🏁 15.0s (XONG)`;
+
+					if (!hasPlayedVictorySound) {
+						hasPlayedVictorySound = true;
+						playFanfare();
+						// Tính toán 2 người thua cuộc chính xác từ vị trí xếp hạng chót của cuộc đua
+						const sortedByRank = [...race.ducks].sort((a, b) => b.finishRank - a.finishRank);
+						const computedLosers = (totalDucks === 1)
+							? [{ id: sortedByRank[0].id, name: sortedByRank[0].name, avatar: sortedByRank[0].avatar }]
+							: [
+								{ id: sortedByRank[1].id, name: sortedByRank[1].name, avatar: sortedByRank[1].avatar },
+								{ id: sortedByRank[0].id, name: sortedByRank[0].name, avatar: sortedByRank[0].avatar }
+							];
+						lunchPickers = computedLosers;
+						showResultsOverlay(computedLosers);
+						renderLunchPickers();
+					}
+				}
+
+				// Compute racers' world positions
+				const currentDucks = [];
+				race.ducks.forEach((duck, idx) => {
+					const progress = getDuckProgress(duck, tNorm, totalDucks);
+					const x = worldStartX + progress * trackLength;
+					const y = topMargin + idx * laneH + laneH / 2;
+					currentDucks.push({
+						...duck,
+						progress,
+						x,
+						y
+					});
+				});
+
+				// Sort by X descending (furthest ahead in world coordinates = rank 1)
+				const sortedLeaderboard = [...currentDucks].sort((a, b) => b.x - a.x);
+
+				// Dynamic Camera Tracking (Camera smoothly follows the race pack)
+				const avgDuckX = currentDucks.reduce((sum, d) => sum + d.x, 0) / currentDucks.length;
+				let cameraTargetX = avgDuckX - viewportWidth * 0.38;
+				// Clamped camera viewport
+				const maxCameraX = Math.max(0, worldWidth - viewportWidth);
+				const cameraX = Math.max(0, Math.min(maxCameraX, cameraTargetX));
+
+				// Update Mini-Map Progress
+				const overallProgressPct = Math.min(100, Math.max(0, ((avgDuckX - worldStartX) / trackLength) * 100));
+				if (duckRaceMinimapFill) duckRaceMinimapFill.style.width = `${overallProgressPct}%`;
+				if (duckRaceMinimapPin) duckRaceMinimapPin.style.left = `${overallProgressPct}%`;
+
+				// ============================================
+				// RENDER WORLD (With Camera Viewport Offset)
+				// ============================================
+				ctx.clearRect(0, 0, viewportWidth, totalHeight);
+
+				ctx.save();
+				ctx.translate(-cameraX, 0);
+
+				// 1. Draw World Background according to Theme
+				const animTime = Math.max(0, timeSinceStart);
+				drawTrackBackground(ctx, worldWidth, totalHeight, animTime, activeTheme.id);
+
+				// 2. Draw Lanes & Distance Milestone Posts & Finish Line
+				drawTrackLines(ctx, worldWidth, totalHeight, totalDucks, laneH, topMargin, worldStartX, worldFinishX, activeTheme.id);
+
+				// 3. Draw Racers in World Space
+				currentDucks.forEach(racer => {
+					const currentRank = sortedLeaderboard.findIndex(d => d.id === racer.id) + 1;
+					const isLoserDanger = currentRank > Math.max(1, totalDucks - 2);
+					const isLeader = currentRank === 1 && tNorm > 0.05;
+					drawSingleRacer(ctx, racer, tNorm, isLoserDanger, isLeader, currentRank, animTime, totalDucks, activeTheme.id);
+				});
+
+				ctx.restore();
+
+				// 4. Draw Cheering Spectators along the Riverbank in Screen Space (Permanently Anchored & Always Visible!)
+				drawSpectators(ctx, viewportWidth, animTime, activeSpectators, topMargin);
+
+				// 5. Confetti on Finished (Screen Space)
+				if (tNorm >= 1.0) {
+					drawConfetti(ctx, viewportWidth, totalHeight);
+				}
+
+				// 6. Draw Live Cheering Floating Particles & Reactions (Screen Space)
+				drawCheerParticles(ctx, viewportWidth, totalHeight);
+
+				// 7. Update Danger Panel / Live Leaderboard
+				updateLeaderboardUI(sortedLeaderboard, totalDucks);
+
+				raceAnimationId = requestAnimationFrame(raceAnimationLoop);
+			}
+
+			// ============================================
+			// CHEERING SPECTATORS ON GRANDSTAND (SCREEN SPACE)
+			// ============================================
+			function drawSpectators(ctx, viewportWidth, animTime, spectatorsList, topMargin) {
+				const spectators = (spectatorsList && spectatorsList.length > 0)
+					? spectatorsList
+					: (currentUser ? [{ id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar || '👑', cheerEmoji: '🚩' }] : [{ id: 1, name: 'P.Dương (Admin)', avatar: '👑', cheerEmoji: '🚩' }]);
+
+				ctx.save();
+
+				// Grandstand Sky / Terrace Header Bar
+				ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+				ctx.fillRect(0, 0, viewportWidth, topMargin);
+
+				// Decorative Terrace Railing
+				ctx.strokeStyle = 'rgba(250, 204, 21, 0.4)';
+				ctx.lineWidth = 2;
+				ctx.beginPath();
+				ctx.moveTo(0, topMargin - 1);
+				ctx.lineTo(viewportWidth, topMargin - 1);
+				ctx.stroke();
+
+				// Green Grass / Border
+				ctx.fillStyle = '#16a34a';
+				ctx.fillRect(0, 0, viewportWidth, 5);
+
+				// Render Each Live Spectator
+				const count = spectators.length;
+				const spacing = Math.min(120, Math.max(75, (viewportWidth - 80) / count));
+				const cheerQuotes = ['CỐ LÊN! 🔥', 'GOGOGO! ✨', 'ĐỪNG CHẬM! ⚡', 'HAHAHA 🤣', 'AI LẤY CƠM? 🚗', 'BỨT TỐC! 🚀'];
+
+				spectators.forEach((spec, idx) => {
+					const specX = 45 + idx * spacing;
+					const bob = Math.sin(animTime * 0.008 + spec.id * 1.7) * 2;
+					const propWiggle = Math.sin(animTime * 0.015 + spec.id * 2) * 0.4;
+					const specY = 38 + bob;
+
+					ctx.save();
+					ctx.translate(specX, specY);
+
+					// Cheering Flag / Prop
+					const propEmoji = spec.cheerEmoji || (idx % 2 === 0 ? '🚩' : '🔥');
+					ctx.save();
+					ctx.translate(13, -3);
+					ctx.rotate(propWiggle);
+					ctx.font = '13px sans-serif';
+					ctx.textAlign = 'center';
+					ctx.fillText(propEmoji, 0, 0);
+					ctx.restore();
+
+					// Spectator Avatar Bubble with Glow
+					ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
+					ctx.shadowBlur = 8;
+					ctx.fillStyle = '#0284c7';
+					ctx.beginPath();
+					ctx.arc(0, 0, 11, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.shadowBlur = 0;
+					ctx.strokeStyle = '#facc15';
+					ctx.lineWidth = 1.8;
+					ctx.stroke();
+
+					// Avatar Text/Emoji
+					ctx.fillStyle = '#ffffff';
+					ctx.font = '11px sans-serif';
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'middle';
+					ctx.fillText(spec.avatar && !spec.avatar.startsWith('http') ? spec.avatar : '👤', 0, 1);
+
+					// Spectator Name Pill
+					ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+					const nameW = ctx.measureText(spec.name).width;
+					ctx.beginPath();
+					ctx.roundRect(-nameW / 2 - 4, 11, nameW + 8, 12, 3);
+					ctx.fill();
+					ctx.fillStyle = '#facc15';
+					ctx.font = 'bold 8px sans-serif';
+					ctx.fillText(spec.name, 0, 17);
+
+					// Periodic Cheering Chat Bubble
+					const quoteSeed = (Math.floor(animTime / 2500) + spec.id) % 8;
+					if (quoteSeed < cheerQuotes.length && quoteSeed % 2 === 0) {
+						const quote = cheerQuotes[quoteSeed % cheerQuotes.length];
+						const qW = ctx.measureText(quote).width;
+						ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+						ctx.beginPath();
+						ctx.roundRect(-qW / 2 - 5, -24, qW + 10, 13, 3.5);
+						ctx.fill();
+						ctx.beginPath();
+						ctx.moveTo(-2.5, -11);
+						ctx.lineTo(2.5, -11);
+						ctx.lineTo(0, -6.5);
+						ctx.closePath();
+						ctx.fill();
+
+						ctx.fillStyle = '#0f172a';
+						ctx.font = 'bold 8px sans-serif';
+						ctx.fillText(quote, 0, -17.5);
+					}
+
+					ctx.restore();
+				});
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// MULTI-THEME ENVIRONMENT BACKGROUND RENDERER
+			// ============================================
+			function drawTrackBackground(ctx, width, height, now, theme) {
+				if (theme === 'horse') {
+					// 🐎 TRƯỜNG ĐUA NGỰA: Đất cát nện pha cỏ xanh
+					const grad = ctx.createLinearGradient(0, 0, 0, height);
+					grad.addColorStop(0, '#92400e');
+					grad.addColorStop(0.5, '#78350f');
+					grad.addColorStop(1, '#451a03');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, 0, width, height);
+
+					// Sand grain textures & turf tracks
+					ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+					for (let i = 0; i < 8; i++) {
+						ctx.fillRect(0, (height / 8) * i + 4, width, 2);
+					}
+					// Decorative Grass Patches & Golden Flowers
+					const decos = [350, 750, 1200, 1650, 2100, 2600, 3100];
+					decos.forEach((dx, i) => {
+						const dy = 35 + ((i * 83) % (height - 70));
+						ctx.fillStyle = 'rgba(34, 197, 94, 0.35)';
+						ctx.beginPath();
+						ctx.arc(dx, dy, 14, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.fillStyle = '#facc15';
+						ctx.beginPath();
+						ctx.arc(dx + 2, dy - 2, 3.5, 0, Math.PI * 2);
+						ctx.fill();
+					});
+				} else if (theme === 'rabbit') {
+					// 🐰 ĐỒNG CỎ ĐUA THỎ: Đồng cỏ xanh ngát rực rỡ hoa & nấm
+					const grad = ctx.createLinearGradient(0, 0, 0, height);
+					grad.addColorStop(0, '#15803d');
+					grad.addColorStop(0.5, '#16a34a');
+					grad.addColorStop(1, '#166534');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, 0, width, height);
+
+					// Grass blade highlights
+					ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+					for (let i = 0; i < 7; i++) {
+						ctx.fillRect(0, (height / 7) * i + 6, width, 3);
+					}
+					// White daisies & mini carrots
+					const flowers = [280, 620, 1050, 1500, 1950, 2450, 2900];
+					flowers.forEach((fx, i) => {
+						const fy = 30 + ((i * 91) % (height - 60));
+						// Daisy petals
+						ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+						ctx.beginPath();
+						ctx.arc(fx, fy, 5, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.fillStyle = '#facc15';
+						ctx.beginPath();
+						ctx.arc(fx, fy, 2.5, 0, Math.PI * 2);
+						ctx.fill();
+						// Little orange carrot badge
+						ctx.fillStyle = '#ea580c';
+						ctx.beginPath();
+						ctx.ellipse(fx + 25, fy + 4, 6, 2.5, Math.PI / 4, 0, Math.PI * 2);
+						ctx.fill();
+					});
+				} else if (theme === 'turtle') {
+					// 🐢 BỜ BIỂN ĐUA RÙA: Bãi cát vàng mịn màng & sóng biển
+					const grad = ctx.createLinearGradient(0, 0, 0, height);
+					grad.addColorStop(0, '#ca8a04');
+					grad.addColorStop(0.4, '#eab308');
+					grad.addColorStop(0.85, '#0284c7');
+					grad.addColorStop(1, '#0369a1');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, 0, width, height);
+
+					// Ocean wave wash
+					ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+					ctx.beginPath();
+					const waveOffset = Math.sin(now * 0.002) * 20;
+					ctx.ellipse(width / 2, height * 0.85 + waveOffset, width, 40, 0, 0, Math.PI * 2);
+					ctx.fill();
+
+					// Sea shells & Starfish
+					const shells = [320, 780, 1250, 1720, 2200, 2750, 3200];
+					shells.forEach((sx, i) => {
+						const sy = 25 + ((i * 77) % (height - 80));
+						ctx.fillStyle = '#f472b6'; // Starfish pink
+						ctx.beginPath();
+						ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.fillStyle = '#ffffff'; // White shell
+						ctx.beginPath();
+						ctx.arc(sx + 18, sy + 6, 4, 0, Math.PI * 2);
+						ctx.fill();
+					});
+				} else if (theme === 'bird') {
+					// 🦅 BẦU TRỜI ĐUA CHIM: Bầu trời xanh lam lộng gió & mây 3D
+					const grad = ctx.createLinearGradient(0, 0, 0, height);
+					grad.addColorStop(0, '#0284c7');
+					grad.addColorStop(0.5, '#38bdf8');
+					grad.addColorStop(1, '#7dd3fc');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, 0, width, height);
+
+					// Floating Fluffy 3D Clouds drifting across the sky
+					const clouds = [200, 650, 1100, 1600, 2150, 2700, 3250];
+					clouds.forEach((cx, i) => {
+						const cloudX = (cx - (now * 0.03) % (width + 300) + width) % width;
+						const cy = 20 + ((i * 67) % (height - 50));
+						ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+						ctx.beginPath();
+						ctx.arc(cloudX, cy, 18, 0, Math.PI * 2);
+						ctx.arc(cloudX + 16, cy - 6, 14, 0, Math.PI * 2);
+						ctx.arc(cloudX + 28, cy, 16, 0, Math.PI * 2);
+						ctx.fill();
+					});
+				} else {
+					// 🦆 TRƯỜNG ĐUA SÔNG VỊT: Dòng nước xanh & lá sen
+					const grad = ctx.createLinearGradient(0, 0, 0, height);
+					grad.addColorStop(0, '#0284c7');
+					grad.addColorStop(0.5, '#0369a1');
+					grad.addColorStop(1, '#075985');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, 0, width, height);
+
+					// Flowing water ripples
+					ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+					for (let w = 0; w < 6; w++) {
+						ctx.beginPath();
+						const offset = (now * 0.0018 + w * 1.3) % (Math.PI * 2);
+						for (let x = 0; x <= width; x += 35) {
+							const y = (height / 7) * (w + 1) + Math.sin(x * 0.012 + offset) * 10;
+							if (x === 0) ctx.moveTo(x, y);
+							else ctx.lineTo(x, y);
+						}
+						ctx.lineTo(width, height);
+						ctx.lineTo(0, height);
+						ctx.closePath();
+						ctx.fill();
+					}
+
+					// Floating Lily Pads along the river
+					const lilyPads = [400, 850, 1300, 1800, 2350, 2800];
+					lilyPads.forEach((lx, i) => {
+						const ly = 35 + ((i * 73) % (height - 70));
+						ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+						ctx.beginPath();
+						ctx.arc(lx, ly, 12, 0.2, Math.PI * 1.85);
+						ctx.lineTo(lx, ly);
+						ctx.closePath();
+						ctx.fill();
+						ctx.fillStyle = 'rgba(244, 114, 182, 0.6)';
+						ctx.beginPath();
+						ctx.arc(lx + 2, ly - 2, 4, 0, Math.PI * 2);
+						ctx.fill();
+					});
+				}
+			}
+
+			function drawTrackLines(ctx, worldWidth, height, totalDucks, laneH, topMargin, startX, finishX, theme) {
+				const trackBottom = topMargin + totalDucks * laneH;
+				const trackLength = finishX - startX;
+
+				// Lane dividers
+				ctx.strokeStyle = theme === 'horse' ? 'rgba(254, 240, 138, 0.25)' : (theme === 'bird' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.16)');
+				ctx.lineWidth = 1.2;
+				ctx.setLineDash([8, 8]);
+				for (let i = 0; i <= totalDucks; i++) {
+					const y = topMargin + i * laneH;
+					ctx.beginPath();
+					ctx.moveTo(30, y);
+					ctx.lineTo(worldWidth - 30, y);
+					ctx.stroke();
+				}
+				ctx.setLineDash([]);
+
+				// Milestone Posts along the track (25%, 50%, 75%, 90%)
+				const milestones = [
+					{ pct: 0.25, label: '🚩 250m (25%)' },
+					{ pct: 0.50, label: '🚩 500m (50% - Giữa Chặng)' },
+					{ pct: 0.75, label: '🚩 750m (75% - Tăng Tốc!)' },
+					{ pct: 0.90, label: '🚩 900m (90% - Sắp Về Đích!)' }
+				];
+
+				milestones.forEach(m => {
+					const mx = startX + trackLength * m.pct;
+					ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+					ctx.lineWidth = 1.5;
+					ctx.setLineDash([4, 4]);
+					ctx.beginPath();
+					ctx.moveTo(mx, topMargin);
+					ctx.lineTo(mx, trackBottom);
+					ctx.stroke();
+					ctx.setLineDash([]);
+
+					// Milestone Header Label
+					ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+					const textW = ctx.measureText(m.label).width;
+					ctx.beginPath();
+					ctx.roundRect(mx - textW / 2 - 6, topMargin - 26, textW + 12, 16, 4);
+					ctx.fill();
+					ctx.fillStyle = '#38bdf8';
+					ctx.font = 'bold 9.5px sans-serif';
+					ctx.textAlign = 'center';
+					ctx.fillText(m.label, mx, topMargin - 14);
+				});
+
+				// Start Line
+				ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+				ctx.lineWidth = 5;
+				ctx.beginPath();
+				ctx.moveTo(startX, topMargin);
+				ctx.lineTo(startX, trackBottom);
+				ctx.stroke();
+
+				ctx.fillStyle = '#ffffff';
+				ctx.font = 'bold 12px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.fillText('🏁 XUẤT PHÁT (0m)', startX, topMargin - 15);
+
+				// Finish Line (Checkered Banner)
+				ctx.strokeStyle = '#facc15';
+				ctx.lineWidth = 5;
+				ctx.beginPath();
+				ctx.moveTo(finishX, topMargin);
+				ctx.lineTo(finishX, trackBottom);
+				ctx.stroke();
+
+				// Checkered blocks
+				const blockH = 12;
+				const numBlocks = Math.ceil((totalDucks * laneH) / blockH);
+				for (let b = 0; b < numBlocks; b++) {
+					ctx.fillStyle = b % 2 === 0 ? '#000000' : '#ffffff';
+					ctx.fillRect(finishX - 7, topMargin + b * blockH, 14, Math.min(blockH, trackBottom - (topMargin + b * blockH)));
+				}
+
+				// Finish Line Grand Banner
+				ctx.fillStyle = '#facc15';
+				ctx.font = 'bold 13px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.fillText('🏆 VẠCH ĐÍCH (1000m)', finishX, topMargin - 15);
+			}
+
+			// Swim ring color palette for distinct ducks
+			const swimRingColors = [
+				['#ef4444', '#ffffff'],
+				['#3b82f6', '#ffffff'],
+				['#10b981', '#ffffff'],
+				['#f59e0b', '#ffffff'],
+				['#8b5cf6', '#ffffff'],
+				['#ec4899', '#ffffff'],
+				['#06b6d4', '#ffffff'],
+				['#f97316', '#ffffff'],
+				['#14b8a6', '#ffffff'],
+				['#a855f7', '#ffffff']
+			];
+
+			// ============================================
+			// MASTER ANIMAL RACER RENDERER
+			// ============================================
+			function drawSingleRacer(ctx, racer, tNorm, isLoserDanger, isLeader, rank, now, totalRacers, theme) {
+				const x = racer.x;
+				const y = racer.y;
+				const event = getDuckEvent(racer, tNorm, totalRacers);
+				const isTired = event && event.type === 'tired';
+				const isBlinking = ((now + racer.duckSeed * 73) % 3200) < 140;
+
+				ctx.save();
+				ctx.translate(x, y);
+
+				// Draw Specific Animal Body & Animation
+				if (theme === 'horse') {
+					drawHorseModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now);
+				} else if (theme === 'rabbit') {
+					drawRabbitModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now);
+				} else if (theme === 'turtle') {
+					drawTurtleModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now);
+				} else if (theme === 'bird') {
+					drawBirdModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now);
+				} else {
+					drawDuckModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now);
+				}
+
+				// ============================================
+				// COMMON OVERLAY: USER AVATAR, NAME & EVENT
+				// ============================================
+
+				// 1. Floating User Avatar Badge (Above Head)
+				ctx.save();
+				ctx.translate(3, -29);
+				
+				// Avatar circle with border
+				ctx.fillStyle = isLoserDanger ? '#ef4444' : (isLeader ? '#f59e0b' : '#0284c7');
+				ctx.beginPath();
+				ctx.arc(0, 0, 13.5, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.strokeStyle = '#ffffff';
+				ctx.lineWidth = 2;
+				ctx.stroke();
+
+				// Avatar emoji/text
+				ctx.fillStyle = '#ffffff';
+				ctx.font = '12px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				ctx.fillText(racer.avatar && !racer.avatar.startsWith('http') ? racer.avatar : '👤', 0, 1);
+
+				// Rank number pill on top-right of avatar
+				ctx.fillStyle = isLoserDanger ? '#ef4444' : (isLeader ? '#f59e0b' : '#1e293b');
+				ctx.beginPath();
+				ctx.roundRect(8, -12, 17, 12, 4);
+				ctx.fill();
+				ctx.fillStyle = '#ffffff';
+				ctx.font = 'bold 8.5px sans-serif';
+				ctx.fillText(`#${rank}`, 16.5, -6);
+				ctx.restore();
+
+				// 2. User Name Pill Label (Positioned cleanly underneath)
+				ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+				const nameWidth = ctx.measureText(racer.name).width;
+				ctx.beginPath();
+				ctx.roundRect(-nameWidth / 2 - 5, 18, nameWidth + 10, 14, 5);
+				ctx.fill();
+				ctx.strokeStyle = isLoserDanger ? 'rgba(239, 68, 68, 0.6)' : 'rgba(255, 255, 255, 0.15)';
+				ctx.lineWidth = 1;
+				ctx.stroke();
+
+				ctx.fillStyle = isLoserDanger ? '#fca5a5' : '#ffffff';
+				ctx.font = 'bold 9.5px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				ctx.fillText(racer.name, 0, 25);
+
+				// 3. Dynamic Event Callout Badge
+				if (event) {
+					ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+					ctx.beginPath();
+					ctx.roundRect(-44, -55, 88, 18, 6);
+					ctx.fill();
+					ctx.strokeStyle = event.color;
+					ctx.lineWidth = 1.5;
+					ctx.stroke();
+
+					ctx.fillStyle = event.color;
+					ctx.font = 'bold 9px sans-serif';
+					ctx.fillText(event.text, 0, -46);
+				}
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// 1. DUCK MODEL RENDERER 🦆
+			// ============================================
+			function drawDuckModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now) {
+				const bobFrequency = isTired ? 0.004 : 0.008;
+				const bobY = Math.sin(now * bobFrequency + racer.duckSeed * 0.1) * (isTired ? 1.5 : 2.4);
+				const flapSpeed = isTired ? 0.012 : (isLoserDanger ? 0.038 : (isLeader ? 0.028 : 0.022));
+				const wingFlap = Math.sin(now * flapSpeed + racer.duckSeed) * (isTired ? 0.18 : 0.38);
+
+				ctx.save();
+				ctx.translate(0, bobY);
+
+				// Water Wake Trail & Ripples
+				const paddleProgress = Math.sin(now * (isTired ? 0.01 : 0.022) + racer.duckSeed);
+				ctx.fillStyle = isTired ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.34)';
+				ctx.beginPath();
+				ctx.ellipse(-26, 7, (isTired ? 10 : 16) + paddleProgress * 4, 6, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Swim Ring
+				const ringColors = swimRingColors[racer.lane % swimRingColors.length];
+				ctx.save();
+				ctx.translate(-2, 8);
+				ctx.fillStyle = ringColors[0];
+				ctx.beginPath();
+				ctx.ellipse(0, 0, 22, 9, 0, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.lineWidth = 1.2;
+				ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+				ctx.stroke();
+
+				// Swim Ring Stripes
+				ctx.fillStyle = ringColors[1];
+				ctx.beginPath();
+				ctx.ellipse(-14, 0, 5, 8.5, -0.2, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.ellipse(14, 0, 5, 8.5, 0.2, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.restore();
+
+				// Webbed Feet
+				ctx.fillStyle = '#ea580c';
+				ctx.beginPath();
+				ctx.ellipse(-16 + paddleProgress * (isTired ? 3 : 6), 12, 6, 3.5, Math.PI / 6, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Duck Body
+				const bodyGrad = ctx.createRadialGradient(-4, 0, 2, 0, 2, 20);
+				bodyGrad.addColorStop(0, isTired ? '#fef9c3' : '#fef08a');
+				bodyGrad.addColorStop(0.4, isTired ? '#fde047' : '#facc15');
+				bodyGrad.addColorStop(0.85, '#eab308');
+				bodyGrad.addColorStop(1, '#ca8a04');
+				ctx.fillStyle = bodyGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 2, 19, 14, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Tail Feathers
+				ctx.fillStyle = '#facc15';
+				ctx.beginPath();
+				ctx.moveTo(-16, 2);
+				ctx.quadraticCurveTo(-26, -3, -24, -9);
+				ctx.quadraticCurveTo(-20, -4, -13, -2);
+				ctx.closePath();
+				ctx.fill();
+
+				// Wing
+				ctx.save();
+				ctx.translate(-4, 2);
+				ctx.rotate(wingFlap);
+				const wingGrad = ctx.createLinearGradient(-10, -5, 10, 5);
+				wingGrad.addColorStop(0, '#fde047');
+				wingGrad.addColorStop(1, '#d97706');
+				ctx.fillStyle = wingGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 0, 12, 7.5, -0.15, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.restore();
+
+				// Duck Head
+				const headGrad = ctx.createRadialGradient(14, -8, 2, 14, -8, 14);
+				headGrad.addColorStop(0, '#fef08a');
+				headGrad.addColorStop(0.6, '#facc15');
+				headGrad.addColorStop(1, '#eab308');
+				ctx.fillStyle = headGrad;
+				ctx.beginPath();
+				ctx.arc(15, -8, 12, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Beak
+				const beakGrad = ctx.createLinearGradient(20, -10, 34, -4);
+				beakGrad.addColorStop(0, '#fb923c');
+				beakGrad.addColorStop(1, '#ea580c');
+				ctx.fillStyle = beakGrad;
+				ctx.beginPath();
+				ctx.moveTo(23, -11);
+				ctx.quadraticCurveTo(34, -8, 35, -5);
+				ctx.quadraticCurveTo(33, -2, 22, -3);
+				ctx.closePath();
+				ctx.fill();
+
+				// Eyes & Expressions
+				drawAnimalEyes(ctx, 19, -8, isLeader, isTired, isBlinking, isLoserDanger, now, racer.duckSeed);
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// 2. HORSE MODEL RENDERER 🐎 (Chiến Mã 4 Chân Khớp Nối & Phi Nước Đại)
+			// ============================================
+			const horsePalette = [
+				{ body: '#92400e', highlight: '#b45309', dark: '#5f2305', mane: '#381202' },
+				{ body: '#1e293b', highlight: '#334155', dark: '#0f172a', mane: '#020617' },
+				{ body: '#e2e8f0', highlight: '#ffffff', dark: '#94a3b8', mane: '#64748b' },
+				{ body: '#b91c1c', highlight: '#dc2626', dark: '#7f1d1d', mane: '#450a0a' },
+				{ body: '#d97706', highlight: '#f59e0b', dark: '#92400e', mane: '#5f2305' }
+			];
+
+			function drawHorseModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now) {
+				const pal = horsePalette[racer.lane % horsePalette.length];
+				const gallopSpeed = isTired ? 0.012 : (isLoserDanger ? 0.038 : 0.026);
+				const gPhase = now * gallopSpeed + racer.duckSeed;
+				// Dynamic gallop body bobbing & pitch rocking
+				const bobY = Math.abs(Math.sin(gPhase)) * -7;
+				const rockAngle = Math.sin(gPhase) * 0.12;
+
+				ctx.save();
+				ctx.translate(0, bobY);
+				ctx.rotate(rockAngle);
+
+				// Dynamic Dust Particles Kicked by Hooves
+				if (!isTired) {
+					ctx.fillStyle = 'rgba(217, 119, 6, 0.45)';
+					for (let i = 0; i < 3; i++) {
+						const dustLag = (now * 0.03 + racer.duckSeed + i * 15) % 30;
+						ctx.beginPath();
+						ctx.arc(-22 - dustLag, 12 - (dustLag * 0.2), 3 + (dustLag * 0.12), 0, Math.PI * 2);
+						ctx.fill();
+					}
+				}
+
+				// Helper to draw 1 articulated horse leg with joints and hoof
+				function drawHorseLeg(startX, startY, angle1, angle2, len1, len2, isFar) {
+					ctx.save();
+					const legColor = isFar ? pal.dark : pal.body;
+					ctx.strokeStyle = legColor;
+					ctx.fillStyle = legColor;
+					ctx.lineWidth = isFar ? 3.2 : 4.2;
+					ctx.lineCap = 'round';
+					ctx.lineJoin = 'round';
+
+					// Upper leg
+					const kX = startX + Math.cos(angle1) * len1;
+					const kY = startY + Math.sin(angle1) * len1;
+					ctx.beginPath();
+					ctx.moveTo(startX, startY);
+					ctx.lineTo(kX, kY);
+					ctx.stroke();
+
+					// Lower leg
+					const hX = kX + Math.cos(angle2) * len2;
+					const hY = kY + Math.sin(angle2) * len2;
+					ctx.beginPath();
+					ctx.moveTo(kX, kY);
+					ctx.lineTo(hX, hY);
+					ctx.stroke();
+
+					// Hoof (Dark Solid Shoe)
+					ctx.fillStyle = '#0f172a';
+					ctx.beginPath();
+					ctx.arc(hX, hY, 2.5, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.beginPath();
+					ctx.moveTo(hX - 2.5, hY - 1);
+					ctx.lineTo(hX + 3.5, hY);
+					ctx.lineTo(hX + 3, hY + 4);
+					ctx.lineTo(hX - 3, hY + 4);
+					ctx.closePath();
+					ctx.fill();
+					ctx.restore();
+				}
+
+				// 1. Far Legs (Background - Behind Torso)
+				// Far Hind Leg
+				const farHindA1 = Math.PI * 0.5 + Math.sin(gPhase + Math.PI + 0.3) * 0.65;
+				const farHindA2 = farHindA1 + 0.4 + Math.sin(gPhase + Math.PI + 0.9) * 0.55;
+				drawHorseLeg(-11, 2, farHindA1, farHindA2, 11, 10, true);
+
+				// Far Fore Leg
+				const farForeA1 = Math.PI * 0.5 + Math.sin(gPhase + 0.3) * 0.65;
+				const farForeA2 = farForeA1 - 0.3 + Math.sin(gPhase + 0.8) * 0.5;
+				drawHorseLeg(11, 2, farForeA1, farForeA2, 11, 10, true);
+
+				// 2. Large Bushy Flowing Tail
+				ctx.save();
+				ctx.fillStyle = pal.mane;
+				ctx.beginPath();
+				ctx.moveTo(-18, -3);
+				const tailWiggle1 = Math.sin(gPhase - 0.4) * 8;
+				const tailWiggle2 = Math.sin(gPhase - 0.8) * 12;
+				ctx.quadraticCurveTo(-28, -8 + tailWiggle1, -36, tailWiggle2);
+				ctx.quadraticCurveTo(-28, 6 + tailWiggle1, -16, 4);
+				ctx.closePath();
+				ctx.fill();
+				ctx.restore();
+
+				// 3. Muscular Horse Body (Hip, Flank, Barrel Ribs, Chest)
+				ctx.fillStyle = pal.body;
+				// Hip Rump
+				ctx.beginPath();
+				ctx.arc(-11, 0, 10.5, 0, Math.PI * 2);
+				ctx.fill();
+				// Shoulder Chest
+				ctx.beginPath();
+				ctx.arc(10, 0, 11.5, 0, Math.PI * 2);
+				ctx.fill();
+				// Torso Barrel
+				const bodyGrad = ctx.createLinearGradient(-15, -8, 15, 8);
+				bodyGrad.addColorStop(0, pal.highlight);
+				bodyGrad.addColorStop(0.5, pal.body);
+				bodyGrad.addColorStop(1, pal.dark);
+				ctx.fillStyle = bodyGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 0, 22, 11.5, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 4. Saddle Blanket & Leather Saddle
+				const ringColors = swimRingColors[racer.lane % swimRingColors.length];
+				ctx.fillStyle = ringColors[0];
+				ctx.beginPath();
+				ctx.roundRect(-8, -8.5, 16, 13, 3);
+				ctx.fill();
+				ctx.fillStyle = ringColors[1];
+				ctx.fillRect(-8, -2, 16, 2.5);
+				ctx.fillStyle = '#1e293b';
+				ctx.beginPath();
+				ctx.ellipse(0, -6.5, 6, 3.5, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 5. Near Legs (Foreground - In Front of Torso)
+				// Near Hind Leg
+				const nearHindA1 = Math.PI * 0.5 + Math.sin(gPhase + Math.PI) * 0.7;
+				const nearHindA2 = nearHindA1 + 0.4 + Math.sin(gPhase + Math.PI + 0.6) * 0.6;
+				drawHorseLeg(-8, 3, nearHindA1, nearHindA2, 12, 11, false);
+
+				// Near Fore Leg
+				const nearForeA1 = Math.PI * 0.5 + Math.sin(gPhase) * 0.7;
+				const nearForeA2 = nearForeA1 - 0.3 + Math.sin(gPhase + 0.5) * 0.55;
+				drawHorseLeg(14, 3, nearForeA1, nearForeA2, 12, 11, false);
+
+				// 6. Arched Muscular Neck & Equine Head
+				const neckGrad = ctx.createLinearGradient(6, 2, 22, -18);
+				neckGrad.addColorStop(0, pal.body);
+				neckGrad.addColorStop(1, pal.highlight);
+				ctx.fillStyle = neckGrad;
+				ctx.beginPath();
+				ctx.moveTo(8, -4);
+				ctx.quadraticCurveTo(12, -18, 22, -18);
+				ctx.lineTo(28, -12);
+				ctx.quadraticCurveTo(18, -4, 16, 4);
+				ctx.closePath();
+				ctx.fill();
+
+				// Head Muzzle & Jaw
+				ctx.fillStyle = pal.highlight;
+				ctx.beginPath();
+				ctx.ellipse(26, -14, 8, 5.5, 0.35, 0, Math.PI * 2);
+				ctx.fill();
+				// Dark Nostril
+				ctx.fillStyle = '#0f172a';
+				ctx.beginPath();
+				ctx.arc(31, -13, 1.2, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 2 Pointy Ears
+				ctx.fillStyle = pal.body;
+				ctx.beginPath();
+				ctx.moveTo(19, -18);
+				ctx.lineTo(21, -26);
+				ctx.lineTo(24, -18);
+				ctx.closePath();
+				ctx.fill();
+				ctx.fillStyle = pal.mane;
+				ctx.beginPath();
+				ctx.moveTo(21, -26);
+				ctx.lineTo(23, -24);
+				ctx.lineTo(21, -20);
+				ctx.closePath();
+				ctx.fill();
+
+				// 7. Dynamic Flowing Mane
+				ctx.fillStyle = pal.mane;
+				for (let m = 0; m < 4; m++) {
+					const mx = 10 + m * 3.5;
+					const my = -4 - m * 3.5;
+					const mWiggle = Math.sin(gPhase + m * 0.5) * 4;
+					ctx.beginPath();
+					ctx.moveTo(mx, my);
+					ctx.quadraticCurveTo(mx - 8, my - 6 + mWiggle, mx - 12, my + 4);
+					ctx.quadraticCurveTo(mx - 4, my + 1, mx, my);
+					ctx.fill();
+				}
+
+				// Eyes & Expressions
+				drawAnimalEyes(ctx, 24, -15, isLeader, isTired, isBlinking, isLoserDanger, now, racer.duckSeed);
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// 3. RABBIT MODEL RENDERER 🐰 (Thỏ Bật Nhảy Đầy Đủ 4 Chân & Đệm Chân Hồng)
+			// ============================================
+			const rabbitPalette = [
+				{ body: '#ffffff', shadow: '#e2e8f0', ear: '#f472b6' },
+				{ body: '#fde68a', shadow: '#f59e0b', ear: '#fb7185' },
+				{ body: '#cbd5e1', shadow: '#94a3b8', ear: '#f472b6' },
+				{ body: '#fed7aa', shadow: '#ea580c', ear: '#fb7185' },
+				{ body: '#fbcfe8', shadow: '#f472b6', ear: '#fb7185' }
+			];
+
+			function drawRabbitModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now) {
+				const pal = rabbitPalette[racer.lane % rabbitPalette.length];
+				const hopSpeed = isTired ? 0.01 : (isLoserDanger ? 0.034 : 0.024);
+				const hPhase = now * hopSpeed + racer.duckSeed;
+				
+				// Hop physics: true jump trajectory & squash/stretch
+				const sinH = Math.sin(hPhase);
+				const isAirborne = sinH > 0;
+				const hopY = isTired ? Math.sin(hPhase) * 2.5 : -Math.abs(sinH) * 14;
+				const stretchX = isAirborne ? 1.14 : 0.88;
+				const stretchY = isAirborne ? 0.88 : 1.14;
+				const earLag = Math.cos(hPhase) * 0.35;
+
+				ctx.save();
+				ctx.translate(0, hopY);
+				ctx.scale(stretchX, stretchY);
+
+				// 1. Far Hind Leg (Background)
+				ctx.save();
+				ctx.fillStyle = pal.shadow;
+				if (isAirborne) {
+					// Extended backward in mid-air jump
+					ctx.beginPath();
+					ctx.ellipse(-14, 6, 8, 4, 0.4, 0, Math.PI * 2);
+					ctx.fill();
+					// Long foot pad extending back
+					ctx.beginPath();
+					ctx.ellipse(-20, 10, 8.5, 4.5, -0.3, 0, Math.PI * 2);
+					ctx.fill();
+				} else {
+					// Tucked on ground
+					ctx.beginPath();
+					ctx.ellipse(-10, 8, 9, 5, 0, 0, Math.PI * 2);
+					ctx.fill();
+				}
+				ctx.restore();
+
+				// 2. Far Front Paw (Background)
+				ctx.fillStyle = pal.shadow;
+				if (isAirborne) {
+					ctx.beginPath();
+					ctx.ellipse(13, 8, 5.5, 3.5, 0.6, 0, Math.PI * 2);
+					ctx.fill();
+				} else {
+					ctx.beginPath();
+					ctx.ellipse(9, 10, 5, 3.5, 0, 0, Math.PI * 2);
+					ctx.fill();
+				}
+
+				// 3. Round Fluffy Cotton Tail
+				ctx.fillStyle = '#ffffff';
+				ctx.beginPath();
+				ctx.arc(-18, 1, 6.5, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.strokeStyle = pal.shadow;
+				ctx.lineWidth = 1;
+				ctx.stroke();
+
+				// 4. Chubby Body (Plump 3D rounded shape)
+				const bodyGrad = ctx.createRadialGradient(-3, 0, 2, 0, 2, 20);
+				bodyGrad.addColorStop(0, pal.body);
+				bodyGrad.addColorStop(0.7, pal.body);
+				bodyGrad.addColorStop(1, pal.shadow);
+				ctx.fillStyle = bodyGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 1, 18.5, 14, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Soft White Belly Patch
+				ctx.fillStyle = '#ffffff';
+				ctx.beginPath();
+				ctx.ellipse(3, 4, 11, 8.5, 0.1, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 5. Near Hind Leg (Foreground - Prominent, strong leg with foot pad)
+				ctx.save();
+				ctx.fillStyle = pal.body;
+				ctx.strokeStyle = pal.shadow;
+				ctx.lineWidth = 1;
+				if (isAirborne) {
+					// Powerful back kick in mid-air
+					ctx.beginPath();
+					ctx.ellipse(-10, 4, 9, 6.5, 0.5, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+					// Big long foot pad with cute pink toe pads
+					ctx.beginPath();
+					ctx.ellipse(-18, 9, 10, 5, -0.25, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+					// Pink toe pads
+					ctx.fillStyle = pal.ear;
+					ctx.beginPath();
+					ctx.arc(-22, 8.5, 1.8, 0, Math.PI * 2);
+					ctx.arc(-19, 7.5, 1.8, 0, Math.PI * 2);
+					ctx.arc(-16, 7.5, 1.8, 0, Math.PI * 2);
+					ctx.fill();
+				} else {
+					// Folded tightly ready to spring
+					ctx.beginPath();
+					ctx.ellipse(-8, 5, 9.5, 7, 0.1, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+					// Foot pad on ground
+					ctx.beginPath();
+					ctx.ellipse(-4, 11, 9, 4, 0, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+				}
+				ctx.restore();
+
+				// 6. Near Front Paw (Foreground)
+				ctx.fillStyle = pal.body;
+				ctx.strokeStyle = pal.shadow;
+				ctx.lineWidth = 1;
+				if (isAirborne) {
+					ctx.beginPath();
+					ctx.ellipse(11, 7, 6, 4, 0.4, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+				} else {
+					ctx.beginPath();
+					ctx.ellipse(8, 11, 6, 4, 0, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.stroke();
+				}
+
+				// 7. Round Cute Head with Cheeks
+				ctx.fillStyle = pal.body;
+				ctx.beginPath();
+				ctx.arc(13, -8, 12, 0, Math.PI * 2);
+				ctx.fill();
+				// Pink Cheek Blush
+				ctx.fillStyle = 'rgba(244, 114, 182, 0.4)';
+				ctx.beginPath();
+				ctx.arc(17, -4, 4, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 8. Dynamic Ears (2 Long Ears with Inertia)
+				// Left Ear (Far)
+				ctx.save();
+				ctx.translate(9, -16);
+				ctx.rotate((isTired ? 0.7 : -0.3) + earLag * 0.8);
+				ctx.fillStyle = pal.shadow;
+				ctx.beginPath();
+				ctx.ellipse(0, -11, 4.8, 13, -0.08, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.fillStyle = pal.ear;
+				ctx.beginPath();
+				ctx.ellipse(0, -11, 2.6, 9.5, -0.08, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.restore();
+
+				// Right Ear (Near)
+				ctx.save();
+				ctx.translate(13, -16);
+				ctx.rotate((isTired ? 0.85 : -0.15) + earLag);
+				ctx.fillStyle = pal.body;
+				ctx.beginPath();
+				ctx.ellipse(0, -12, 5.2, 14, 0.05, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.fillStyle = pal.ear;
+				ctx.beginPath();
+				ctx.ellipse(0, -12, 3, 10.5, 0.05, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.restore();
+
+				// 9. Pink Twitching Nose & Whiskers
+				ctx.fillStyle = '#f43f5e';
+				ctx.beginPath();
+				ctx.arc(23, -7, 2.2, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 4 Springy Whiskers
+				ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+				ctx.lineWidth = 0.9;
+				ctx.beginPath();
+				ctx.moveTo(18, -6); ctx.lineTo(28, -9);
+				ctx.moveTo(18, -4); ctx.lineTo(28, -4);
+				ctx.moveTo(18, -7); ctx.lineTo(27, -11);
+				ctx.stroke();
+
+				// Eyes & Expressions
+				drawAnimalEyes(ctx, 16, -10, isLeader, isTired, isBlinking, isLoserDanger, now, racer.duckSeed);
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// 4. TURTLE MODEL RENDERER 🐢
+			// ============================================
+			const turtlePalette = [
+				{ shell: '#059669', rim: '#047857', skin: '#10b981' },
+				{ shell: '#0891b2', rim: '#0e7490', skin: '#06b6d4' },
+				{ shell: '#b45309', rim: '#78350f', skin: '#d97706' },
+				{ shell: '#65a30d', rim: '#4d7c0f', skin: '#84cc16' },
+				{ shell: '#7c3aed', rim: '#6d28d9', skin: '#a855f7' }
+			];
+
+			function drawTurtleModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now) {
+				const pal = turtlePalette[racer.lane % turtlePalette.length];
+				const crawlSpeed = isTired ? 0.008 : (isLoserDanger ? 0.028 : 0.018);
+				const cPhase = now * crawlSpeed + racer.duckSeed;
+				const bobY = Math.sin(cPhase) * 1.5;
+
+				ctx.save();
+				ctx.translate(0, bobY);
+
+				// 4 Flippers / Legs paddling
+				ctx.fillStyle = pal.skin;
+				const legWave1 = Math.sin(cPhase) * 4;
+				const legWave2 = Math.cos(cPhase) * 4;
+				// Front Legs
+				ctx.beginPath();
+				ctx.ellipse(12, 10 + legWave1, 7, 3.5, 0.4, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.ellipse(10, -8 - legWave2, 7, 3.5, -0.4, 0, Math.PI * 2);
+				ctx.fill();
+				// Rear Legs
+				ctx.beginPath();
+				ctx.ellipse(-14, 9 + legWave2, 6, 3, -0.3, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.ellipse(-14, -8 - legWave1, 6, 3, 0.3, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Little Tail
+				ctx.beginPath();
+				ctx.moveTo(-18, 0);
+				ctx.lineTo(-24, 0);
+				ctx.lineTo(-18, 2);
+				ctx.closePath();
+				ctx.fill();
+
+				// Turtle Head
+				ctx.beginPath();
+				ctx.ellipse(18, 0, 9, 6.5, 0, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Sporty Red Headband
+				ctx.fillStyle = '#ef4444';
+				ctx.fillRect(14, -7, 4, 14);
+				// Headband flutter tails
+				ctx.beginPath();
+				ctx.moveTo(14, -6);
+				ctx.quadraticCurveTo(8, -12 + Math.sin(cPhase * 2) * 3, 4, -9);
+				ctx.quadraticCurveTo(8, -4, 14, -4);
+				ctx.closePath();
+				ctx.fill();
+
+				// Hexagonal Patterned Domed Shell
+				const shellGrad = ctx.createRadialGradient(-2, -2, 3, 0, 0, 20);
+				shellGrad.addColorStop(0, pal.skin);
+				shellGrad.addColorStop(0.5, pal.shell);
+				shellGrad.addColorStop(1, pal.rim);
+				ctx.fillStyle = shellGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.strokeStyle = pal.rim;
+				ctx.lineWidth = 1.8;
+				ctx.stroke();
+
+				// Shell Hexagon Grid Pattern
+				ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+				ctx.lineWidth = 1.2;
+				ctx.beginPath();
+				ctx.arc(0, 0, 7, 0, Math.PI * 2);
+				ctx.stroke();
+				ctx.beginPath();
+				ctx.moveTo(0, -7); ctx.lineTo(0, -14);
+				ctx.moveTo(6, -3.5); ctx.lineTo(13, -7);
+				ctx.moveTo(6, 3.5); ctx.lineTo(13, 7);
+				ctx.moveTo(0, 7); ctx.lineTo(0, 14);
+				ctx.moveTo(-6, 3.5); ctx.lineTo(-13, 7);
+				ctx.moveTo(-6, -3.5); ctx.lineTo(-13, -7);
+				ctx.stroke();
+
+				// Eyes & Expressions
+				drawAnimalEyes(ctx, 21, -2, isLeader, isTired, isBlinking, isLoserDanger, now, racer.duckSeed);
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// 5. BIRD MODEL RENDERER 🦅 (Chim Sải 2 Cánh 3D & Khí Động Học)
+			// ============================================
+			const birdPalette = [
+				{ body: '#0284c7', wing: '#0369a1', farWing: '#075985', beak: '#f59e0b', crest: '#38bdf8' },
+				{ body: '#d97706', wing: '#b45309', farWing: '#78350f', beak: '#f59e0b', crest: '#fde047' },
+				{ body: '#dc2626', wing: '#b91c1c', farWing: '#7f1d1d', beak: '#fbbf24', crest: '#fca5a5' },
+				{ body: '#16a34a', wing: '#15803d', farWing: '#14532d', beak: '#f59e0b', crest: '#86efac' },
+				{ body: '#7c3aed', wing: '#6d28d9', farWing: '#4c1d95', beak: '#fbbf24', crest: '#c4b5fd' }
+			];
+
+			function drawBirdModel(ctx, racer, isTired, isLeader, isBlinking, isLoserDanger, now) {
+				const pal = birdPalette[racer.lane % birdPalette.length];
+				const flapSpeed = isTired ? 0.012 : (isLoserDanger ? 0.038 : 0.026);
+				const wingFlap = Math.sin(now * flapSpeed + racer.duckSeed); // -1 to +1
+				const bobY = Math.sin(now * 0.008 + racer.duckSeed) * 3.5;
+				const flightPitch = wingFlap * 0.08;
+
+				ctx.save();
+				ctx.translate(0, bobY);
+				ctx.rotate(flightPitch);
+
+				// Aerodynamic Windstream Trails
+				if (!isTired) {
+					ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+					ctx.lineWidth = 1.2;
+					ctx.beginPath();
+					ctx.moveTo(-16, -26 * wingFlap);
+					ctx.lineTo(-42, -26 * wingFlap);
+					ctx.moveTo(-6, 22 * wingFlap);
+					ctx.lineTo(-32, 22 * wingFlap);
+					ctx.stroke();
+				}
+
+				// ============================================
+				// 1. FAR WING (Background Wing - Reaches Up/Down Behind Body)
+				// ============================================
+				ctx.save();
+				ctx.fillStyle = pal.farWing;
+				ctx.beginPath();
+				ctx.moveTo(2, -4);
+				const farTipX = -8 + wingFlap * 4;
+				const farTipY = -28 * wingFlap - 6;
+				ctx.quadraticCurveTo(0, -18 * wingFlap - 4, farTipX, farTipY);
+				ctx.lineTo(farTipX - 6, farTipY + 8);
+				ctx.lineTo(farTipX - 12, farTipY + 14);
+				ctx.quadraticCurveTo(-4, -6, -8, -2);
+				ctx.closePath();
+				ctx.fill();
+				ctx.restore();
+
+				// ============================================
+				// 2. FANNED TAIL FEATHERS (4 Quills Steering)
+				// ============================================
+				ctx.fillStyle = pal.wing;
+				ctx.beginPath();
+				ctx.moveTo(-14, -2);
+				ctx.lineTo(-32, -8 + wingFlap * 2);
+				ctx.lineTo(-30, -2);
+				ctx.lineTo(-33, 4 + wingFlap * 2);
+				ctx.lineTo(-14, 3);
+				ctx.closePath();
+				ctx.fill();
+
+				// ============================================
+				// 3. AERODYNAMIC STREAMLINED BODY & CHEST
+			// ============================================
+				const bodyGrad = ctx.createLinearGradient(-16, 0, 16, 0);
+				bodyGrad.addColorStop(0, pal.wing);
+				bodyGrad.addColorStop(0.6, pal.body);
+				bodyGrad.addColorStop(1, pal.crest);
+				ctx.fillStyle = bodyGrad;
+				ctx.beginPath();
+				ctx.ellipse(0, 0, 21, 10.5, 0.08, 0, Math.PI * 2);
+				ctx.fill();
+
+				// 4. Little Curled Talons / Feet (Tucked under belly)
+				ctx.fillStyle = '#f59e0b';
+				ctx.beginPath();
+				ctx.ellipse(-2, 9, 3.5, 2, 0.4, 0, Math.PI * 2);
+				ctx.ellipse(4, 9.5, 3.5, 2, 0.4, 0, Math.PI * 2);
+				ctx.fill();
+
+				// ============================================
+				// 5. NEAR WING (Foreground Wing - Articulated Flight Feathers)
+				// ============================================
+				ctx.save();
+				// Wing Coverts Base
+				ctx.fillStyle = pal.body;
+				ctx.beginPath();
+				ctx.ellipse(-2, 1, 9, 6, -0.2, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Primary & Secondary Flight Feathers (Large 3D sweep)
+				const nearWingGrad = ctx.createLinearGradient(0, 0, -10, 28 * wingFlap);
+				nearWingGrad.addColorStop(0, pal.body);
+				nearWingGrad.addColorStop(0.5, pal.wing);
+				nearWingGrad.addColorStop(1, pal.farWing);
+				ctx.fillStyle = nearWingGrad;
+				ctx.beginPath();
+				ctx.moveTo(3, -2);
+				const nearTipX = -10 + wingFlap * 6;
+				const nearTipY = 28 * wingFlap + 4;
+				ctx.quadraticCurveTo(8, 16 * wingFlap + 2, nearTipX, nearTipY);
+				ctx.lineTo(nearTipX - 6, nearTipY - 6 * (wingFlap > 0 ? 1 : -1));
+				ctx.lineTo(nearTipX - 12, nearTipY - 12 * (wingFlap > 0 ? 1 : -1));
+				ctx.quadraticCurveTo(-6, 8, -6, 2);
+				ctx.closePath();
+				ctx.fill();
+
+				// Feather Accent Ridge Lines
+				ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+				ctx.lineWidth = 1.2;
+				ctx.beginPath();
+				ctx.moveTo(0, 0);
+				ctx.lineTo(nearTipX + 2, nearTipY - 4);
+				ctx.stroke();
+				ctx.restore();
+
+				// ============================================
+				// 6. AVIAN HEAD, CREST & CURVED BEAK
+				// ============================================
+				ctx.fillStyle = pal.body;
+				ctx.beginPath();
+				ctx.arc(15, -4.5, 9.5, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Head Feather Crest
+				ctx.fillStyle = pal.crest;
+				ctx.beginPath();
+				ctx.moveTo(13, -13);
+				ctx.quadraticCurveTo(18, -18, 22, -15);
+				ctx.quadraticCurveTo(17, -10, 16, -9);
+				ctx.closePath();
+				ctx.fill();
+
+				// Hooked Curved Predator Beak
+				const beakGrad = ctx.createLinearGradient(20, -7, 32, -3);
+				beakGrad.addColorStop(0, '#fbbf24');
+				beakGrad.addColorStop(1, '#d97706');
+				ctx.fillStyle = beakGrad;
+				ctx.beginPath();
+				ctx.moveTo(21, -7);
+				ctx.quadraticCurveTo(31, -5, 31, -1);
+				ctx.quadraticCurveTo(28, 0, 21, 1);
+				ctx.closePath();
+				ctx.fill();
+				// Beak slit & nostril
+				ctx.fillStyle = '#78350f';
+				ctx.beginPath();
+				ctx.arc(24, -5, 0.9, 0, Math.PI * 2);
+				ctx.fill();
+
+				// Eyes & Expressions
+				drawAnimalEyes(ctx, 18, -6, isLeader, isTired, isBlinking, isLoserDanger, now, racer.duckSeed);
+
+				ctx.restore();
+			}
+
+			// ============================================
+			// UNIVERSAL ANIME EYES & EXPRESSION RENDERER
+			// ============================================
+			function drawAnimalEyes(ctx, eyeX, eyeY, isLeader, isTired, isBlinking, isLoserDanger, now, seed) {
+				if (isLeader) {
+					// Top 1: Cool Sunglasses 🕶️ + Golden Crown 👑
+					ctx.fillStyle = '#0f172a';
+					ctx.beginPath();
+					ctx.roundRect(eyeX - 2, eyeY - 5, 10, 8, 2);
+					ctx.fill();
+					ctx.strokeStyle = '#38bdf8';
+					ctx.lineWidth = 1;
+					ctx.stroke();
+
+					// Glare reflection on glass
+					ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+					ctx.lineWidth = 1.2;
+					ctx.beginPath();
+					ctx.moveTo(eyeX, eyeY - 3);
+					ctx.lineTo(eyeX + 3, eyeY + 1);
+					ctx.stroke();
+
+					// Crown on head
+					ctx.fillStyle = '#facc15';
+					ctx.strokeStyle = '#eab308';
+					ctx.lineWidth = 1;
+					ctx.beginPath();
+					ctx.moveTo(eyeX - 7, eyeY - 12);
+					ctx.lineTo(eyeX - 5, eyeY - 17);
+					ctx.lineTo(eyeX - 3, eyeY - 13);
+					ctx.lineTo(eyeX - 1, eyeY - 18);
+					ctx.lineTo(eyeX + 1, eyeY - 12);
+					ctx.closePath();
+					ctx.fill();
+					ctx.stroke();
+				} else if (isTired) {
+					// Tired / Exhausted Eyes (Drooping eyelids)
+					ctx.strokeStyle = '#0f172a';
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.arc(eyeX, eyeY, 3.8, 0, Math.PI);
+					ctx.stroke();
+
+					// Panting breath puff 💨
+					ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+					ctx.beginPath();
+					ctx.arc(eyeX + 16 + Math.sin(now * 0.01) * 3, eyeY + 3, 2.5, 0, Math.PI * 2);
+					ctx.arc(eyeX + 21 + Math.sin(now * 0.01) * 4, eyeY + 1, 3.5, 0, Math.PI * 2);
+					ctx.fill();
+
+					// Sweat drops falling
+					const sweatY = (now * 0.02 + seed * 10) % 18;
+					ctx.fillStyle = '#38bdf8';
+					ctx.beginPath();
+					ctx.arc(eyeX - 6, eyeY - 8 + sweatY, 2.2, 0, Math.PI * 2);
+					ctx.fill();
+				} else if (isBlinking) {
+					// Blinking eyelid curve
+					ctx.strokeStyle = '#0f172a';
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.arc(eyeX, eyeY, 3.5, 0.2, Math.PI - 0.2);
+					ctx.stroke();
+				} else if (isLoserDanger) {
+					// Danger Zone: Panicked Wide Eyes
+					ctx.fillStyle = '#ffffff';
+					ctx.beginPath();
+					ctx.arc(eyeX, eyeY, 4.5, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.fillStyle = '#ef4444';
+					ctx.beginPath();
+					ctx.arc(eyeX + 0.5, eyeY, 2.5, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.fillStyle = '#ffffff';
+					ctx.beginPath();
+					ctx.arc(eyeX - 0.5, eyeY - 1, 1, 0, Math.PI * 2);
+					ctx.fill();
+
+					// Big animated sweat drop 💦 falling
+					const sweatY = (now * 0.02 + seed * 10) % 18;
+					ctx.fillStyle = '#38bdf8';
+					ctx.beginPath();
+					ctx.arc(eyeX - 6, eyeY - 8 + sweatY, 2.2, 0, Math.PI * 2);
+					ctx.fill();
+				} else {
+					// Normal Cute Sparkly Anime Eyes ✨
+					ctx.fillStyle = '#ffffff';
+					ctx.beginPath();
+					ctx.arc(eyeX, eyeY, 4.5, 0, Math.PI * 2);
+					ctx.fill();
+					// Pupil
+					ctx.fillStyle = '#0f172a';
+					ctx.beginPath();
+					ctx.arc(eyeX + 0.5, eyeY, 3, 0, Math.PI * 2);
+					ctx.fill();
+					// Sparkle highlight
+					ctx.fillStyle = '#ffffff';
+					ctx.beginPath();
+					ctx.arc(eyeX + 1.5, eyeY - 1.2, 1.3, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.beginPath();
+					ctx.arc(eyeX - 0.8, eyeY + 1.2, 0.7, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			}
+
+			function updateLeaderboardUI(sortedDucks, totalDucks) {
+				if (!duckRaceLeaderboardStrip) return;
+				duckRaceLeaderboardStrip.innerHTML = '';
+
+				// Highlight last 2 positions
+				sortedDucks.forEach((d, idx) => {
+					const rank = idx + 1;
+					const isDanger = rank > Math.max(1, totalDucks - 2);
+					const item = document.createElement('div');
+					item.className = `duck-leaderboard-item ${isDanger ? 'danger' : 'safe'}`;
+					item.innerHTML = `
+						<span>${isDanger ? '🚗' : `#${rank}`}</span>
+						<span>${d.name}</span>
+						${isDanger ? '<span style="font-size: 0.65rem; background: #ef4444; color: white; padding: 1px 4px; border-radius: 4px;">CHÓT</span>' : ''}
+					`;
+					duckRaceLeaderboardStrip.appendChild(item);
+				});
+			}
+
+			function showResultsOverlay(losers) {
+				if (!duckRaceResults || !duckRaceLosersContainer) return;
+				duckRaceLosersContainer.innerHTML = '';
+
+				const theme = getActiveRaceTheme();
+				const resultsTitle = document.getElementById('duck-race-results-title');
+				if (resultsTitle) {
+					resultsTitle.textContent = `🏆 KẾT THÚC CUỘC ${theme.name.toUpperCase()}!`;
+				}
+				const resultsSub = document.getElementById('duck-race-results-sub');
+				if (resultsSub) {
+					resultsSub.textContent = `2 người về chót đã lộ diện và sẽ đi lấy cơm hôm nay:`;
+				}
+
+				losers.forEach(user => {
+					const card = document.createElement('div');
+					card.className = 'duck-loser-card';
+					card.innerHTML = `
+						<div class="duck-loser-avatar">
+							${getAvatarHtml(user.avatar, 'avatar')}
+						</div>
+						<div class="duck-loser-name">${user.name}</div>
+						<div class="duck-loser-tag">🚗 Đi lấy cơm</div>
+					`;
+					duckRaceLosersContainer.appendChild(card);
+				});
+
+				const isAdmin = currentUser && currentUser.id === 1;
+				const isLocked = activeRaceData && (activeRaceData.isLocked || activeRaceData.isOfficial);
+				if (duckRaceAdminResetBtn) {
+					duckRaceAdminResetBtn.style.display = (isAdmin && !isLocked) ? 'inline-flex' : 'none';
+					duckRaceAdminResetBtn.textContent = `🔄 ${theme.name} Thử Lại (Admin)`;
+				}
+
+				duckRaceResults.style.display = 'flex';
+			}
+
+			function drawConfetti(ctx, width, height) {
+				confettiParticles.forEach(p => {
+					p.y += p.vy;
+					p.x += p.vx;
+					p.rotation += p.rotSpeed;
+
+					const screenX = p.x * width;
+					const screenY = p.y * height;
+
+					ctx.save();
+					ctx.translate(screenX, screenY);
+					ctx.rotate((p.rotation * Math.PI) / 180);
+					ctx.fillStyle = p.color;
+					ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+					ctx.restore();
+
+					if (p.y > 1.2) p.y = -0.1;
+				});
+			}
+
+			// Background Live Sync Polling every 750ms for instant real-time sync
+			if (raceSyncInterval) clearInterval(raceSyncInterval);
+			raceSyncInterval = setInterval(() => {
+				loadLunchPickersAndRace();
+			}, 750);
 
 			// Initialize theme on DOM ready
 			loadTheme();
