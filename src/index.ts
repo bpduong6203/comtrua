@@ -246,6 +246,31 @@ function getVNDateString() {
 	return date.toISOString().split('T')[0];
 }
 
+// Helper to get current time in GMT+7 (HH:MM)
+function getVNTimeString() {
+	const offset = 7 * 60; // ICT is UTC + 7
+	const date = new Date(Date.now() + offset * 60 * 1000);
+	const hours = String(date.getUTCHours()).padStart(2, '0');
+	const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+	return `${hours}:${minutes}`;
+}
+
+// Helper to resolve race theme ('duck', 'horse', 'rabbit', 'turtle', 'bird', or 'random')
+function resolveRaceTheme(configuredTheme: string, dateStr: string): string {
+	const validThemes = ['duck', 'horse', 'rabbit', 'turtle', 'bird'];
+	if (configuredTheme && validThemes.includes(configuredTheme)) {
+		return configuredTheme;
+	}
+	if (configuredTheme === 'random') {
+		let hash = 0;
+		for (let i = 0; i < dateStr.length; i++) {
+			hash = (hash * 31 + dateStr.charCodeAt(i)) & 0xffffffff;
+		}
+		return validThemes[Math.abs(hash) % validThemes.length];
+	}
+	return 'duck';
+}
+
 // Helper to get Monday and Sunday date strings (YYYY-MM-DD) for the week containing dateStr
 function getWeekDateRange(dateStr: string): { mondayStr: string; sundayStr: string } {
 	const [year, month, day] = dateStr.split('-').map(Number);
@@ -868,7 +893,11 @@ export default {
 
 				const settingsObj: Record<string, string> = {
 					order_deadline: '11:00',
-					announcement: ''
+					announcement: '',
+					lunch_race_auto_time: '11:30',
+					lunch_race_auto_enabled: '1',
+					lunch_picker_mode: 'duck_race',
+					lunch_race_theme: 'duck'
 				};
 				for (const row of results) {
 					settingsObj[row.key] = row.value;
@@ -1149,15 +1178,31 @@ export default {
 			}
 
 			// ==========================================
-			// 2.9 API CHỌN NGƯỜI ĐI LẤY CƠM (LUNCH PICKERS)
+			// 2.9 API CHỌN NGƯỜI ĐI LẤY CƠM (LUNCH PICKERS & DUCK RACE)
 			// ==========================================
 
 			// GET /api/lunch-pickers?date=YYYY-MM-DD
 			if (pathname === '/api/lunch-pickers' && method === 'GET') {
 				const dateParam = url.searchParams.get('date') || getVNDateString();
 				const key = `lunch_pickers_${dateParam}`;
-
+				const raceKey = `lunch_race_${dateParam}`;
+				const now = Date.now();
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+
+				// Kiểm tra nếu đang có cuộc đua đang chạy dở thì chưa trả kết quả ra ngoài
+				const raceRow = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(raceKey)
+					.first<{ value: string }>();
+				if (raceRow) {
+					try {
+						const raceData = JSON.parse(raceRow.value);
+						const raceEndTime = (raceData.startTime || 0) + (raceData.durationMs || 15000);
+						if (now < raceEndTime) {
+							return jsonResponse({ pickers: [], isRacing: true });
+						}
+					} catch (e) {}
+				}
+
 				const result = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
 					.bind(key)
 					.first<{ value: string }>();
@@ -1165,7 +1210,489 @@ export default {
 				return jsonResponse({ pickers: result ? JSON.parse(result.value) : [] });
 			}
 
-			// POST /api/lunch-pickers
+			// POST /api/lunch-race/presence (Heartbeat người đang xem)
+			if (pathname === '/api/lunch-race/presence' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn.' }, 401);
+				}
+
+				const body = await request.json().catch(() => ({})) as { cheerEmoji?: string };
+				const now = Date.now();
+				const presenceKey = 'lunch_race_presence';
+
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const presenceResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(presenceKey)
+					.first<{ value: string }>();
+
+				let presenceMap: Record<string, { id: number; name: string; avatar: string; lastSeen: number; cheerEmoji?: string }> = {};
+				if (presenceResult) {
+					try {
+						presenceMap = JSON.parse(presenceResult.value);
+					} catch (e) {
+						presenceMap = {};
+					}
+				}
+
+				// Lấy thông tin user mới nhất
+				const user = await env.DB.prepare('SELECT id, name, avatar FROM users WHERE id = ?')
+					.bind(payload.id)
+					.first<{ id: number; name: string; avatar: string }>();
+
+				if (user) {
+					presenceMap[user.id] = {
+						id: user.id,
+						name: user.name,
+						avatar: user.avatar || '👤',
+						lastSeen: now,
+						cheerEmoji: body.cheerEmoji || presenceMap[user.id]?.cheerEmoji || '🚩'
+					};
+				}
+
+				// Lọc bỏ những người đã offline quá 10 giây
+				const activeSpectators = Object.values(presenceMap).filter(s => now - s.lastSeen < 10000);
+				const cleanedMap: Record<string, any> = {};
+				activeSpectators.forEach(s => { cleanedMap[s.id] = s; });
+
+				await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(presenceKey, JSON.stringify(cleanedMap))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					spectators: activeSpectators
+				});
+			}
+
+			// POST /api/lunch-race/cheer (Gửi tương tác cổ vũ siêu tốc)
+			if (pathname === '/api/lunch-race/cheer' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn.' }, 401);
+				}
+
+				const body = await request.json().catch(() => ({})) as { emoji?: string; text?: string };
+				const now = Date.now();
+				const cheerEmoji = body.emoji || '🔥';
+				const cheerText = body.text || '';
+				const userName = payload.name || 'Người dùng';
+				const userAvatar = payload.avatar || '👤';
+
+				const cheersKey = 'lunch_race_cheers';
+				const cheersResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(cheersKey)
+					.first<{ value: string }>();
+
+				let cheersList: any[] = [];
+				if (cheersResult) {
+					try {
+						cheersList = JSON.parse(cheersResult.value);
+					} catch (e) {
+						cheersList = [];
+					}
+				}
+
+				const newCheer = {
+					id: `${now}_${payload.id}_${Math.floor(Math.random() * 1000)}`,
+					userId: payload.id,
+					userName,
+					userAvatar,
+					emoji: cheerEmoji,
+					text: cheerText,
+					time: now
+				};
+
+				cheersList.push(newCheer);
+				// Chỉ giữ lại các cheer trong 8 giây gần nhất, tối đa 30 cái
+				cheersList = cheersList.filter((c: any) => now - c.time < 8000).slice(-30);
+
+				await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(cheersKey, JSON.stringify(cheersList))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					cheer: newCheer
+				});
+			}
+
+			// GET /api/lunch-race?date=YYYY-MM-DD
+			if (pathname === '/api/lunch-race' && method === 'GET') {
+				const dateParam = url.searchParams.get('date') || getVNDateString();
+				const raceKey = `lunch_race_${dateParam}`;
+				const pickersKey = `lunch_pickers_${dateParam}`;
+				const now = Date.now();
+				
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				let raceResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(raceKey)
+					.first<{ value: string }>();
+
+				let pickersResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(pickersKey)
+					.first<{ value: string }>();
+
+				// Lấy cấu hình giờ tự động đua vịt & chế độ chọn người & chủ đề đua
+				const autoTimeRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_auto_time'").first<{ value: string }>();
+				const autoEnabledRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_auto_enabled'").first<{ value: string }>();
+				const pickerModeRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_picker_mode'").first<{ value: string }>();
+				const themeRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_theme'").first<{ value: string }>();
+				const autoRaceTime = autoTimeRow?.value || '11:30';
+				const autoRaceEnabled = autoEnabledRow?.value !== '0';
+				const lunchPickerMode = pickerModeRow?.value || 'duck_race';
+				const configuredTheme = themeRow?.value || 'duck';
+				const activeTheme = resolveRaceTheme(configuredTheme, dateParam);
+				const todayStr = getVNDateString();
+				const currentVNTime = getVNTimeString();
+
+				// KIỂM TRA TỰ ĐỘNG CHẠY ĐUA VỊT CHÍNH THỨC
+				// Nếu ở chế độ đua vịt, là ngày hôm nay, tính năng tự động bật, giờ hiện tại >= giờ cấu hình, và chưa có trận đua chính thức
+				if (lunchPickerMode === 'duck_race' && dateParam === todayStr && autoRaceEnabled && currentVNTime >= autoRaceTime) {
+					let currentRace = raceResult ? JSON.parse(raceResult.value) : null;
+					if (!currentRace || !currentRace.isOfficial) {
+						// Lấy danh sách những người đặt cơm hôm nay
+						const { results: orderedUsers } = await env.DB.prepare(`
+							SELECT DISTINCT u.id, u.name, u.avatar
+							FROM orders o
+							JOIN users u ON o.user_id = u.id
+							WHERE o.date = ? AND u.active = 1
+						`)
+							.bind(dateParam)
+							.all<{ id: number; name: string; avatar: string }>();
+
+						if (orderedUsers.length > 0) {
+							const countdownMs = 4000;
+							const durationMs = 15000;
+							const startTime = now + countdownMs;
+							const seed = Math.floor(Math.random() * 1000000000);
+							const totalParticipants = orderedUsers.length;
+							const ranks = Array.from({ length: totalParticipants }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+
+							const ducks = orderedUsers.map((u, index) => ({
+								id: u.id,
+								name: u.name,
+								avatar: u.avatar || '🦆',
+								lane: index,
+								finishRank: ranks[index],
+								duckSeed: (seed + (u.id * 31 + index * 17) * 7919) % 1000000
+							}));
+
+							const sortedDucksByRank = [...ducks].sort((a, b) => b.finishRank - a.finishRank);
+							let losers: { id: number; name: string; avatar: string }[] = [];
+							if (totalParticipants === 1) {
+								losers = [{ id: sortedDucksByRank[0].id, name: sortedDucksByRank[0].name, avatar: sortedDucksByRank[0].avatar }];
+							} else {
+								losers = [
+									{ id: sortedDucksByRank[1].id, name: sortedDucksByRank[1].name, avatar: sortedDucksByRank[1].avatar },
+									{ id: sortedDucksByRank[0].id, name: sortedDucksByRank[0].name, avatar: sortedDucksByRank[0].avatar }
+								];
+							}
+
+							const officialRaceData = {
+								raceId: `official_race_${now}`,
+								date: dateParam,
+								theme: activeTheme,
+								seed,
+								startTime,
+								durationMs,
+								countdownMs,
+								totalDucks: totalParticipants,
+								ducks,
+								losers,
+								isOfficial: true,
+								isLocked: true,
+								autoTriggered: true
+							};
+
+							await env.DB.prepare(
+								'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+							)
+								.bind(raceKey, JSON.stringify(officialRaceData))
+								.run();
+
+							await env.DB.prepare(
+								'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+							)
+								.bind(pickersKey, JSON.stringify(losers))
+								.run();
+
+							raceResult = { value: JSON.stringify(officialRaceData) };
+							pickersResult = { value: JSON.stringify(losers) };
+						}
+					}
+				}
+
+				const presenceResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind('lunch_race_presence')
+					.first<{ value: string }>();
+
+				let presenceMap: Record<string, any> = {};
+				if (presenceResult) {
+					try {
+						presenceMap = JSON.parse(presenceResult.value);
+					} catch (e) {
+						presenceMap = {};
+					}
+				}
+
+				// Tự động ghi nhận người dùng đang online xem qua session cookie
+				const cookieVal = getCookie(request, 'session');
+				let hasUpdatedPresence = false;
+				if (cookieVal) {
+					const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+					const payload = await verifyJwt(cookieVal, secret);
+					if (payload && payload.id) {
+						presenceMap[payload.id] = {
+							id: payload.id,
+							name: payload.name || 'Người dùng',
+							avatar: payload.avatar || '👤',
+							lastSeen: now,
+							cheerEmoji: presenceMap[payload.id]?.cheerEmoji || '🚩'
+						};
+						hasUpdatedPresence = true;
+					}
+				}
+
+				// Lọc bỏ những người đã offline quá 20 giây
+				const spectators = Object.values(presenceMap).filter((s: any) => now - s.lastSeen < 20000);
+				const cleanedMap: Record<string, any> = {};
+				spectators.forEach((s: any) => { cleanedMap[s.id] = s; });
+
+				if (hasUpdatedPresence) {
+					await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value')
+						.bind('lunch_race_presence', JSON.stringify(cleanedMap))
+						.run();
+				}
+
+				const cheersResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind('lunch_race_cheers')
+					.first<{ value: string }>();
+
+				let cheers: any[] = [];
+				if (cheersResult) {
+					try {
+						cheers = JSON.parse(cheersResult.value).filter((c: any) => now - c.time < 8000);
+					} catch (e) {
+						cheers = [];
+					}
+				}
+
+				const parsedRace = raceResult ? JSON.parse(raceResult.value) : null;
+				const isRaceInProgress = parsedRace ? (now < (parsedRace.startTime || 0) + (parsedRace.durationMs || 15000)) : false;
+
+				return jsonResponse({
+					serverTime: now,
+					race: parsedRace ? {
+						...parsedRace,
+						losers: isRaceInProgress ? [] : parsedRace.losers
+					} : null,
+					pickers: (parsedRace && isRaceInProgress) ? [] : (pickersResult ? JSON.parse(pickersResult.value) : []),
+					spectators,
+					cheers,
+					autoRaceTime,
+					autoRaceEnabled,
+					currentVNTime,
+					lunchPickerMode,
+					configuredTheme,
+					raceTheme: (parsedRace && parsedRace.theme) || activeTheme,
+					isLocked: parsedRace ? !!(parsedRace.isLocked || parsedRace.isOfficial) : false,
+					isRacing: isRaceInProgress
+				});
+			}
+
+			// POST /api/lunch-race/start
+			if (pathname === '/api/lunch-race/start' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				const body = await request.json() as { date?: string };
+				const dateParam = body.date?.trim() || getVNDateString();
+				const raceKey = `lunch_race_${dateParam}`;
+				const pickersKey = `lunch_pickers_${dateParam}`;
+
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const existingRace = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(raceKey)
+					.first<{ value: string }>();
+
+				if (existingRace) {
+					const existingData = JSON.parse(existingRace.value);
+					if (existingData.isOfficial || existingData.isLocked) {
+						return jsonResponse({ error: 'Cuộc đua chính thức hôm nay đã hoàn thành và bị khóa, không thể chạy lại.' }, 403);
+					}
+				}
+
+				// Nếu người dùng không phải admin (ID !== 1)
+				if (existingRace && payload.id !== 1) {
+					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép tổ chức đua thử lại.' }, 403);
+				}
+
+				// Lấy danh sách những người đã đặt cơm ngày đó
+				const { results: orderedUsers } = await env.DB.prepare(`
+					SELECT DISTINCT u.id, u.name, u.avatar
+					FROM orders o
+					JOIN users u ON o.user_id = u.id
+					WHERE o.date = ? AND u.active = 1
+				`)
+					.bind(dateParam)
+					.all<{ id: number; name: string; avatar: string }>();
+
+				if (orderedUsers.length === 0) {
+					return jsonResponse({ error: 'Không có ai đặt cơm vào ngày này để đua.' }, 400);
+				}
+
+				// Lấy cấu hình giờ tự động và chủ đề đua
+				const autoTimeRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_auto_time'").first<{ value: string }>();
+				const autoEnabledRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_auto_enabled'").first<{ value: string }>();
+				const themeRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'lunch_race_theme'").first<{ value: string }>();
+				const autoRaceTime = autoTimeRow?.value || '11:30';
+				const autoRaceEnabled = autoEnabledRow?.value !== '0';
+				const configuredTheme = themeRow?.value || 'duck';
+				const activeTheme = resolveRaceTheme(configuredTheme, dateParam);
+				const todayStr = getVNDateString();
+				const currentVNTime = getVNTimeString();
+
+				// Nếu chạy thủ công đúng/sau giờ setup tự động -> Trở thành trận chính thức khóa luôn
+				const isOfficial = dateParam === todayStr && autoRaceEnabled && currentVNTime >= autoRaceTime;
+
+				// Thời gian đua 15 giây (+ 4.0 giây đếm ngược để tất cả các client kịp sync)
+				const countdownMs = 4000;
+				const durationMs = 15000;
+				const now = Date.now();
+				const startTime = now + countdownMs;
+				const seed = Math.floor(Math.random() * 1000000000);
+
+				const totalParticipants = orderedUsers.length;
+				const ranks = Array.from({ length: totalParticipants }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+
+				const ducks = orderedUsers.map((u, index) => ({
+					id: u.id,
+					name: u.name,
+					avatar: u.avatar || '🦆',
+					lane: index,
+					finishRank: ranks[index],
+					duckSeed: (seed + (u.id * 31 + index * 17) * 7919) % 1000000
+				}));
+
+				const sortedDucksByRank = [...ducks].sort((a, b) => b.finishRank - a.finishRank);
+				let losers: { id: number; name: string; avatar: string }[] = [];
+				if (totalParticipants === 1) {
+					losers = [{ id: sortedDucksByRank[0].id, name: sortedDucksByRank[0].name, avatar: sortedDucksByRank[0].avatar }];
+				} else {
+					losers = [
+						{ id: sortedDucksByRank[1].id, name: sortedDucksByRank[1].name, avatar: sortedDucksByRank[1].avatar },
+						{ id: sortedDucksByRank[0].id, name: sortedDucksByRank[0].name, avatar: sortedDucksByRank[0].avatar }
+					];
+				}
+
+				const raceData = {
+					raceId: `${isOfficial ? 'official_race' : 'race'}_${now}`,
+					date: dateParam,
+					theme: activeTheme,
+					seed,
+					startTime,
+					durationMs,
+					countdownMs,
+					totalDucks: totalParticipants,
+					ducks,
+					losers,
+					isOfficial,
+					isLocked: isOfficial,
+					autoTriggered: false
+				};
+
+				// Lưu race và pickers vào DB
+				await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(raceKey, JSON.stringify(raceData))
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value'
+				)
+					.bind(pickersKey, JSON.stringify(losers))
+					.run();
+
+				// Khi vừa xuất phát, ẩn kết quả pickers và losers để người xem không bị biết trước
+				return jsonResponse({
+					serverTime: now,
+					race: {
+						...raceData,
+						losers: []
+					},
+					pickers: [],
+					isRacing: true
+				});
+			}
+
+			// POST /api/lunch-race/reset
+			if (pathname === '/api/lunch-race/reset' && method === 'POST') {
+				const cookieVal = getCookie(request, 'session');
+				if (!cookieVal) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const payload = await verifyJwt(cookieVal, secret);
+				if (!payload || !payload.id) {
+					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
+				}
+
+				if (payload.id !== 1) {
+					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép hủy kết quả đua.' }, 403);
+				}
+
+				const body = await request.json() as { date?: string };
+				const dateParam = body.date?.trim() || getVNDateString();
+				const raceKey = `lunch_race_${dateParam}`;
+				const pickersKey = `lunch_pickers_${dateParam}`;
+
+				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
+				const existingRace = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(raceKey)
+					.first<{ value: string }>();
+
+				if (existingRace) {
+					const existingData = JSON.parse(existingRace.value);
+					if (existingData.isOfficial || existingData.isLocked) {
+						return jsonResponse({ error: 'Kết quả cuộc đua chính thức đã được chốt và khóa, không thể hủy.' }, 403);
+					}
+				}
+
+				await env.DB.prepare('DELETE FROM settings WHERE key IN (?, ?)')
+					.bind(raceKey, pickersKey)
+					.run();
+
+				return jsonResponse({ success: true, message: 'Đã hủy kết quả đua vịt.' });
+			}
+
+			// POST /api/lunch-pickers (giữ tương thích)
 			if (pathname === '/api/lunch-pickers' && method === 'POST') {
 				const cookieVal = getCookie(request, 'session');
 				if (!cookieVal) {
@@ -1182,18 +1709,15 @@ export default {
 				const dateParam = body.date?.trim() || getVNDateString();
 				const key = `lunch_pickers_${dateParam}`;
 
-				// Kiểm tra nếu đã có kết quả chọn trước đó
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
 				const existing = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
 					.bind(key)
 					.first<{ value: string }>();
 
-				// Nếu đã có kết quả và người dùng không phải admin (ID !== 1)
 				if (existing && payload.id !== 1) {
 					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép quay số chọn lại.' }, 403);
 				}
 
-				// Lấy danh sách những người đã đặt cơm ngày đó
 				const { results: orderedUsers } = await env.DB.prepare(`
 					SELECT DISTINCT u.id, u.name, u.avatar
 					FROM orders o
@@ -1210,7 +1734,6 @@ export default {
 				let picked: { id: number; name: string; avatar: string }[] = [];
 
 				if (orderedUsers.length === 1) {
-					// Chỉ có 1 người đặt
 					picked = [orderedUsers[0]];
 				} else {
 					// Lấy danh sách những người đã đi lấy cơm trong tuần này (trừ ngày hiện tại đang quay)
@@ -1289,17 +1812,17 @@ export default {
 					return jsonResponse({ error: 'Phiên làm việc hết hạn hoặc không hợp lệ.' }, 401);
 				}
 
-				// Chỉ cho phép admin hủy kết quả chọn
 				if (payload.id !== 1) {
 					return jsonResponse({ error: 'Chỉ có Quản trị viên mới được phép hủy kết quả chọn.' }, 403);
 				}
 
 				const dateParam = url.searchParams.get('date') || getVNDateString();
 				const key = `lunch_pickers_${dateParam}`;
+				const raceKey = `lunch_race_${dateParam}`;
 
 				await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)').run();
-				await env.DB.prepare('DELETE FROM settings WHERE key = ?')
-					.bind(key)
+				await env.DB.prepare('DELETE FROM settings WHERE key = ? OR key = ?')
+					.bind(key, raceKey)
 					.run();
 
 				return jsonResponse({ success: true, message: 'Đã xóa danh sách người đi lấy cơm.' });
@@ -1694,7 +2217,7 @@ export default {
 			// GET or POST /api/payment/webhook
 			if (pathname === '/api/payment/webhook') {
 				if (method === 'POST') {
-					const checksumKey = env.PAYOS_CHECKSUM_KEY;
+					const checksumKey = env.PAYOS_CHECKSUM_KEY || 'ad30870d8b98cf51b5c031ad51d2ed6e0c2e8a89ca57542c87e9f1ad61669c35';
 					if (!checksumKey) {
 						return jsonResponse({ error: 'Cổng thanh toán chưa cấu hình Checksum Key.' }, 500);
 					}
