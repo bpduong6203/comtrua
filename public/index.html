@@ -19,6 +19,13 @@
 			})();
 		</script>
 		<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+		<script
+			async
+			crossorigin="anonymous"
+			data-clerk-publishable-key="pk_test_ZXRoaWNhbC1ha2l0YS0xMi5jbGVyay5hY2NvdW50cy5kZXYk"
+			src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+			type="text/javascript"
+		></script>
 	</head>
 
 	<body>
@@ -381,9 +388,9 @@
 				</div>
 			</div>
 
-			<!-- 1. AUTH SECTION (PASSWORDLESS LOGIN) -->
+			<!-- 1. AUTH SECTION (CLERK AUTHENTICATION) -->
 			<div id="auth-section" class="auth-container" style="display: none">
-				<div class="panel auth-panel">
+				<div class="panel auth-panel" style="text-align: center; max-width: 440px; margin: 0 auto; padding: 2.5rem 2rem">
 					<div style="display: flex; justify-content: center; margin-bottom: 1rem">
 						<lottie-player
 							src="/vodeo.json"
@@ -394,32 +401,64 @@
 							autoplay
 						></lottie-player>
 					</div>
-					<h2>Đăng Nhập Đặt Cơm</h2>
-					<p>Nhập tên và mật khẩu của bạn để đăng nhập hoặc tự động đăng ký tài khoản mới.</p>
+					<h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary)">Đăng Nhập Đặt Cơm</h2>
+					<p style="margin-bottom: 1.75rem; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5">
+						Hệ thống đặt cơm trưa đã chuyển sang xác thực bảo mật qua <strong>Clerk</strong>. Vui lòng đăng nhập bằng Google, Email OTP hoặc
+						Passkey.
+					</p>
 
-					<form id="login-form">
-						<div class="form-group autocomplete-container" id="login-autocomplete-container">
-							<label for="login-name">Tên của bạn</label>
-							<div class="input-wrapper">
-								<input
-									type="text"
-									id="login-name"
-									class="input-ctrl"
-									placeholder="Nhập tên của bạn hoặc chọn gợi ý..."
-									required
-									autocomplete="off"
-								/>
-								<div class="input-clear-btn" id="login-name-clear" style="display: none" onclick="clearLoginInput(event)">✕</div>
-							</div>
-							<div class="suggestions-box" id="login-suggestions" style="display: none"></div>
-							<div class="autocomplete-hint">Nhấp vào tên để điền tên đăng nhập nhanh!</div>
+					<button
+						type="button"
+						id="clerk-signin-btn"
+						class="btn btn-primary"
+						style="
+							width: 100%;
+							padding: 0.85rem 1.25rem;
+							font-size: 1.05rem;
+							font-weight: 600;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							gap: 0.5rem;
+						"
+						onclick="handleClerkSignIn()"
+					>
+						<span>🔑</span> Đăng Nhập / Đăng Ký qua Clerk
+					</button>
+				</div>
+			</div>
+
+			<!-- ACCOUNT LINKING MODAL -->
+			<div id="clerk-linking-modal" class="modal-overlay" style="display: none">
+				<div class="modal-panel" role="dialog" style="max-width: 480px; text-align: left">
+					<div class="modal-header">
+						<h3>Tạo tài khoản</h3>
+					</div>
+					<div class="modal-body" style="padding: 1.5rem">
+						<p style="margin-bottom: 1.25rem; font-size: 0.95rem; color: var(--text-primary); line-height: 1.5">
+							Chào mừng bạn! Hệ thống phát hiện tài khoản Clerk của bạn chưa gắn liền với tên đặt cơm nào trong ứng dụng.
+						</p>
+						<!-- <div style="margin-bottom: 1.25rem">
+							<label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-primary)"
+								>Chọn tài khoản cũ của bạn để tiếp tục sử dụng lịch sử cũ:</label
+							>
+							<select id="linking-user-select" class="input-ctrl" style="width: 100%">
+								<option value="">-- Chọn tên cũ của bạn trong danh sách --</option>
+							</select>
+						</div> -->
+						<div style="margin-bottom: 1.25rem">
+							<label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: var(--text-primary)"
+								>Nhập tên mới nếu bạn là thành viên mới tinh:</label
+							>
+							<input type="text" id="linking-new-name" class="input-ctrl" placeholder="Ví dụ: N.Văn A..." />
 						</div>
-						<div class="form-group" style="margin-top: 1rem">
-							<label for="login-password">Mật khẩu</label>
-							<input type="password" id="login-password" class="input-ctrl" placeholder="Mật khẩu của bạn (mặc định: 123456)..." required />
-						</div>
-						<button type="submit" class="btn btn-primary" style="margin-top: 0.5rem">Bắt Đầu Đặt Cơm</button>
-					</form>
+					</div>
+					<div
+						class="modal-footer"
+						style="display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem 1.5rem; background: var(--bg-tertiary)"
+					>
+						<button type="button" class="btn btn-primary" onclick="submitAccountLinking()">Hoàn Tất Liên Kết</button>
+					</div>
 				</div>
 			</div>
 
@@ -1209,6 +1248,36 @@
 			// STATE DEFINITIONS
 			// =======================================================
 			let currentUser = null;
+			let clerkToken = null;
+			let currentClerkUserId = null;
+
+			// Intercept window.fetch to automatically attach Clerk Authorization Bearer token
+			const originalFetch = window.fetch;
+			window.fetch = async function (resource, options = {}) {
+				options = options || {};
+				let token = clerkToken;
+				if (!token && window.Clerk && window.Clerk.session) {
+					try {
+						token = await window.Clerk.session.getToken();
+						clerkToken = token;
+					} catch (e) {}
+				}
+				if (token) {
+					if (!options.headers) {
+						options.headers = {};
+					}
+					if (options.headers instanceof Headers) {
+						if (!options.headers.has('Authorization')) {
+							options.headers.set('Authorization', `Bearer ${token}`);
+						}
+					} else {
+						if (!options.headers['Authorization']) {
+							options.headers['Authorization'] = `Bearer ${token}`;
+						}
+					}
+				}
+				return originalFetch(resource, options);
+			};
 			let shops = [];
 			let dishes = [];
 			let toppings = [];
@@ -1568,8 +1637,8 @@
 				orderDatePicker.value = selectedDate;
 				orderingDateTitle.textContent = formatDateDisplay(selectedDate);
 
-				// Check stored user / session cookie
-				checkSession();
+				// Initialize Clerk Authentication & Check Session
+				initClerk();
 
 				// Check payOS redirect parameters
 				const urlParams = new URLSearchParams(window.location.search);
@@ -1595,7 +1664,7 @@
 				});
 
 				// Listen to Forms
-				loginForm.addEventListener('submit', handleLoginSubmit);
+				if (loginForm) loginForm.addEventListener('submit', (e) => e.preventDefault());
 				if (userQuickSelect) userQuickSelect.addEventListener('change', handleQuickSelectChange);
 				orderForm.addEventListener('submit', handleOrderSubmit);
 				addDishForm.addEventListener('submit', handleAddDishSubmit);
@@ -2047,6 +2116,157 @@
 				}
 			}
 
+			const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnBkdW9uZzYyMDMud29ya2Vycy5kZXYk';
+
+			async function initClerk() {
+				try {
+					if (!window.Clerk) {
+						setTimeout(initClerk, 300);
+						return;
+					}
+
+					// Dynamic loading of @clerk/ui bundle as recommended by official Clerk documentation
+					if (!window.__internal_ClerkUICtor) {
+						try {
+							await new Promise((resolve) => {
+								const script = document.createElement('script');
+								script.src = 'https://cdn.jsdelivr.net/npm/@clerk/ui@1/dist/ui.browser.js';
+								script.async = true;
+								script.crossOrigin = 'anonymous';
+								script.onload = resolve;
+								script.onerror = () => resolve();
+								document.head.appendChild(script);
+							});
+						} catch (e) {}
+					}
+
+					// Safety timeout: Promise.race guarantees checkSession() is called if Clerk.load hangs
+					await Promise.race([
+						window.Clerk.load({
+							ui: window.__internal_ClerkUICtor ? { ClerkUI: window.__internal_ClerkUICtor } : undefined,
+						}),
+						new Promise((resolve) => setTimeout(resolve, 3000)),
+					]);
+
+					if (window.Clerk.user) {
+						currentClerkUserId = window.Clerk.user.id;
+						clerkToken = await window.Clerk.session.getToken();
+						await syncClerkWithD1(currentClerkUserId);
+					} else {
+						await checkSession();
+					}
+
+					window.Clerk.addListener(async ({ user }) => {
+						if (user) {
+							currentClerkUserId = user.id;
+							clerkToken = await window.Clerk.session.getToken();
+							await syncClerkWithD1(currentClerkUserId);
+						} else {
+							currentUser = null;
+							clerkToken = null;
+							currentClerkUserId = null;
+							localStorage.removeItem('currentUser');
+							showLogin();
+						}
+					});
+				} catch (err) {
+					console.error('Clerk init error:', err);
+					await checkSession();
+				}
+			}
+
+			function handleClerkSignIn() {
+				if (window.Clerk) {
+					window.Clerk.openSignIn();
+				} else {
+					showToast('Đang khởi động hệ thống xác thực Clerk, vui lòng thử lại sau giây lát...', 'warning');
+				}
+			}
+
+			async function syncClerkWithD1(clerkId) {
+				try {
+					const resp = await fetch('/api/users/clerk-auth', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							clerkId: clerkId,
+							name: window.Clerk?.user?.fullName || window.Clerk?.user?.firstName || '',
+						}),
+					});
+					const data = await resp.json();
+					if (!resp.ok) {
+						showToast(data.error || 'Lỗi xác thực Clerk', 'error');
+						showLogin();
+						return;
+					}
+
+					if (data.user) {
+						currentUser = data.user;
+						localStorage.setItem('currentUser', JSON.stringify(currentUser));
+						showDashboard();
+					} else if (data.requiresLinking) {
+						populateLinkingModal(data.unlinkedUsers);
+					}
+				} catch (err) {
+					console.error('Lỗi đồng bộ Clerk với D1:', err);
+					await checkSession();
+				}
+			}
+
+			function populateLinkingModal(unlinkedUsers) {
+				const select = document.getElementById('linking-user-select');
+				if (select) {
+					select.innerHTML = '<option value="">-- Chọn tên cũ của bạn trong danh sách --</option>';
+					if (Array.isArray(unlinkedUsers)) {
+						unlinkedUsers.forEach((u) => {
+							const opt = document.createElement('option');
+							opt.value = u.id;
+							opt.textContent = `${u.name}`;
+							select.appendChild(opt);
+						});
+					}
+				}
+				const modal = document.getElementById('clerk-linking-modal');
+				if (modal) modal.style.display = 'flex';
+			}
+
+			async function submitAccountLinking() {
+				const select = document.getElementById('linking-user-select');
+				const newNameInput = document.getElementById('linking-new-name');
+				const userId = select && select.value ? parseInt(select.value) : null;
+				const newName = newNameInput ? newNameInput.value.trim() : '';
+
+				if (!userId && !newName) {
+					showToast('Vui lòng chọn tài khoản cũ hoặc nhập tên mới!', 'error');
+					return;
+				}
+
+				try {
+					const resp = await fetch('/api/users/link-clerk', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							clerkId: currentClerkUserId,
+							userId: userId,
+							newName: newName,
+						}),
+					});
+					const data = await resp.json();
+					if (!resp.ok) {
+						showToast(data.error || 'Lỗi liên kết tài khoản.', 'error');
+						return;
+					}
+					currentUser = data.user;
+					localStorage.setItem('currentUser', JSON.stringify(currentUser));
+					const modal = document.getElementById('clerk-linking-modal');
+					if (modal) modal.style.display = 'none';
+					showToast(data.message || 'Liên kết tài khoản thành công!');
+					showDashboard();
+				} catch (err) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
 			async function checkSession() {
 				try {
 					const resp = await fetch('/api/users/me');
@@ -2072,82 +2292,15 @@
 				}
 			}
 
-			async function handleLoginSubmit(e) {
-				e.preventDefault();
-				const name = loginNameInput.value.trim();
-				const pwdInput = document.getElementById('login-password');
-				const password = pwdInput ? pwdInput.value : '';
-				if (!name) return;
-
-				await performLogin(name, password);
-			}
-
-			async function handleQuickSelectChange(e) {
-				const name = e.target.value;
-				if (!name) return;
-				const password = prompt(`Nhập mật khẩu cho tài khoản "${name}" (mặc định: 123456):`);
-				if (password === null) return;
-				await performLogin(name, password);
-			}
-
-			async function performLogin(name, password) {
-				try {
-					const resp = await fetch('/api/users/login', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ name, password }),
-					});
-
-					const data = await resp.json();
-
-					if (resp.ok) {
-						currentUser = data.user;
-						localStorage.setItem('currentUser', JSON.stringify(currentUser));
-						showToast(`Chào mừng ${currentUser.name} quay trở lại!`);
-						showDashboard();
-					} else {
-						if (resp.status === 403) {
-							showToast(data.error, 'error');
-						} else if (resp.status === 401) {
-							showToast(data.error || 'Mật khẩu không chính xác.', 'error');
-						} else if (resp.status === 404) {
-							if (confirm(`Tên "${name}" chưa tồn tại trong danh sách. Bạn muốn đăng ký tài khoản mới với mật khẩu vừa nhập không?`)) {
-								await registerNewUser(name, password);
-							}
-						} else {
-							showToast(data.error || 'Đăng nhập thất bại.', 'error');
-						}
-					}
-				} catch (err) {
-					showToast('Lỗi kết nối máy chủ.', 'error');
-				}
-			}
-
-			async function registerNewUser(name, password) {
-				try {
-					const resp = await fetch('/api/users/login', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ name, password, register: true }),
-					});
-					const data = await resp.json();
-					if (resp.ok) {
-						currentUser = data.user;
-						localStorage.setItem('currentUser', JSON.stringify(currentUser));
-						showToast(`Đăng ký thành công! Chào mừng ${currentUser.name}!`);
-						showDashboard();
-					} else {
-						showToast(data.error || 'Đăng ký thất bại.', 'error');
-					}
-				} catch (err) {
-					showToast('Lỗi kết nối máy chủ.', 'error');
-				}
-			}
-
 			async function logout() {
 				if (payosPollInterval) {
 					clearInterval(payosPollInterval);
 					payosPollInterval = null;
+				}
+				if (window.Clerk) {
+					try {
+						await window.Clerk.signOut();
+					} catch (e) {}
 				}
 				try {
 					await fetch('/api/users/logout', { method: 'POST' });
@@ -2156,10 +2309,8 @@
 				}
 				localStorage.removeItem('currentUser');
 				currentUser = null;
-				loginNameInput.value = '';
-				const pwdInput = document.getElementById('login-password');
-				if (pwdInput) pwdInput.value = '';
-				if (userQuickSelect) userQuickSelect.value = '';
+				clerkToken = null;
+				currentClerkUserId = null;
 				showToast('Đã đăng xuất tài khoản.');
 				showLogin();
 			}
@@ -2887,6 +3038,45 @@
 				}
 			}
 
+			// Phân tích chuỗi VietQR chuẩn EMVCo để lấy BIN ngân hàng, STK ảo và tên chủ tài khoản
+			function parseVietQR(qrString) {
+				try {
+					const parseTLV = (str) => {
+						let i = 0;
+						const result = {};
+						while (i < str.length) {
+							const tag = str.substring(i, i + 2);
+							const len = parseInt(str.substring(i + 2, i + 4));
+							if (isNaN(len)) break;
+							const val = str.substring(i + 4, i + 4 + len);
+							result[tag] = val;
+							i += 4 + len;
+						}
+						return result;
+					};
+
+					const mainTags = parseTLV(qrString);
+					const tag38 = mainTags['38'];
+					const accountName = mainTags['59'] || '';
+
+					if (tag38) {
+						const subTags38 = parseTLV(tag38);
+						const subTag01 = subTags38['01'];
+						if (subTag01) {
+							const accountInfo = parseTLV(subTag01);
+							const bin = accountInfo['00'];
+							const accountNumber = accountInfo['01'];
+							if (bin && accountNumber) {
+								return { bin, accountNumber, accountName };
+							}
+						}
+					}
+				} catch (e) {
+					console.error('Lỗi khi phân tích chuỗi VietQR:', e);
+				}
+				return null;
+			}
+
 			async function payDebtWithPayOS() {
 				if (payosPollInterval) {
 					clearInterval(payosPollInterval);
@@ -2912,7 +3102,12 @@
 						showToast('Tạo mã QR thanh toán payOS thành công!');
 
 						// Update details in inline QR box
-						debtQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qrCode)}`;
+						const qrInfo = parseVietQR(data.qrCode);
+						if (qrInfo && qrInfo.bin && qrInfo.accountNumber) {
+							debtQrImg.src = `https://img.vietqr.io/image/${qrInfo.bin}-${qrInfo.accountNumber}-compact.png?amount=${data.amount}&addInfo=${encodeURIComponent(data.description)}&accountName=${encodeURIComponent(qrInfo.accountName)}`;
+						} else {
+							debtQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qrCode)}`;
+						}
 						debtQrAmount.textContent = formatCurrency(data.amount);
 						debtQrDesc.textContent = data.description;
 
@@ -4695,7 +4890,7 @@
 
 				try {
 					const resp = await fetch(`/api/lunch-pickers?date=${selectedDate}`, {
-						method: 'DELETE'
+						method: 'DELETE',
 					});
 					const data = await resp.json();
 					if (resp.ok) {

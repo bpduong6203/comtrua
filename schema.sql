@@ -1,6 +1,7 @@
 -- 1. Bảng người dùng
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    clerk_id TEXT UNIQUE,
     name TEXT NOT NULL UNIQUE,
     phone TEXT,
     avatar TEXT DEFAULT '👤',
