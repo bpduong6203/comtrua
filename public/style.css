@@ -2866,3 +2866,1593 @@ body,
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
+/* ============================================
+   USER ACHIEVEMENTS & BADGES
+   ============================================ */
+.user-badges-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    margin-left: 0.25rem;
+}
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: transform 0.15s ease;
+    white-space: nowrap;
+}
+
+.user-badge:hover {
+    transform: scale(1.08);
+}
+
+.badge-early-bird {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.badge-deadline-sniper {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
+    animation: urgentBlink 2.5s infinite;
+}
+
+.badge-topping-king {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+    border-color: rgba(168, 85, 247, 0.35);
+}
+
+.badge-today-picker {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.badge-loyal-vip {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+@keyframes urgentBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+/* ============================================
+   LIVE DEADLINE COUNTDOWN & PULSE
+   ============================================ */
+.live-deadline-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    color: var(--text-main);
+    transition: all 0.3s ease;
+}
+
+.live-deadline-banner.open {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.live-deadline-banner.urgent {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: #ef4444;
+    color: #ef4444;
+    animation: countdownHeartbeat 1.4s infinite ease-in-out;
+}
+
+.live-deadline-banner.locked {
+    background: rgba(100, 116, 139, 0.15);
+    border-color: #64748b;
+    color: #64748b;
+}
+
+@keyframes countdownHeartbeat {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.35);
+    }
+}
+
+/* ============================================
+   OFFICE MEME SOUNDBOARD
+   ============================================ */
+.soundboard-card {
+    margin-top: 1rem;
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.soundboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.soundboard-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 800;
+    font-size: 0.88rem;
+    color: var(--text-main);
+}
+
+.soundboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.5rem;
+}
+
+.soundboard-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: 8px;
+    border: 1.5px solid var(--panel-border);
+    background: var(--card-bg, #ffffff);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    user-select: none;
+}
+
+.soundboard-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    border-color: var(--primary);
+    background: var(--primary-light, rgba(232, 97, 60, 0.1));
+    color: var(--primary);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.soundboard-btn:active {
+    transform: scale(0.95);
+}
+
+.soundboard-btn.playing {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+/* ============================================
+   HEADER WALLET BADGE & SHOP TRIGGER
+   ============================================ */
+.user-wallet-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.18) 100%);
+    border: 1.5px solid #f59e0b;
+    color: #b45309;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.user-wallet-badge:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.28) 100%);
+}
+
+.user-wallet-badge:active {
+    transform: scale(0.96);
+}
+
+.user-wallet-badge .coin-icon {
+    font-size: 1.1rem;
+    animation: coinRotate 6s infinite ease-in-out;
+}
+
+@keyframes coinRotate {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(15deg) scale(1.15); }
+}
+
+/* ============================================
+   8 MASTER 3D ANIMATED AVATAR FRAME MODELS
+   ============================================ */
+.avatar-frame-model-container,
+.avatar-frame-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    user-select: none;
+    z-index: 2;
+}
+
+.avatar-frame-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 2;
+}
+
+/* 1. 👑 HOÀNG GIA KIM CƯƠNG (Gold Royale) */
+.avatar-frame-gold_royale {
+    background: radial-gradient(circle, rgba(254, 240, 138, 0.25) 0%, rgba(217, 119, 6, 0.4) 100%);
+    box-shadow: 0 0 0 3.5px #f59e0b, 0 0 16px 4px rgba(245, 158, 11, 0.75), inset 0 0 6px rgba(254, 240, 138, 0.8);
+    animation: goldRoyalePulse 3s infinite ease-in-out;
+}
+.avatar-frame-gold_royale .frame-ornament-top {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 24'%3E%3Cpath d='M2 18 L6 6 L12 12 L18 2 L24 12 L30 6 L34 18 Z' fill='%23fbbf24' stroke='%23d97706' stroke-width='1.5'/%3E%3Ccircle cx='18' cy='2' r='2' fill='%23ef4444'/%3E%3Ccircle cx='6' cy='6' r='1.5' fill='%2338bdf8'/%3E%3Ccircle cx='30' cy='6' r='1.5' fill='%2338bdf8'/%3E%3Ccircle cx='18' cy='12' r='2' fill='%23ffffff'/%3E%3C/svg%3E") no-repeat center center;
+    background-size: contain;
+    z-index: 4;
+    animation: crownFloat 2.5s infinite ease-in-out;
+    filter: drop-shadow(0 2px 5px rgba(245, 158, 11, 0.8));
+}
+.avatar-frame-gold_royale .frame-ornament-bottom {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120%;
+    height: 18px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 16'%3E%3Cpath d='M2 6 Q 14 16, 25 10 Q 36 16, 48 6 Q 36 12, 25 8 Q 14 12, 2 6 Z' fill='%23f59e0b' stroke='%23b45309' stroke-width='1'/%3E%3C/svg%3E") no-repeat center bottom;
+    background-size: contain;
+    z-index: 4;
+}
+.avatar-frame-gold_royale .frame-particle-effects {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px dashed rgba(253, 224, 71, 0.8);
+    animation: spinClockwise 8s linear infinite;
+    pointer-events: none;
+}
+
+/* 2. 🌌 CYBERPUNK NEON RGB (Cyberpunk Neon) */
+.avatar-frame-cyberpunk_neon {
+    border-radius: 20% !important;
+    border: 3px solid #06b6d4;
+    background: rgba(6, 182, 212, 0.15);
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.8), 0 0 0 2px #ec4899;
+    animation: cyberpunkGlitch 3s infinite alternate;
+}
+.avatar-frame-cyberpunk_neon .avatar-frame-inner {
+    border-radius: 16% !important;
+}
+.avatar-frame-cyberpunk_neon .frame-ornament-top {
+    position: absolute;
+    top: -11px;
+    right: -6px;
+    font-size: 8px;
+    font-family: monospace;
+    font-weight: 900;
+    color: #06b6d4;
+    background: #0f172a;
+    padding: 1px 4px;
+    border: 1px solid #06b6d4;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    z-index: 4;
+    box-shadow: 0 0 6px #06b6d4;
+}
+.avatar-frame-cyberpunk_neon .frame-ornament-top::before {
+    content: 'SYS.99';
+}
+.avatar-frame-cyberpunk_neon .frame-particle-effects {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 16%;
+    pointer-events: none;
+    z-index: 3;
+}
+.avatar-frame-cyberpunk_neon .frame-particle-effects::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #ec4899, #06b6d4, transparent);
+    box-shadow: 0 0 8px #06b6d4;
+    animation: scanLaser 2s linear infinite;
+}
+
+/* 3. 🔥 HỎA DIỆM RỰC CHÁY (Inferno Flame) */
+.avatar-frame-inferno_flame {
+    box-shadow: 0 0 0 3.5px #ef4444, 0 0 20px 6px rgba(239, 68, 68, 0.85);
+    animation: infernoRoar 1.6s ease-in-out infinite alternate;
+}
+.avatar-frame-inferno_flame .frame-ornament-top {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 38px;
+    height: 26px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 28'%3E%3Cpath d='M8 26 Q 4 12, 12 2 Q 14 10, 20 6 Q 26 10, 28 2 Q 36 12, 32 26 Q 20 18, 8 26 Z' fill='%23ef4444'/%3E%3Cpath d='M12 26 Q 10 16, 16 8 Q 18 14, 20 10 Q 22 14, 24 8 Q 30 16, 28 26 Q 20 20, 12 26 Z' fill='%23fbbf24'/%3E%3C/svg%3E") no-repeat center center;
+    background-size: contain;
+    z-index: 4;
+    animation: fireFlicker 0.8s infinite alternate ease-in-out;
+    filter: drop-shadow(0 0 8px #f97316);
+}
+.avatar-frame-inferno_flame .frame-particle-effects {
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, transparent 60%, rgba(239, 68, 68, 0.4) 100%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: pulseHeat 1.2s infinite alternate;
+}
+
+/* 4. ⚡ LÔI THẦN ĐIỆN QUANG (Thunder Storm) */
+.avatar-frame-thunder_storm {
+    box-shadow: 0 0 0 3px #38bdf8, 0 0 18px 5px rgba(56, 189, 248, 0.85);
+    animation: thunderZapFlash 2s infinite ease-in-out;
+}
+.avatar-frame-thunder_storm .frame-ornament-top {
+    position: absolute;
+    top: -14px;
+    right: -6px;
+    font-size: 16px;
+    filter: drop-shadow(0 0 8px #38bdf8);
+    animation: thunderBoltArc 0.7s infinite alternate;
+    z-index: 4;
+}
+.avatar-frame-thunder_storm .frame-ornament-top::before {
+    content: '⚡';
+}
+.avatar-frame-thunder_storm .frame-ornament-bottom {
+    position: absolute;
+    bottom: -14px;
+    left: -6px;
+    font-size: 16px;
+    filter: drop-shadow(0 0 8px #38bdf8);
+    animation: thunderBoltArc 0.9s infinite alternate;
+    z-index: 4;
+}
+.avatar-frame-thunder_storm .frame-ornament-bottom::before {
+    content: '⚡';
+}
+.avatar-frame-thunder_storm .frame-particle-effects {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px dotted #bae6fd;
+    animation: spinCounterClockwise 4s linear infinite;
+    pointer-events: none;
+}
+
+/* 5. 🪐 VŨ TRỤ HUYỀN BÍ (Cosmic Galaxy) */
+.avatar-frame-cosmic_galaxy {
+    box-shadow: 0 0 0 3.5px #a855f7, 0 0 20px 6px rgba(168, 85, 247, 0.85);
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, rgba(15, 23, 42, 0.6) 100%);
+}
+.avatar-frame-cosmic_galaxy .frame-ornament-orbit {
+    position: absolute;
+    inset: -10px;
+    border: 2.5px solid rgba(192, 132, 252, 0.9);
+    border-top-color: #facc15;
+    border-radius: 50%;
+    transform: rotate(-30deg) scaleY(0.55);
+    box-shadow: 0 0 12px rgba(192, 132, 252, 0.8);
+    z-index: 3;
+    animation: orbitSpin 6s linear infinite;
+    pointer-events: none;
+}
+.avatar-frame-cosmic_galaxy .frame-ornament-top {
+    position: absolute;
+    top: -12px;
+    left: -8px;
+    font-size: 14px;
+    z-index: 4;
+    animation: moonFloat 3s infinite ease-in-out;
+    filter: drop-shadow(0 0 6px #facc15);
+}
+.avatar-frame-cosmic_galaxy .frame-ornament-top::before {
+    content: '🌙';
+}
+.avatar-frame-cosmic_galaxy .frame-ornament-bottom {
+    position: absolute;
+    bottom: -10px;
+    right: -6px;
+    font-size: 12px;
+    z-index: 4;
+    animation: starTwinkle 1.8s infinite ease-in-out;
+    filter: drop-shadow(0 0 6px #c084fc);
+}
+.avatar-frame-cosmic_galaxy .frame-ornament-bottom::before {
+    content: '⭐';
+}
+
+/* 6. ❄️ BĂNG TUYẾT BẮC CỰC (Frozen Frost) */
+.avatar-frame-frozen_frost {
+    box-shadow: 0 0 0 3.5px #7dd3fc, 0 0 18px 5px rgba(125, 211, 252, 0.85);
+    background: radial-gradient(circle, rgba(224, 242, 254, 0.3) 0%, rgba(14, 165, 233, 0.3) 100%);
+}
+.avatar-frame-frozen_frost .frame-ornament-top {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    z-index: 4;
+    filter: drop-shadow(0 0 8px #38bdf8);
+    animation: frostShimmer 2s infinite ease-in-out;
+}
+.avatar-frame-frozen_frost .frame-ornament-top::before {
+    content: '❄️';
+}
+.avatar-frame-frozen_frost .frame-particle-effects {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px dotted #e0f2fe;
+    animation: spinClockwise 12s linear infinite;
+    pointer-events: none;
+}
+
+/* 7. 🌸 HOA ANH ĐÀO (Sakura Blossom) */
+.avatar-frame-sakura_blossom {
+    box-shadow: 0 0 0 3.5px #f472b6, 0 0 16px 4px rgba(244, 114, 182, 0.75);
+    background: radial-gradient(circle, rgba(253, 232, 242, 0.4) 0%, rgba(244, 114, 182, 0.2) 100%);
+}
+.avatar-frame-sakura_blossom .frame-ornament-top {
+    position: absolute;
+    top: -12px;
+    left: -6px;
+    font-size: 16px;
+    z-index: 4;
+    filter: drop-shadow(0 2px 6px rgba(244, 114, 182, 0.9));
+    animation: sakuraSway 2.5s infinite ease-in-out;
+}
+.avatar-frame-sakura_blossom .frame-ornament-top::before {
+    content: '🌸';
+}
+.avatar-frame-sakura_blossom .frame-ornament-bottom {
+    position: absolute;
+    bottom: -10px;
+    right: -6px;
+    font-size: 14px;
+    z-index: 4;
+    filter: drop-shadow(0 2px 6px rgba(244, 114, 182, 0.9));
+    animation: sakuraSway 2.8s infinite ease-in-out reverse;
+}
+.avatar-frame-sakura_blossom .frame-ornament-bottom::before {
+    content: '🌸';
+}
+.avatar-frame-sakura_blossom .frame-particle-effects {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1.5px dashed #fbcfe8;
+    animation: spinClockwise 16s linear infinite;
+    pointer-events: none;
+}
+
+/* 8. 🍃 TỰ NHIÊN RỪNG XANH (Emerald Nature) */
+.avatar-frame-emerald_nature {
+    box-shadow: 0 0 0 3.5px #10b981, 0 0 16px 4px rgba(16, 185, 129, 0.75);
+    background: radial-gradient(circle, rgba(209, 250, 229, 0.4) 0%, rgba(16, 185, 129, 0.2) 100%);
+}
+.avatar-frame-emerald_nature .frame-ornament-top {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 15px;
+    z-index: 4;
+    filter: drop-shadow(0 0 6px #34d399);
+    animation: leafRustle 3s infinite ease-in-out;
+}
+.avatar-frame-emerald_nature .frame-ornament-top::before {
+    content: '🌿';
+}
+.avatar-frame-emerald_nature .frame-ornament-bottom {
+    position: absolute;
+    bottom: -10px;
+    right: -4px;
+    font-size: 12px;
+    z-index: 4;
+    filter: drop-shadow(0 0 6px #facc15);
+    animation: fireflyGlow 1.5s infinite alternate;
+}
+.avatar-frame-emerald_nature .frame-ornament-bottom::before {
+    content: '✨';
+}
+.avatar-frame-emerald_nature .frame-particle-effects {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px dashed #6ee7b7;
+    animation: spinCounterClockwise 14s linear infinite;
+    pointer-events: none;
+}
+
+/* Universal Animation Keyframes */
+@keyframes crownFloat {
+    0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+    50% { transform: translateX(-50%) translateY(-3px) scale(1.08); }
+}
+@keyframes goldRoyalePulse {
+    0%, 100% { box-shadow: 0 0 0 3.5px #f59e0b, 0 0 16px 4px rgba(245, 158, 11, 0.7); }
+    50% { box-shadow: 0 0 0 4.5px #fde047, 0 0 24px 8px rgba(250, 204, 21, 0.95); }
+}
+@keyframes cyberpunkGlitch {
+    0% { border-color: #06b6d4; box-shadow: 0 0 16px rgba(6, 182, 212, 0.8), 0 0 0 2px #ec4899; }
+    50% { border-color: #ec4899; box-shadow: 0 0 20px rgba(236, 72, 153, 0.9), 0 0 0 2px #06b6d4; }
+    100% { border-color: #8b5cf6; box-shadow: 0 0 16px rgba(139, 92, 246, 0.8), 0 0 0 2px #06b6d4; }
+}
+@keyframes scanLaser {
+    0% { top: 0%; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+@keyframes fireFlicker {
+    0% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 6px #f97316); }
+    100% { transform: translateX(-50%) scale(1.18) translateY(-2px); filter: drop-shadow(0 0 14px #ef4444); }
+}
+@keyframes infernoRoar {
+    0% { box-shadow: 0 0 0 3.5px #ef4444, 0 0 16px 4px rgba(239, 68, 68, 0.75); }
+    100% { box-shadow: 0 0 0 4.5px #dc2626, 0 0 26px 9px rgba(249, 115, 22, 0.95); }
+}
+@keyframes thunderZapFlash {
+    0%, 88%, 100% { box-shadow: 0 0 0 3px #38bdf8, 0 0 14px 3px rgba(56, 189, 248, 0.7); }
+    90% { box-shadow: 0 0 0 6px #ffffff, 0 0 32px 12px #38bdf8; }
+    94% { box-shadow: 0 0 0 4px #bae6fd, 0 0 22px 8px #38bdf8; }
+}
+@keyframes thunderBoltArc {
+    0% { transform: scale(1) rotate(-5deg); }
+    100% { transform: scale(1.25) rotate(10deg); }
+}
+@keyframes orbitSpin {
+    0% { transform: rotate(-30deg) scaleY(0.55) rotate(0deg); }
+    100% { transform: rotate(-30deg) scaleY(0.55) rotate(360deg); }
+}
+@keyframes moonFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+@keyframes starTwinkle {
+    0%, 100% { opacity: 0.6; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.3); }
+}
+@keyframes frostShimmer {
+    0%, 100% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 6px #38bdf8); }
+    50% { transform: translateX(-50%) scale(1.2); filter: drop-shadow(0 0 12px #e0f2fe); }
+}
+@keyframes sakuraSway {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(12deg) scale(1.15); }
+}
+@keyframes leafRustle {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    50% { transform: translateX(-50%) rotate(-8deg) scale(1.1); }
+}
+@keyframes fireflyGlow {
+    0% { opacity: 0.4; transform: scale(0.8) translate(0, 0); }
+    100% { opacity: 1; transform: scale(1.3) translate(2px, -2px); }
+}
+@keyframes spinClockwise {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes spinCounterClockwise {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+}
+
+/* ============================================
+   8 GLOWING VIP TITLES
+   ============================================ */
+.user-custom-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.74rem;
+    font-weight: 900;
+    padding: 0.15rem 0.55rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    margin-left: 0.3rem;
+}
+
+.user-title-title_dai_gia {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.user-title-title_chua_te {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.6);
+}
+
+.user-title-title_than_doan {
+    background: linear-gradient(135deg, #9333ea 0%, #6b21a8 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(147, 51, 234, 0.55);
+}
+
+.user-title-title_dan_choi {
+    background: linear-gradient(135deg, #db2777 0%, #9d174d 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(219, 39, 119, 0.55);
+}
+
+.user-title-title_ban_tay_vang {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(5, 150, 105, 0.55);
+}
+
+.user-title-title_vua_ve_dich {
+    background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(234, 88, 12, 0.55);
+}
+
+.user-title-title_toc_do {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.55);
+}
+
+.user-title-title_phu_thuy {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.55);
+}
+
+/* ============================================
+   8 MASTER VIP NAME VISUAL EFFECTS & PARTICLES
+   ============================================ */
+.vip-name-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 800;
+    user-select: none;
+    isolation: isolate;
+}
+
+.vip-name-text {
+    position: relative;
+    z-index: 2;
+    font-weight: 800;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.vip-name-fx-sweep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    overflow: hidden;
+    border-radius: inherit;
+}
+.vip-name-fx-sweep::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 35%;
+    height: 200%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+    transform: rotate(25deg);
+    animation: vipGlareSweep 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes vipGlareSweep {
+    0% { left: -60%; }
+    40%, 100% { left: 140%; }
+}
+
+.vip-name-fx-backdrop {
+    position: absolute;
+    inset: -2px -6px;
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.7;
+}
+
+.vip-name-fx-particles {
+    position: absolute;
+    inset: -6px -12px;
+    pointer-events: none;
+    z-index: 4;
+}
+
+/* ====================================================
+   THEME 1: 💎 ĐẠI GIA CƠM TRƯA (CƠN MƯA VÀNG & BỆ VÀNG HOÀNG KIM)
+   ==================================================== */
+.vip-fx-theme-dai-gia {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-dai-gia .fx-coin {
+    position: absolute;
+    font-size: 11px;
+    filter: drop-shadow(0 0 4px #f59e0b);
+}
+.vip-fx-theme-dai-gia .fx-coin-1 {
+    top: -8px;
+    left: -8px;
+    animation: rainCoinLeft 2.2s infinite ease-in-out;
+}
+.vip-fx-theme-dai-gia .fx-coin-2 {
+    bottom: -6px;
+    right: -8px;
+    animation: rainCoinRight 2.5s infinite ease-in-out;
+}
+.vip-fx-theme-dai-gia .fx-diamond-1 {
+    position: absolute;
+    top: -10px;
+    right: -4px;
+    font-size: 10px;
+    filter: drop-shadow(0 0 6px #60a5fa);
+    animation: diamondFloat 2s infinite ease-in-out;
+}
+.vip-fx-theme-dai-gia .fx-sparkle-1 {
+    position: absolute;
+    bottom: -4px;
+    left: -4px;
+    font-size: 9px;
+    color: #fde047;
+    animation: sparkleBlink 1.8s infinite ease-in-out;
+}
+.vip-fx-theme-dai-gia .fx-gold-bar-base {
+    position: absolute;
+    bottom: -3px;
+    left: 10%;
+    width: 80%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #fbbf24, #fffbeb, #d97706, transparent);
+    border-radius: 9999px;
+    box-shadow: 0 0 8px #f59e0b, 0 0 14px #fbbf24;
+    animation: goldBarPulse 2s infinite ease-in-out;
+}
+
+@keyframes rainCoinLeft {
+    0% { transform: translateY(-4px) rotate(0deg) scale(0.8); opacity: 0; }
+    30% { opacity: 1; transform: translateY(0) rotate(90deg) scale(1.15); }
+    80% { opacity: 0.9; transform: translateY(4px) rotate(220deg) scale(1); }
+    100% { opacity: 0; transform: translateY(8px) rotate(360deg) scale(0.7); }
+}
+@keyframes rainCoinRight {
+    0% { transform: translateY(6px) rotate(0deg) scale(0.7); opacity: 0; }
+    40% { opacity: 1; transform: translateY(0) rotate(-120deg) scale(1.1); }
+    85% { opacity: 0.9; transform: translateY(-4px) rotate(-240deg) scale(1); }
+    100% { opacity: 0; transform: translateY(-8px) rotate(-360deg) scale(0.6); }
+}
+@keyframes diamondFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(0.85); opacity: 0.5; }
+    50% { transform: translateY(-3px) rotate(15deg) scale(1.25); opacity: 1; filter: drop-shadow(0 0 8px #93c5fd); }
+}
+@keyframes goldBarPulse {
+    0%, 100% { opacity: 0.6; transform: scaleX(0.9); }
+    50% { opacity: 1; transform: scaleX(1.1); box-shadow: 0 0 12px #f59e0b, 0 0 20px #fbbf24; }
+}
+
+/* ====================================================
+   THEME 2: 👑 CHÚA TỂ VĂN PHÒNG (BIỂN LỬA DUNG NHAM & KHÓI BỐC)
+   ==================================================== */
+.vip-fx-theme-chua-te {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-chua-te .fx-flame-wave {
+    position: absolute;
+    bottom: -6px;
+    left: -4px;
+    right: -4px;
+    height: 12px;
+    background: radial-gradient(ellipse at center bottom, rgba(239, 68, 68, 0.45) 0%, rgba(249, 115, 22, 0.3) 50%, transparent 80%);
+    border-radius: 0 0 8px 8px;
+    animation: flameWaveDance 1.2s infinite alternate ease-in-out;
+}
+.vip-fx-theme-chua-te .fx-ember {
+    position: absolute;
+    font-size: 12px;
+    filter: drop-shadow(0 0 6px #ef4444);
+}
+.vip-fx-theme-chua-te .fx-ember-1 {
+    bottom: -6px;
+    left: -8px;
+    animation: emberRise1 1.4s infinite ease-out;
+}
+.vip-fx-theme-chua-te .fx-ember-2 {
+    bottom: -6px;
+    right: -8px;
+    animation: emberRise2 1.6s infinite ease-out;
+}
+.vip-fx-theme-chua-te .fx-smoke-puff {
+    position: absolute;
+    top: -10px;
+    left: 20%;
+    font-size: 9px;
+    opacity: 0;
+    animation: smokeDrift 2.4s infinite ease-out;
+}
+
+@keyframes flameWaveDance {
+    0% { transform: scaleY(0.8) scaleX(0.95); opacity: 0.6; }
+    100% { transform: scaleY(1.3) scaleX(1.05); opacity: 1; filter: drop-shadow(0 -2px 6px #ef4444); }
+}
+@keyframes emberRise1 {
+    0% { transform: translate(0, 0) scale(0.8); opacity: 1; }
+    50% { transform: translate(-3px, -8px) scale(1.2); opacity: 0.9; }
+    100% { transform: translate(-5px, -16px) scale(0.5); opacity: 0; }
+}
+@keyframes emberRise2 {
+    0% { transform: translate(0, 0) scale(0.85); opacity: 1; }
+    50% { transform: translate(3px, -10px) scale(1.25); opacity: 0.9; }
+    100% { transform: translate(6px, -18px) scale(0.4); opacity: 0; }
+}
+@keyframes smokeDrift {
+    0% { transform: translateY(0) scale(0.5); opacity: 0; }
+    30% { opacity: 0.6; transform: translateY(-4px) scale(1); }
+    100% { opacity: 0; transform: translateY(-12px) scale(1.4); }
+}
+
+/* ====================================================
+   THEME 3: 🔮 THẦN ĐOÁN VŨ TRỤ (VÒNG XOÁY THIÊN HÀ & QUẢ CẦU HUYỀN BÍ)
+   ==================================================== */
+.vip-fx-theme-than-doan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-than-doan .fx-cosmic-orbit {
+    position: absolute;
+    inset: -6px -10px;
+    border: 1.5px dashed rgba(192, 132, 252, 0.6);
+    border-radius: 50%;
+    transform: rotateX(65deg);
+    animation: cosmicOrbitSpin 4s linear infinite;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+.vip-fx-theme-than-doan .fx-star-1 {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-size: 11px;
+    filter: drop-shadow(0 0 6px #c084fc);
+    animation: starOrbitTravel 3s infinite ease-in-out;
+}
+.vip-fx-theme-than-doan .fx-orb-1 {
+    position: absolute;
+    bottom: -6px;
+    right: -8px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 6px #a855f7);
+    animation: orbPulseTravel 3.2s infinite ease-in-out;
+}
+.vip-fx-theme-than-doan .fx-nebula-swirl {
+    position: absolute;
+    inset: -4px -6px;
+    background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.3) 0%, rgba(126, 34, 206, 0.15) 50%, transparent 80%);
+    border-radius: 9999px;
+    animation: nebulaBreath 3s infinite ease-in-out;
+}
+
+@keyframes cosmicOrbitSpin {
+    0% { transform: rotateX(65deg) rotateZ(0deg); }
+    100% { transform: rotateX(65deg) rotateZ(360deg); }
+}
+@keyframes starOrbitTravel {
+    0%, 100% { transform: translate(0, 0) scale(0.85); opacity: 0.6; }
+    50% { transform: translate(4px, -4px) scale(1.25); opacity: 1; }
+}
+@keyframes orbPulseTravel {
+    0%, 100% { transform: translate(0, 0) scale(0.9); filter: drop-shadow(0 0 4px #a855f7); }
+    50% { transform: translate(-3px, -3px) scale(1.2); filter: drop-shadow(0 0 10px #e879f9); }
+}
+@keyframes nebulaBreath {
+    0%, 100% { opacity: 0.5; transform: scale(0.95); }
+    50% { opacity: 0.9; transform: scale(1.1); }
+}
+
+/* ====================================================
+   THEME 4: 🍷 DÂN CHƠI KHÔNG SỢ MƯA RƠI (CYBERPUNK NEON GLITCH & LASER)
+   ==================================================== */
+.vip-fx-theme-dan-choi {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-dan-choi .fx-neon-scanlines {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+}
+.vip-fx-theme-dan-choi .fx-neon-scanlines::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ec4899;
+    box-shadow: 0 0 8px #f472b6, 0 0 14px #ec4899;
+    animation: cyberScanline 1.6s linear infinite;
+}
+.vip-fx-theme-dan-choi .fx-icon-1 {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-size: 11px;
+    animation: neonBarJitter1 1.5s infinite alternate;
+}
+.vip-fx-theme-dan-choi .fx-icon-2 {
+    position: absolute;
+    bottom: -6px;
+    right: -8px;
+    font-size: 11px;
+    filter: drop-shadow(0 0 6px #ec4899);
+    animation: neonBarJitter2 1.2s infinite alternate;
+}
+.vip-fx-theme-dan-choi .fx-cyber-grid {
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 1.5px;
+    background: linear-gradient(90deg, #ec4899, #06b6d4, #ec4899);
+    box-shadow: 0 0 8px #ec4899;
+}
+
+@keyframes cyberScanline {
+    0% { top: -10%; opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { top: 110%; opacity: 0; }
+}
+@keyframes neonBarJitter1 {
+    0%, 100% { transform: rotate(0deg) scale(0.9); }
+    50% { transform: rotate(-15deg) scale(1.2); }
+    52% { transform: rotate(5deg) scale(0.85); opacity: 0.4; }
+    54% { transform: rotate(-10deg) scale(1.15); opacity: 1; }
+}
+@keyframes neonBarJitter2 {
+    0%, 100% { transform: rotate(0deg) scale(0.9); }
+    50% { transform: rotate(15deg) scale(1.25); }
+}
+
+/* ====================================================
+   THEME 5: 🍀 BÀN TAY VÀNG (DÂY LEO VÀNG TÀI LỘC & CỎ 4 LÁ)
+   ==================================================== */
+.vip-fx-theme-ban-tay-vang {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-ban-tay-vang .fx-vine-base {
+    position: absolute;
+    bottom: -3px;
+    left: 5%;
+    right: 5%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #10b981, #34d399, #10b981, transparent);
+    box-shadow: 0 0 6px #10b981, 0 0 12px #34d399;
+    border-radius: 9999px;
+    animation: vineGlowPulse 2.5s infinite ease-in-out;
+}
+.vip-fx-theme-ban-tay-vang .fx-clover-1 {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 5px #10b981);
+    animation: cloverSway1 2.2s infinite ease-in-out;
+}
+.vip-fx-theme-ban-tay-vang .fx-clover-2 {
+    position: absolute;
+    bottom: -6px;
+    right: -8px;
+    font-size: 11px;
+    filter: drop-shadow(0 0 5px #34d399);
+    animation: cloverSway2 2.6s infinite ease-in-out;
+}
+.vip-fx-theme-ban-tay-vang .fx-coin-luck {
+    position: absolute;
+    top: -8px;
+    right: 20%;
+    font-size: 9px;
+    animation: luckCoinSpin 2s infinite linear;
+}
+
+@keyframes vineGlowPulse {
+    0%, 100% { opacity: 0.6; transform: scaleX(0.95); }
+    50% { opacity: 1; transform: scaleX(1.05); }
+}
+@keyframes cloverSway1 {
+    0%, 100% { transform: translateY(0) rotate(-10deg) scale(0.9); }
+    50% { transform: translateY(-3px) rotate(15deg) scale(1.2); }
+}
+@keyframes cloverSway2 {
+    0%, 100% { transform: translateY(0) rotate(10deg) scale(0.9); }
+    50% { transform: translateY(-2px) rotate(-15deg) scale(1.15); }
+}
+@keyframes luckCoinSpin {
+    0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.4; }
+    50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+}
+
+/* ====================================================
+   THEME 6: 🚀 VUA VỀ ĐÍCH (ĐỘNG CƠ PHẢN LỰC & VỆT GIÓ SIÊU THANH)
+   ==================================================== */
+.vip-fx-theme-vua-ve-dich {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-vua-ve-dich .fx-speed-streaks {
+    position: absolute;
+    inset: -2px -12px;
+    background: repeating-linear-gradient(90deg, transparent 0, transparent 8px, rgba(249, 115, 22, 0.4) 8px, rgba(249, 115, 22, 0.4) 14px);
+    opacity: 0.7;
+    animation: windStreaksDash 0.6s linear infinite;
+}
+.vip-fx-theme-vua-ve-dich .fx-rocket-flame {
+    position: absolute;
+    bottom: -4px;
+    right: -12px;
+    font-size: 13px;
+    filter: drop-shadow(0 0 6px #f97316);
+    animation: rocketJetBlast 0.8s infinite alternate ease-in-out;
+}
+.vip-fx-theme-vua-ve-dich .fx-exhaust-smoke {
+    position: absolute;
+    top: 0;
+    left: -12px;
+    font-size: 10px;
+    animation: exhaustSmokePuff 0.7s infinite linear;
+}
+
+@keyframes windStreaksDash {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-16px); }
+}
+@keyframes rocketJetBlast {
+    0% { transform: translate(0, 0) scale(0.9); }
+    100% { transform: translate(4px, -3px) scale(1.3) rotate(-5deg); }
+}
+@keyframes exhaustSmokePuff {
+    0% { transform: translateX(0); opacity: 0.9; }
+    100% { transform: translateX(-8px); opacity: 0; }
+}
+
+/* ====================================================
+   THEME 7: ⚡ TỐC ĐỘ BÀN THỜ (TIA SÉT GIẬT ĐIỆN & VÒNG PLASMA)
+   ==================================================== */
+.vip-fx-theme-toc-do {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-toc-do .fx-plasma-ring {
+    position: absolute;
+    inset: -3px -6px;
+    border: 1.5px solid rgba(56, 189, 248, 0.6);
+    border-radius: 8px;
+    box-shadow: 0 0 10px #0284c7, inset 0 0 8px #38bdf8;
+    animation: plasmaShockwave 1s infinite alternate ease-in-out;
+}
+.vip-fx-theme-toc-do .fx-arc-1 {
+    position: absolute;
+    top: -10px;
+    left: -8px;
+    font-size: 13px;
+    filter: drop-shadow(0 0 6px #38bdf8);
+    animation: lightningBoltStrike1 0.4s infinite alternate;
+}
+.vip-fx-theme-toc-do .fx-arc-2 {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    font-size: 13px;
+    filter: drop-shadow(0 0 8px #ffffff);
+    animation: lightningBoltStrike2 0.5s infinite alternate;
+}
+
+@keyframes plasmaShockwave {
+    0%, 80%, 100% { opacity: 0.4; transform: scale(0.96); }
+    88% { opacity: 1; transform: scale(1.08); filter: drop-shadow(0 0 12px #38bdf8); }
+}
+@keyframes lightningBoltStrike1 {
+    0% { transform: rotate(-20deg) scale(0.8); opacity: 0.3; }
+    50% { transform: rotate(10deg) scale(1.3); opacity: 1; }
+    100% { transform: rotate(-10deg) scale(0.9); opacity: 0.6; }
+}
+@keyframes lightningBoltStrike2 {
+    0% { transform: rotate(20deg) scale(0.8); opacity: 0.4; }
+    50% { transform: rotate(-15deg) scale(1.35); opacity: 1; }
+    100% { transform: rotate(10deg) scale(0.9); opacity: 0.5; }
+}
+
+/* ====================================================
+   THEME 8: 🧙‍♂️ PHÙ THỦY ẨM THỰC (VÒNG TRÒN MA PHÁP & LUỒNG MANA)
+   ==================================================== */
+.vip-fx-theme-phu-thuy {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+.vip-fx-theme-phu-thuy .fx-magic-circle {
+    position: absolute;
+    inset: -6px -10px;
+    border: 1.5px dotted rgba(129, 140, 248, 0.7);
+    border-radius: 50%;
+    animation: magicCircleRotate 5s linear infinite;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+}
+.vip-fx-theme-phu-thuy .fx-mana-1 {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-size: 12px;
+    filter: drop-shadow(0 0 6px #818cf8);
+    animation: manaOrbSpin1 2.8s infinite ease-in-out;
+}
+.vip-fx-theme-phu-thuy .fx-mana-2 {
+    position: absolute;
+    bottom: -6px;
+    right: -8px;
+    font-size: 11px;
+    filter: drop-shadow(0 0 6px #6366f1);
+    animation: manaOrbSpin2 2.4s infinite ease-in-out;
+}
+
+@keyframes magicCircleRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes manaOrbSpin1 {
+    0%, 100% { transform: translate(0, 0) scale(0.85); opacity: 0.6; }
+    50% { transform: translate(3px, -4px) scale(1.25); opacity: 1; }
+}
+@keyframes manaOrbSpin2 {
+    0%, 100% { transform: translate(0, 0) scale(0.9); opacity: 0.5; }
+    50% { transform: translate(-3px, -3px) scale(1.2); opacity: 1; }
+}
+@keyframes neonSignPulse {
+    0% { filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.6)); }
+    100% { filter: drop-shadow(0 0 12px rgba(219, 39, 119, 0.95)); }
+}
+@keyframes neonBackdropFlicker {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0.9; }
+    52% { opacity: 0.4; }
+    54% { opacity: 0.9; }
+}
+@keyframes neonIconPop1 {
+    0% { transform: scale(0.8); }
+    100% { transform: scale(1.2) rotate(10deg); }
+}
+@keyframes neonIconPop2 {
+    0% { transform: scale(0.8); }
+    100% { transform: scale(1.2) rotate(-10deg); }
+}
+@keyframes jadeTextGleam {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+@keyframes cloverAuraBloom {
+    0%, 100% { opacity: 0.5; transform: scale(0.95); }
+    50% { opacity: 0.85; transform: scale(1.06); }
+}
+@keyframes cloverFlutter1 {
+    0%, 100% { transform: rotate(0deg) translateY(0); }
+    50% { transform: rotate(18deg) translateY(-2.5px); }
+}
+@keyframes coinSpinMini {
+    0%, 100% { transform: scale(0.85) rotate(0deg); }
+    50% { transform: scale(1.2) rotate(15deg); }
+}
+@keyframes rocketSpeedPulse {
+    0% { transform: skewX(0deg); filter: drop-shadow(0 0 5px rgba(234, 88, 12, 0.6)); }
+    100% { transform: skewX(-3deg); filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.95)); }
+}
+@keyframes speedSmoke1 {
+    0% { opacity: 0.8; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(-6px); }
+}
+@keyframes rocketThrust {
+    0% { transform: translate(0, 0) scale(0.9); }
+    100% { transform: translate(2px, -2px) scale(1.25); }
+}
+@keyframes lightningPlasmaPulse {
+    0%, 85%, 100% { filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.7)); }
+    90% { filter: drop-shadow(0 0 14px #ffffff) drop-shadow(0 0 24px #38bdf8); }
+}
+@keyframes thunderZapBackdrop {
+    0%, 85%, 100% { opacity: 0.4; }
+    90% { opacity: 0.95; }
+}
+@keyframes boltZap1 {
+    0% { transform: scale(0.8) rotate(-10deg); }
+    100% { transform: scale(1.3) rotate(15deg); }
+}
+@keyframes boltZap2 {
+    0% { transform: scale(0.85) rotate(10deg); }
+    100% { transform: scale(1.35) rotate(-15deg); }
+}
+@keyframes arcaneManaPulse {
+    0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6)); }
+    50% { transform: translateY(-1.5px); filter: drop-shadow(0 0 12px rgba(129, 140, 248, 0.9)); }
+}
+@keyframes manaRuneAura {
+    0%, 100% { opacity: 0.45; transform: scale(0.95); }
+    50% { opacity: 0.85; transform: scale(1.08); }
+}
+@keyframes manaOrbFloat1 {
+    0%, 100% { transform: translateY(0) scale(0.8); }
+    50% { transform: translateY(-3px) scale(1.2); }
+}
+@keyframes manaOrbFloat2 {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2px) rotate(20deg) scale(1.2); }
+}
+
+/* ============================================
+   SHOP & WALLET MODAL
+   ============================================ */
+.shop-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.shop-modal {
+    background: var(--panel-bg, #ffffff);
+    border: 1.5px solid var(--panel-border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: shopModalOpen 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes shopModalOpen {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.shop-modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1.5px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-secondary);
+}
+
+.shop-preview-box {
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(232, 97, 60, 0.06) 0%, rgba(244, 162, 97, 0.1) 100%);
+    border-bottom: 1.5px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.shop-preview-user {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.shop-preview-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 2px solid var(--panel-border);
+}
+
+/* ============================================
+   SHOP MODAL NAVIGATION TABS
+   ============================================ */
+.shop-modal-tabs {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1.5px solid var(--panel-border);
+    background: var(--bg-primary);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.shop-modal-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.shop-modal-tab-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.6rem 0.85rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1.5px solid var(--panel-border);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    line-height: 1.25;
+}
+
+.shop-modal-tab-btn:hover {
+    color: var(--text-heading);
+    background: var(--panel-bg);
+    border-color: var(--accent);
+}
+
+.shop-modal-tab-btn.active {
+    color: #ffffff;
+    background: var(--primary-gradient);
+    border-color: transparent;
+    box-shadow: 0 3px 10px rgba(232, 97, 60, 0.25);
+}
+
+.shop-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 0.75rem;
+}
+
+.shop-item-card {
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.4rem;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.shop-item-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.shop-item-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.25rem;
+}
+
+.shop-item-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.25;
+}
+
+.shop-item-price {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #f59e0b;
+}
+
+.shop-item-btn {
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.shop-item-btn.buy {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+.shop-item-btn.equip {
+    background: var(--bg-primary);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+}
+
+.shop-item-btn.equipped {
+    background: #10b981;
+    color: white;
+    cursor: default;
+}
+
+/* ============================================
+   PODIUM TOP 1-2-3 CELEBRATION
+   ============================================ */
+.podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 1rem 0;
+}
+
+.podium-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+}
+
+.podium-pillar {
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.podium-step.rank-1 .podium-pillar {
+    height: 110px;
+    background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
+    border: 2px solid #fbbf24;
+}
+
+.podium-step.rank-2 .podium-pillar {
+    height: 85px;
+    background: linear-gradient(180deg, #94a3b8 0%, #475569 100%);
+    border: 2px solid #cbd5e1;
+}
+
+.podium-step.rank-3 .podium-pillar {
+    height: 65px;
+    background: linear-gradient(180deg, #d97706 0%, #78350f 100%);
+    border: 2px solid #fde68a;
+}
+
+/* ============================================
+   PRE-RACE PREDICTION ARENA UI
+   ============================================ */
+.prediction-section {
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.85rem;
+}
+
+.prediction-title {
+    font-weight: 800;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.bet-pills-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+}
+
+.bet-pill-btn {
+    padding: 0.3rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    border: 1.5px solid var(--panel-border);
+    background: var(--panel-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bet-pill-btn.active, .bet-pill-btn:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+
+

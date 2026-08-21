@@ -402,9 +402,8 @@
 						></lottie-player>
 					</div>
 					<h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary)">Đăng Nhập Đặt Cơm</h2>
-					<p style="margin-bottom: 1.75rem; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5">
-						Hệ thống đặt cơm trưa đã chuyển sang xác thực bảo mật qua <strong>Clerk</strong>. Vui lòng đăng nhập bằng Google, Email OTP hoặc
-						Passkey.
+					<p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5">
+						Hệ thống sử dụng xác thực bảo mật qua <strong>Clerk</strong> (Google hoặc Passkey/Email).
 					</p>
 
 					<button
@@ -414,8 +413,8 @@
 						style="
 							width: 100%;
 							padding: 0.85rem 1.25rem;
-							font-size: 1.05rem;
-							font-weight: 600;
+							font-size: 0.95rem;
+							font-weight: 700;
 							display: flex;
 							align-items: center;
 							justify-content: center;
@@ -423,7 +422,7 @@
 						"
 						onclick="handleClerkSignIn()"
 					>
-						<span>🔑</span> Đăng Nhập / Đăng Ký qua Clerk
+						<span>🔑</span> Đăng Nhập / Đăng Ký với Clerk
 					</button>
 				</div>
 			</div>
@@ -511,6 +510,11 @@
 							</svg>
 						</a>
 
+						<div class="user-wallet-badge" id="user-wallet-badge" onclick="openShopModal()" title="Cửa Hàng & Ví Tiền (Bấm để xem)">
+							<span class="coin-icon">🪙</span>
+							<span id="header-user-balance">100.000 đ</span>
+						</div>
+
 						<div class="user-profile" id="user-profile-widget" onclick="toggleProfileDropdown(event)">
 							<div class="profile-trigger" id="profile-trigger">
 								<div class="avatar" id="user-avatar">?</div>
@@ -546,6 +550,15 @@
 									</div>
 								</div>
 								<div class="dropdown-divider"></div>
+								<button
+									class="dropdown-item-btn"
+									onclick="
+										openShopModal();
+										closeProfileDropdown();
+									"
+								>
+									<span class="icon">🛍️</span> Cửa Hàng & Ví Tiền
+								</button>
 								<button
 									class="dropdown-item-btn"
 									onclick="
@@ -699,9 +712,12 @@
 
 						<!-- ORDERING FORM -->
 						<div class="panel">
-							<h2 class="section-title">
-								✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span>
-								<span class="badge-deadline" id="deadline-badge" style="display: none"></span>
+							<h2 class="section-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+								<span>✍️ Đặt Cơm Ngày <span id="ordering-date-title">...</span></span>
+								<div style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+									<span class="badge-deadline" id="deadline-badge" style="display: none"></span>
+									<span class="live-deadline-banner" id="live-countdown-banner" style="display: none">⏱️ Đang tính...</span>
+								</div>
 							</h2>
 
 							<!-- Personal Order Status Alert -->
@@ -825,6 +841,33 @@
 								</div>
 								<div class="lunch-picker-body" id="lunch-picker-body">
 									<div class="lunch-picker-empty">Chưa chọn người đi lấy cơm hôm nay.</div>
+								</div>
+							</div>
+
+							<!-- Office Meme Soundboard Card -->
+							<div class="soundboard-card" id="office-soundboard-widget">
+								<div class="soundboard-header">
+									<div class="soundboard-title">
+										<span>🎺 Soundboard Meme Văn Phòng</span>
+									</div>
+									<span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">(Bấm để phát tiếng)</span>
+								</div>
+								<div class="soundboard-grid">
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playDinnerBell)" title="Chuông báo giờ cơm">
+										<span>🔔</span> Chuông Cơm
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playBugleCharge)" title="Kèn xung trận kịch tính">
+										<span>🎺</span> Xung Trận
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playApplause)" title="Tiếng vỗ tay hoan hô">
+										<span>👏</span> Vỗ Tay
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playAirHorn)" title="Còi hú báo động">
+										<span>🚨</span> Còi Hú
+									</button>
+									<button type="button" class="soundboard-btn" onclick="handleSoundboardClick(this, playTingTingJackpot)" title="Ting ting ăn mừng">
+										<span>✨</span> Ting Ting
+									</button>
 								</div>
 							</div>
 
@@ -1178,6 +1221,39 @@
 					<div class="duck-race-minimap-label">🏆 ĐÍCH (1000m)</div>
 				</div>
 
+				<!-- Pre-Race Prediction Arena Box -->
+				<div class="prediction-section" id="duck-race-prediction-box" style="margin: 0.5rem 1rem 0.25rem 1rem;">
+					<div class="prediction-title">
+						<span>🎯 DỰ ĐOÁN CUỘC ĐUA (TOP 1 - 2 - 3)</span>
+						<span id="prediction-pool-badge" style="font-size: 0.78rem; background: rgba(245, 158, 11, 0.15); color: #b45309; padding: 0.2rem 0.5rem; border-radius: 9999px; font-weight: 800;">Tổng cược: 0 đ</span>
+					</div>
+					<div id="prediction-content-active">
+						<!-- Dynamic Prediction selection or status -->
+						<div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+							<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+								<select id="pred-candidate-select" class="input-ctrl" style="padding: 0.35rem 0.6rem; font-size: 0.82rem; font-weight: 700; width: auto; max-width: 170px;">
+									<option value="">-- Chọn thí sinh --</option>
+								</select>
+								<select id="pred-rank-select" class="input-ctrl" style="padding: 0.35rem 0.6rem; font-size: 0.82rem; font-weight: 700; width: auto;">
+									<option value="1">🥇 Top 1 (x3.0)</option>
+									<option value="2">🥈 Top 2 (x2.0)</option>
+									<option value="3">🥉 Top 3 (x1.5)</option>
+								</select>
+								<div class="bet-pills-row" style="margin: 0;">
+									<button type="button" class="bet-pill-btn active" data-amount="5000" onclick="setBetAmount(5000)">5k</button>
+									<button type="button" class="bet-pill-btn" data-amount="10000" onclick="setBetAmount(10000)">10k</button>
+									<button type="button" class="bet-pill-btn" data-amount="20000" onclick="setBetAmount(20000)">20k</button>
+									<button type="button" class="bet-pill-btn" data-amount="50000" onclick="setBetAmount(50000)">50k</button>
+								</div>
+							</div>
+							<button type="button" class="btn btn-primary" id="btn-submit-prediction" onclick="submitPrediction()" style="padding: 0.4rem 0.85rem; font-size: 0.82rem; font-weight: 800; border-radius: 8px;">
+								🎲 Đặt Cược (<span id="pred-bet-display">5.000 đ</span>)
+							</button>
+						</div>
+						<div id="my-prediction-status" style="margin-top: 0.4rem; font-size: 0.8rem; font-weight: 700; display: none;"></div>
+					</div>
+				</div>
+
 				<div class="duck-race-arena-container" id="duck-race-arena-container">
 					<canvas id="duck-race-canvas"></canvas>
 
@@ -1187,15 +1263,29 @@
 						<div class="duck-race-countdown-label" id="duck-race-countdown-label">CÁC VẬN ĐỘNG VIÊN CHUẨN BỊ XUẤT PHÁT...</div>
 					</div>
 
-					<!-- Results Overlay -->
+					<!-- Results Overlay with Podium Top 1-2-3 & Losers -->
 					<div id="duck-race-results" class="duck-race-results-overlay" style="display: none;">
-						<div class="duck-race-results-box">
+						<div class="duck-race-results-box" style="max-width: 580px;">
 							<div class="duck-race-results-title" id="duck-race-results-title">🏆 KẾT THÚC CUỘC ĐUA!</div>
-							<div class="duck-race-results-sub" id="duck-race-results-sub">2 người về chót đã lộ diện và sẽ đi lấy cơm hôm nay:</div>
+							
+							<!-- PODIUM TOP 1-2-3 -->
+							<div style="font-weight: 800; font-size: 0.92rem; color: var(--primary); margin-top: 0.5rem;">👑 VINH DANH TOP 3 VỀ ĐÍCH ĐẦU TIÊN</div>
+							<div class="podium-container" id="podium-top3-container">
+								<!-- Populated dynamically by JS -->
+							</div>
+
+							<!-- LOSERS (LUNCH PICKERS + 30k BOUNTY) -->
+							<div class="duck-race-results-sub" id="duck-race-results-sub" style="margin-top: 0.75rem;">
+								🚗 <strong>2 người về chót</strong> nhận trọng trách đi lấy cơm hôm nay (+30.000 đ Shipper Bounty):
+							</div>
 							<div class="duck-race-losers-grid" id="duck-race-losers-container">
 								<!-- Populated by JS -->
 							</div>
-							<div class="duck-race-results-actions">
+
+							<!-- Prediction Result Notification -->
+							<div id="race-prediction-result-banner" style="display: none; margin-top: 0.75rem; padding: 0.6rem 0.85rem; border-radius: 8px; font-weight: 800; font-size: 0.85rem;"></div>
+
+							<div class="duck-race-results-actions" style="margin-top: 1rem;">
 								<button type="button" class="btn btn-primary" onclick="closeDuckRaceModal()">🎉 Đã Hiểu (Đóng)</button>
 								<button type="button" class="btn btn-secondary" id="duck-race-admin-reset-btn" onclick="resetDuckRace()" style="display: none;">🔄 Đua Lại (Admin)</button>
 							</div>
@@ -1211,7 +1301,8 @@
 					<div class="duck-race-leaderboard-strip" id="duck-race-leaderboard-strip">
 						<!-- Badges populated by JS -->
 					</div>
-					<!-- Cheer Action Buttons -->
+					
+					<!-- Cheer Action Buttons (Free Emojis) -->
 					<div class="duck-race-cheer-bar" id="duck-race-cheer-bar">
 						<div class="duck-race-cheer-title">📣 CỔ VŨ:</div>
 						<button type="button" class="cheer-btn" data-emoji="👏" title="Vỗ tay" onclick="triggerCheer('👏', 'Vỗ tay nhiệt tình! 👏')">👏</button>
@@ -1221,27 +1312,256 @@
 						<button type="button" class="cheer-btn" data-emoji="❤️" title="Thả tim" onclick="triggerCheer('❤️', 'THẢ TIM! ❤️')">❤️</button>
 						<button type="button" class="cheer-btn" data-emoji="🎺" title="Thổi kèn" onclick="triggerCheer('🎺', 'TOE TOE TOE! 🎺')">🎺</button>
 					</div>
+
+					<!-- VIP Cheer FX Bar (8 Effects with VND cost) -->
+					<div style="display: flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 0.35rem; flex-wrap: wrap;">
+						<span style="font-size: 0.76rem; font-weight: 900; color: #f59e0b; white-space: nowrap;">✨ VIP FX:</span>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_fireworks')" title="10.000 đ">🎆 Pháo Hoa</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_nitro')" title="15.000 đ">🚀 Nitro</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_lightning')" title="20.000 đ">⚡ Sét</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_money_rain')" title="18.000 đ">🌧️ Mưa Tiền</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_tornado')" title="22.000 đ">🌪️ Lốc Xoáy</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_led_banner')" title="25.000 đ">💬 Bảng LED</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_smoke_bomb')" title="12.000 đ">💣 Bom Khói</button>
+						<button type="button" class="soundboard-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="triggerVipCheer('cheer_heart_burst')" title="14.000 đ">💖 Mưa Tim</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- SHOP & WALLET MODAL -->
+		<div id="shop-modal-overlay" class="shop-modal-overlay" onclick="if(event.target === this) closeShopModal()">
+			<div class="shop-modal" role="dialog" aria-modal="true">
+				<div class="shop-modal-header">
+					<div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 900; font-size: 1.1rem; color: var(--text-main);">
+						<span>🛍️ CỬA HÀNG & VÍ CƠM TRƯA</span>
+					</div>
+					<button type="button" class="duck-race-btn-icon" onclick="closeShopModal()" title="Đóng">✕</button>
+				</div>
+
+				<!-- Live Avatar Preview Header -->
+				<div class="shop-preview-box">
+					<div class="shop-preview-user">
+						<div class="shop-preview-avatar" id="shop-preview-avatar-box">
+							<span id="shop-preview-avatar-icon">👤</span>
+						</div>
+						<div>
+							<div style="font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+								<span id="shop-preview-user-name">Người Dùng</span>
+								<span id="shop-preview-user-title"></span>
+							</div>
+							<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+								Khung hiện tại: <strong id="shop-preview-frame-name" style="color: var(--primary);">Mặc định</strong>
+							</div>
+						</div>
+					</div>
+					<div style="text-align: right;">
+						<div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">SỐ DƯ KHẢ DỤNG</div>
+						<div style="font-size: 1.3rem; font-weight: 900; color: #f59e0b;" id="shop-modal-balance">100.000 đ</div>
+					</div>
+				</div>
+
+				<!-- Shop Tabs -->
+				<div class="shop-modal-tabs">
+					<button type="button" class="shop-modal-tab-btn active" id="shop-tab-btn-frames" onclick="switchShopTab('frames')">🖼️ Khung Avatar</button>
+					<button type="button" class="shop-modal-tab-btn" id="shop-tab-btn-titles" onclick="switchShopTab('titles')">🏷️ Danh Hiệu VIP</button>
+					<button type="button" class="shop-modal-tab-btn" id="shop-tab-btn-wardrobe" onclick="switchShopTab('wardrobe')">🎒 Túi Đồ Của Tôi</button>
+					<button type="button" class="shop-modal-tab-btn" id="shop-tab-btn-history" onclick="switchShopTab('history')">📜 Lịch Sử Giao Dịch</button>
+				</div>
+
+				<!-- Tab Contents -->
+				<div class="shop-modal-body" id="shop-modal-body">
+					<!-- Populated by JS -->
 				</div>
 			</div>
 		</div>
 
 		<script>
 			// =======================================================
-			// HELPER FOR RENDERING AVATAR (EMOJI OR R2 IMAGE)
+			// CORE UTILITY HELPERS
 			// =======================================================
-			function getAvatarHtml(avatarValue, className = '') {
-				if (!avatarValue) {
-					return '👤';
+			function escapeHtml(str) {
+				if (!str) return '';
+				return String(str)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;');
+			}
+
+			// =======================================================
+			// HELPER FOR RENDERING AVATAR (EMOJI OR R2 IMAGE + FRAME)
+			// =======================================================
+			function getAvatarHtml(avatarValue, className = '', frameId = '') {
+				let inner = '👤';
+				if (avatarValue) {
+					const isUrl =
+						avatarValue.startsWith('http://') ||
+						avatarValue.startsWith('https://') ||
+						avatarValue.startsWith('/') ||
+						avatarValue.startsWith('data:');
+					if (isUrl) {
+						inner = `<img src="${avatarValue}" class="${className}" alt="avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='👤';">`;
+					} else {
+						inner = avatarValue;
+					}
 				}
-				const isUrl =
-					avatarValue.startsWith('http://') ||
-					avatarValue.startsWith('https://') ||
-					avatarValue.startsWith('/') ||
-					avatarValue.startsWith('data:');
-				if (isUrl) {
-					return `<img src="${avatarValue}" class="${className}" alt="avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='👤';">`;
+				if (frameId && frameId.trim()) {
+					const fKey = frameId.trim();
+					return `<div class="avatar-frame-model-container avatar-frame-${fKey}"><div class="frame-ornament-top"></div><div class="frame-ornament-bottom"></div><div class="frame-ornament-orbit"></div><div class="frame-particle-effects"></div><div class="avatar-frame-inner">${inner}</div></div>`;
 				}
-				return avatarValue;
+				return inner;
+			}
+
+			function getUserNameHtml(name, customTitle = '', extraClass = '') {
+				if (!name) return '';
+				const titleKey = (customTitle || '').trim();
+				if (!titleKey) {
+					return `<span class="user-display-name ${extraClass}">${escapeHtml(name)}</span>`;
+				}
+
+				let thematicFxHtml = '';
+				if (titleKey === 'title_dai_gia') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-dai-gia">
+							<span class="fx-coin fx-coin-1">🪙</span>
+							<span class="fx-coin fx-coin-2">🪙</span>
+							<span class="fx-diamond fx-diamond-1">💎</span>
+							<span class="fx-sparkle fx-sparkle-1">✨</span>
+							<span class="fx-gold-bar-base"></span>
+						</span>`;
+				} else if (titleKey === 'title_chua_te') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-chua-te">
+							<span class="fx-flame-wave"></span>
+							<span class="fx-ember fx-ember-1">🔥</span>
+							<span class="fx-ember fx-ember-2">🔥</span>
+							<span class="fx-smoke-puff">💨</span>
+						</span>`;
+				} else if (titleKey === 'title_than_doan') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-than-doan">
+							<span class="fx-cosmic-orbit"></span>
+							<span class="fx-star fx-star-1">⭐</span>
+							<span class="fx-orb fx-orb-1">🔮</span>
+							<span class="fx-nebula-swirl"></span>
+						</span>`;
+				} else if (titleKey === 'title_dan_choi') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-dan-choi">
+							<span class="fx-neon-scanlines"></span>
+							<span class="fx-neon-icon fx-icon-1">🍷</span>
+							<span class="fx-neon-icon fx-icon-2">⚡</span>
+							<span class="fx-cyber-grid"></span>
+						</span>`;
+				} else if (titleKey === 'title_ban_tay_vang') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-ban-tay-vang">
+							<span class="fx-vine-base"></span>
+							<span class="fx-clover fx-clover-1">🍀</span>
+							<span class="fx-clover fx-clover-2">🍀</span>
+							<span class="fx-coin-luck">🪙</span>
+						</span>`;
+				} else if (titleKey === 'title_vua_ve_dich') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-vua-ve-dich">
+							<span class="fx-speed-streaks"></span>
+							<span class="fx-rocket-flame">🚀</span>
+							<span class="fx-exhaust-smoke">💨</span>
+						</span>`;
+				} else if (titleKey === 'title_toc_do') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-toc-do">
+							<span class="fx-lightning-arc fx-arc-1">⚡</span>
+							<span class="fx-lightning-arc fx-arc-2">⚡</span>
+							<span class="fx-plasma-ring"></span>
+						</span>`;
+				} else if (titleKey === 'title_phu_thuy') {
+					thematicFxHtml = `
+						<span class="vip-fx-theme-phu-thuy">
+							<span class="fx-magic-circle"></span>
+							<span class="fx-mana-orb fx-mana-1">🔮</span>
+							<span class="fx-mana-orb fx-mana-2">✨</span>
+						</span>`;
+				}
+
+				return `<span class="vip-name-container vip-name-${titleKey} ${extraClass}"><span class="vip-name-fx-backdrop"></span>${thematicFxHtml}<span class="vip-name-text">${escapeHtml(name)}</span><span class="vip-name-fx-sweep"></span></span>`;
+			}
+
+			function getUserTitleHtml(customTitle) {
+				if (!customTitle || !customTitle.trim()) return '';
+				const titleKey = customTitle.trim();
+				const titleNames = {
+					title_dai_gia: '💎 ĐẠI GIA',
+					title_chua_te: '👑 CHÚA TỂ',
+					title_than_doan: '🔮 THẦN ĐOÁN',
+					title_dan_choi: '🍷 DÂN CHƠI',
+					title_ban_tay_vang: '🍀 BÀN TAY VÀNG',
+					title_vua_ve_dich: '🚀 VUA VỀ ĐÍCH',
+					title_toc_do: '⚡ TỐC ĐỘ',
+					title_phu_thuy: '🧙‍♂️ PHÙ THỦY'
+				};
+				const label = titleNames[titleKey] || titleKey;
+				return `<span class="user-custom-title user-title-${titleKey}">${label}</span>`;
+			}
+
+			function getUserDisplayNameWithBadgeHtml(name, customTitle = '') {
+				return `${getUserNameHtml(name, customTitle)} ${getUserTitleHtml(customTitle)}`;
+			}
+
+			function applyCurrentUserCosmetics() {
+				if (!currentUser) return;
+				try {
+					localStorage.setItem('currentUser', JSON.stringify(currentUser));
+				} catch (e) {}
+
+				// 1. Update Header Widget
+				const pName = document.getElementById('profile-name');
+				const uAvatar = document.getElementById('user-avatar');
+				if (pName) {
+					pName.innerHTML = getUserDisplayNameWithBadgeHtml(currentUser.name, currentUser.custom_title || '');
+				}
+				if (uAvatar) {
+					uAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤', '', currentUser.avatar_frame || '');
+				}
+
+				// 2. Update Dropdown Menu details
+				const dropName = document.getElementById('dropdown-profile-name');
+				const dropAvatar = document.getElementById('dropdown-user-avatar');
+				if (dropName) {
+					dropName.innerHTML = getUserDisplayNameWithBadgeHtml(currentUser.name, currentUser.custom_title || '');
+				}
+				if (dropAvatar) {
+					dropAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤', '', currentUser.avatar_frame || '');
+				}
+
+				// 3. Sync into users list in memory
+				if (typeof users !== 'undefined' && Array.isArray(users)) {
+					const u = users.find(x => x.id === currentUser.id);
+					if (u) {
+						u.avatar = currentUser.avatar;
+						u.avatar_frame = currentUser.avatar_frame;
+						u.custom_title = currentUser.custom_title;
+					}
+				}
+
+				// 4. Sync into orders list in memory
+				if (typeof orders !== 'undefined' && Array.isArray(orders)) {
+					orders.forEach(o => {
+						if (o.user_id === currentUser.id) {
+							o.avatar = currentUser.avatar;
+							o.avatar_frame = currentUser.avatar_frame;
+							o.custom_title = currentUser.custom_title;
+						}
+					});
+				}
+
+				// 5. Instantly re-render all relevant UI sections
+				if (typeof renderDailyOrders === 'function') renderDailyOrders();
+				if (typeof renderLunchPickers === 'function') renderLunchPickers();
+				if (typeof renderAdminUsers === 'function') renderAdminUsers();
+				if (typeof updateShopPreviewBox === 'function') updateShopPreviewBox();
 			}
 
 			// =======================================================
@@ -1571,6 +1891,45 @@
 					}
 				}
 
+				// 1.5 Update the live countdown banner
+				const liveCountdownBanner = document.getElementById('live-countdown-banner');
+				if (liveCountdownBanner) {
+					const todayStr = getLocalVNDateString();
+					if (selectedDate < todayStr) {
+						liveCountdownBanner.style.display = 'inline-flex';
+						liveCountdownBanner.className = 'live-deadline-banner locked';
+						liveCountdownBanner.innerHTML = '🔒 Ngày Đã Qua';
+					} else if (selectedDate > todayStr) {
+						liveCountdownBanner.style.display = 'inline-flex';
+						liveCountdownBanner.className = 'live-deadline-banner open';
+						liveCountdownBanner.innerHTML = `📅 Đặt Trước (${orderDeadline})`;
+					} else {
+						const vnNow = getVNCurrentTime();
+						const [deadlineHour, deadlineMin] = orderDeadline.split(':').map(Number);
+						const nowTotalSec = (vnNow.hour * 3600) + (vnNow.minute * 60) + (new Date().getSeconds());
+						const deadlineTotalSec = (deadlineHour * 3600) + (deadlineMin * 60);
+						const diffSec = deadlineTotalSec - nowTotalSec;
+
+						liveCountdownBanner.style.display = 'inline-flex';
+						if (diffSec <= 0) {
+							liveCountdownBanner.className = 'live-deadline-banner locked';
+							liveCountdownBanner.innerHTML = `🔒 Đã Chốt Sổ (${orderDeadline})`;
+						} else {
+							const mins = Math.floor(diffSec / 60);
+							const secs = diffSec % 60;
+							const formattedTime = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+							if (diffSec <= 600) {
+								liveCountdownBanner.className = 'live-deadline-banner urgent';
+								liveCountdownBanner.innerHTML = `🔥 Sắp chốt! Còn ${formattedTime} ⚡`;
+							} else {
+								liveCountdownBanner.className = 'live-deadline-banner open';
+								liveCountdownBanner.innerHTML = `⏱️ Còn ${mins}p ${secs}s (Chốt: ${orderDeadline})`;
+							}
+						}
+					}
+				}
+
 				// 2. Update ordering form inputs & buttons
 				if (submitOrderBtn) {
 					if (shouldLock) {
@@ -1706,12 +2065,12 @@
 					}
 				});
 
-				// Periodically check deadline status (every 5 seconds) for real-time locking
+				// Periodically check deadline status and countdown ticks (every 1 second)
 				setInterval(() => {
 					if (currentUser && selectedDate) {
 						checkAndUpdateDeadlineUI();
 					}
-				}, 5000);
+				}, 1000);
 			});
 
 			// Function to clear login input field
@@ -1790,7 +2149,6 @@
 			function showLogin() {
 				authSection.style.display = 'block';
 				mainSection.style.display = 'none';
-				loadUsersListForLogin();
 			}
 
 			async function showDashboard() {
@@ -1798,12 +2156,12 @@
 				mainSection.style.display = 'block';
 
 				// Update header widget
-				profileName.textContent = currentUser.name;
-				userAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤');
+				profileName.innerHTML = getUserDisplayNameWithBadgeHtml(currentUser.name, currentUser.custom_title || '');
+				userAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤', '', currentUser.avatar_frame || '');
 
 				// Populate dropdown menu details
-				dropdownProfileName.textContent = currentUser.name;
-				dropdownUserAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤');
+				dropdownProfileName.innerHTML = getUserDisplayNameWithBadgeHtml(currentUser.name, currentUser.custom_title || '');
+				dropdownUserAvatar.innerHTML = getAvatarHtml(currentUser.avatar || '👤', '', currentUser.avatar_frame || '');
 				if (currentUser.id === 1) {
 					dropdownProfileRole.textContent = 'Quản trị viên (Admin)';
 					document.getElementById('admin-panel-card').style.display = 'block';
@@ -1839,6 +2197,8 @@
 				await loadPersonalDebt();
 				await loadAllDishesForAdmin();
 				await loadSpendingStats();
+				await fetchWalletBalance();
+				await loadRacePredictions();
 			}
 
 			let announcementText = '';
@@ -2093,29 +2453,6 @@
 			// =======================================================
 			// USER MANAGEMENT & AUTHENTICATION
 			// =======================================================
-			async function loadUsersListForLogin() {
-				try {
-					const resp = await fetch('/api/users');
-					const data = await resp.json();
-					if (resp.ok) {
-						allUsersFullList = data;
-						// Đưa Admin lên đầu danh sách để dễ chọn khi test
-						allExistingUsers = [...data].sort((a, b) => (a.id === 1 ? -1 : (b.id === 1 ? 1 : 0)));
-						if (userQuickSelect) {
-							userQuickSelect.innerHTML = '<option value="">-- Chọn thành viên có sẵn --</option>';
-							data.forEach((user) => {
-								const opt = document.createElement('option');
-								opt.value = user.name;
-								opt.textContent = user.name;
-								userQuickSelect.appendChild(opt);
-							});
-						}
-					}
-				} catch (err) {
-					console.error('Lỗi khi tải danh sách thành viên:', err);
-				}
-			}
-
 			const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsuYnBkdW9uZzYyMDMud29ya2Vycy5kZXYk';
 
 			async function initClerk() {
@@ -2456,9 +2793,9 @@
 
 							item.innerHTML = `
                             <div class="lb-rank">${rankHtml}</div>
-                            <div class="lb-avatar">${getAvatarHtml(avatar)}</div>
+                            <div class="lb-avatar">${getAvatarHtml(avatar, '', user.avatar_frame || '')}</div>
                             <div class="lb-info">
-                                <div class="lb-name">${user.user_name}</div>
+                                <div class="lb-name">${getUserNameHtml(user.user_name, user.custom_title || '')} ${getUserTitleHtml(user.custom_title || '')}</div>
                                 <div class="lb-bar-wrap">
                                     <div class="lb-bar-track">
                                         <div class="lb-bar-fill" style="width: 0%;"></div>
@@ -2784,6 +3121,39 @@
 					renderDishesOptions();
 					updateOrderSummaryPrice();
 				}
+			}
+
+			function getUserBadgesHtml(order, allOrders, pickers) {
+				if (!allOrders || allOrders.length === 0) return '';
+				const badges = [];
+
+				// 1. Thánh Đặt Sớm: First order placed today (when >= 2 orders)
+				if (allOrders.length >= 2 && allOrders[0].id === order.id) {
+					badges.push('<span class="user-badge badge-early-bird" title="🚀 Thánh Đặt Sớm: Người mở bát đầu tiên hôm nay!">🚀 Đặt Sớm</span>');
+				}
+
+				// 2. Sát Thủ Deadline: Last order placed today (when >= 3 orders)
+				if (allOrders.length >= 3 && allOrders[allOrders.length - 1].id === order.id) {
+					badges.push('<span class="user-badge badge-deadline-sniper" title="⏰ Sát Thủ Deadline: Chốt đơn sát nút!">⏰ Sát Thủ Deadline</span>');
+				}
+
+				// 3. Đại Gia Topping: Order contains topping
+				const hasTopping = order.dish_name.includes('+') || order.dish_name.includes('Trứng') || order.dish_name.includes('thêm');
+				if (hasTopping) {
+					badges.push('<span class="user-badge badge-topping-king" title="🥩 Đại Gia Topping: Có thêm món phụ ngon lành!">🥩 Có Topping</span>');
+				}
+
+				// 4. Shipper Hôm Nay: If in current lunch pickers
+				if (pickers && Array.isArray(pickers) && pickers.some((p) => p.id === order.user_id)) {
+					badges.push('<span class="user-badge badge-today-picker" title="🚗 Shipper Hôm Nay: Người nhận nhiệm vụ đi lấy cơm!">🚗 Đi Lấy Cơm</span>');
+				}
+
+				if (badges.length === 0) return '';
+				return `<div class="user-badges-container">${badges.join('')}</div>`;
+			}
+
+			function renderOrdersList() {
+				ordersListBadge.textContent = orders.length;
 
 				// Populate the Quick Summary grid and toggle its visibility
 				if (orders.length === 0) {
@@ -2863,6 +3233,7 @@
 				orders.forEach((order) => {
 					const isMe = currentUser && order.user_id === currentUser.id;
 					const canToggle = currentUser && currentUser.id === 1;
+                    const badgesHtml = getUserBadgesHtml(order, orders, lunchPickers);
 					const item = document.createElement('div');
 					item.className = 'order-item';
 
@@ -2888,11 +3259,13 @@
 					item.innerHTML = `
                         <div class="order-user" style="flex: 1; min-width: 0;">
                             <div class="order-user-name" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                <span class="order-user-avatar" style="font-size: 1.25rem; line-height: 1; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 50%;">${getAvatarHtml(avatar)}</span>
+                                <span class="order-user-avatar" style="font-size: 1.25rem; line-height: 1; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%;">${getAvatarHtml(avatar, '', order.avatar_frame || '')}</span>
                                 <div style="display: flex; flex-direction: column; align-items: flex-start;">
                                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                        <span style="font-weight: 700; font-size: 1.05rem;">${order.user_name}</span>
+                                        <span style="font-size: 1.05rem;">${getUserNameHtml(order.user_name, order.custom_title || '')}</span>
+                                        ${getUserTitleHtml(order.custom_title || '')}
                                         ${isMe ? '<span class="badge-me">Bạn</span>' : ''}
+                                        ${badgesHtml}
                                     </div>
                                     ${phoneHtml}
                                 </div>
@@ -3220,9 +3593,9 @@
 
 					item.innerHTML = `
                         <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                <span style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 50%;">${getAvatarHtml(user.avatar || '👤')}</span>
-                                <span>${user.name}</span>
+                            <div style="font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <span style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: visible; border-radius: 50%;">${getAvatarHtml(user.avatar || '👤', '', user.avatar_frame || '')}</span>
+                                <span>${getUserDisplayNameWithBadgeHtml(user.name, user.custom_title || '')}</span>
                             </div>
                             <div style="margin-left: 1.5rem;">
                                 ${userPhone}
@@ -4341,6 +4714,145 @@
 				} catch (e) {}
 			}
 
+			// =======================================================
+			// MEME SOUNDBOARD SYNTHESIZER FUNCTIONS
+			// =======================================================
+			function handleSoundboardClick(btn, soundFn) {
+				if (typeof soundFn === 'function') {
+					soundFn();
+				}
+				if (btn) {
+					btn.classList.add('playing');
+					setTimeout(() => btn.classList.remove('playing'), 450);
+				}
+			}
+
+			function playDinnerBell() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					// Dual resonant dinner bell: C5 + E5 + G5
+					[830.6, 1046.5, 1318.5].forEach((freq, i) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const startTime = now + i * 0.14;
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(freq, startTime);
+						gain.gain.setValueAtTime(0.22, startTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(startTime);
+						osc.stop(startTime + 1.25);
+					});
+				} catch (e) {}
+			}
+
+			function playBugleCharge() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const notes = [
+						{ f: 392.00, d: 0.11 },
+						{ f: 523.25, d: 0.11 },
+						{ f: 659.25, d: 0.11 },
+						{ f: 783.99, d: 0.25 },
+						{ f: 659.25, d: 0.11 },
+						{ f: 783.99, d: 0.4 }
+					];
+					let currTime = now;
+					notes.forEach((n) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sawtooth';
+						osc.frequency.setValueAtTime(n.f, currTime);
+						gain.gain.setValueAtTime(0.16, currTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, currTime + n.d);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(currTime);
+						osc.stop(currTime + n.d);
+						currTime += n.d * 0.88;
+					});
+				} catch (e) {}
+			}
+
+			function playApplause() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const bufferSize = Math.floor(ctx.sampleRate * 1.4);
+					const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+					const data = buffer.getChannelData(0);
+					for (let i = 0; i < bufferSize; i++) {
+						data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.7));
+					}
+					const noise = ctx.createBufferSource();
+					noise.buffer = buffer;
+					const filter = ctx.createBiquadFilter();
+					filter.type = 'bandpass';
+					filter.frequency.value = 1100;
+					filter.Q.value = 1.4;
+					const gain = ctx.createGain();
+					gain.gain.setValueAtTime(0.24, ctx.currentTime);
+					gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.35);
+					noise.connect(filter);
+					filter.connect(gain);
+					gain.connect(ctx.destination);
+					noise.start();
+				} catch (e) {}
+			}
+
+			function playAirHorn() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const freqs = [466.16, 470.0, 622.25];
+					freqs.forEach((freq) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = 'sawtooth';
+						osc.frequency.setValueAtTime(freq, now);
+						gain.gain.setValueAtTime(0.18, now);
+						gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(now);
+						osc.stop(now + 0.55);
+					});
+				} catch (e) {}
+			}
+
+			function playTingTingJackpot() {
+				if (!isSoundEnabled) return;
+				try {
+					const ctx = getAudioContext();
+					if (!ctx) return;
+					const now = ctx.currentTime;
+					const freqs = [587.33, 739.99, 880.0, 1174.66, 1760.0];
+					freqs.forEach((freq, idx) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						const startTime = now + idx * 0.08;
+						osc.type = 'sine';
+						osc.frequency.setValueAtTime(freq, startTime);
+						gain.gain.setValueAtTime(0.18, startTime);
+						gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.55);
+						osc.connect(gain);
+						gain.connect(ctx.destination);
+						osc.start(startTime);
+						osc.stop(startTime + 0.6);
+					});
+				} catch (e) {}
+			}
+
 			let lastCheerSoundTime = 0;
 			function playCheerSound(emoji) {
 				if (!isSoundEnabled) return;
@@ -4748,20 +5260,20 @@
 					}
 					container.appendChild(statusBadge);
 
-					lunchPickers.forEach(user => {
-						const card = document.createElement('div');
-						card.className = 'lunch-picker-user-card';
-						card.innerHTML = `
-							<div class="lunch-picker-user-avatar">
-								${getAvatarHtml(user.avatar, 'avatar')}
-							</div>
-							<div class="lunch-picker-user-info">
-								<div class="lunch-picker-user-name">${user.name}</div>
-								<div class="lunch-picker-user-role">🚗 Đi lấy cơm</div>
-							</div>
-						`;
-						container.appendChild(card);
-					});
+						lunchPickers.forEach(user => {
+							const card = document.createElement('div');
+							card.className = 'lunch-picker-user-card';
+							card.innerHTML = `
+								<div class="lunch-picker-user-avatar">
+									${getAvatarHtml(user.avatar, 'avatar', user.avatar_frame || '')}
+								</div>
+								<div class="lunch-picker-user-info">
+									<div class="lunch-picker-user-name">${getUserDisplayNameWithBadgeHtml(user.name, user.custom_title || '')}</div>
+									<div class="lunch-picker-user-role">🚗 Đi lấy cơm</div>
+								</div>
+							`;
+							container.appendChild(card);
+						});
 
 					lunchPickerBody.appendChild(container);
 
@@ -6653,51 +7165,598 @@
 				}
 			}
 
-			function updateLeaderboardUI(sortedDucks, totalDucks) {
-				if (!duckRaceLeaderboardStrip) return;
-				duckRaceLeaderboardStrip.innerHTML = '';
+			// ============================================
+			// SHOP & WALLET SYSTEM (VND ECONOMY)
+			// ============================================
+			let userWalletState = {
+				balance: 100000,
+				avatar_frame: '',
+				custom_title: '',
+				owned_items: [],
+				transactions: [],
+				shop_items: {}
+			};
+			let currentShopTab = 'frames';
+			let selectedBetAmount = 5000;
+			let userCurrentPrediction = null;
+			let isSpectatorRewardClaimed = false;
 
-				// Highlight last 2 positions
-				sortedDucks.forEach((d, idx) => {
-					const rank = idx + 1;
-					const isDanger = rank > Math.max(1, totalDucks - 2);
-					const item = document.createElement('div');
-					item.className = `duck-leaderboard-item ${isDanger ? 'danger' : 'safe'}`;
-					item.innerHTML = `
-						<span>${isDanger ? '🚗' : `#${rank}`}</span>
-						<span>${d.name}</span>
-						${isDanger ? '<span style="font-size: 0.65rem; background: #ef4444; color: white; padding: 1px 4px; border-radius: 4px;">CHÓT</span>' : ''}
-					`;
-					duckRaceLeaderboardStrip.appendChild(item);
-				});
+			const SHOP_FRAMES_CATALOG = [
+				{ id: 'gold_royale', name: 'Hoàng Gia Kim Cương', price: 100000, icon: '👑', desc: 'Viền vàng ánh kim xoay 360 độ lấp lánh' },
+				{ id: 'cyberpunk_neon', name: 'Cyberpunk Neon RGB', price: 80000, icon: '🌌', desc: 'Hiệu ứng RGB 7 màu công nghệ tương lai' },
+				{ id: 'inferno_flame', name: 'Hỏa Diệm Rực Cháy', price: 60000, icon: '🔥', desc: 'Lửa bốc cuồn cuộn đỏ rực rỡ' },
+				{ id: 'thunder_storm', name: 'Lôi Thần Điện Quang', price: 90000, icon: '⚡', desc: 'Tia chớp xanh dương giật điện liên hồi' },
+				{ id: 'cosmic_galaxy', name: 'Vũ Trụ Huyền Bí', price: 120000, icon: '🪐', desc: 'Vòng xoáy ngân hà tím huyền bí' },
+				{ id: 'frozen_frost', name: 'Băng Tuyết Bắc Cực', price: 50000, icon: '❄️', desc: 'Tinh thể băng tuyết phát sáng mờ ảo' },
+				{ id: 'sakura_blossom', name: 'Hoa Anh Đào', price: 40000, icon: '🌸', desc: 'Cánh hoa anh đào hồng phấn nhẹ nhàng' },
+				{ id: 'emerald_nature', name: 'Tự Nhiên Rừng Xanh', price: 30000, icon: '🍃', desc: 'Lá cây ngọc lục bảo tươi mát' }
+			];
+
+			const SHOP_TITLES_CATALOG = [
+				{ id: 'title_dai_gia', name: 'Đại Gia Cơm Trưa', price: 150000, icon: '💎', desc: 'Danh hiệu vàng hoàng kim đẳng cấp' },
+				{ id: 'title_chua_te', name: 'Chúa Tể Văn Phòng', price: 200000, icon: '👑', desc: 'Danh hiệu đỏ rực quyền lực tối cao' },
+				{ id: 'title_than_doan', name: 'Thần Đoán Vũ Trụ', price: 120000, icon: '🔮', desc: 'Danh hiệu tím huyền bí nhìn thấu kết quả' },
+				{ id: 'title_dan_choi', name: 'Dân Chơi Không Sợ Mưa Rơi', price: 130000, icon: '🍷', desc: 'Danh hiệu hồng neon chất chơi' },
+				{ id: 'title_ban_tay_vang', name: 'Bàn Tay Vàng', price: 110000, icon: '🍀', desc: 'Danh hiệu xanh ngọc may mắn' },
+				{ id: 'title_vua_ve_dich', name: 'Vua Về Đích', price: 100000, icon: '🚀', desc: 'Danh hiệu cam lửa tốc độ' },
+				{ id: 'title_toc_do', name: 'Tốc Độ Bàn Thờ', price: 90000, icon: '⚡', desc: 'Danh hiệu sấm sét siêu thanh' },
+				{ id: 'title_phu_thuy', name: 'Phù Thủy Ẩm Thực', price: 140000, icon: '🧙‍♂️', desc: 'Danh hiệu xanh chàm ma thuật' }
+			];
+
+			async function fetchWalletBalance() {
+				if (!currentUser) return;
+				try {
+					const resp = await fetch('/api/wallet/balance');
+					if (!resp.ok) return;
+					const data = await resp.json();
+					userWalletState = data;
+					if (currentUser) {
+						currentUser.balance = data.balance;
+						currentUser.avatar_frame = data.avatar_frame;
+						currentUser.custom_title = data.custom_title;
+						currentUser.owned_items = JSON.stringify(data.owned_items || []);
+					}
+
+					// Update header badge
+					const headerBalance = document.getElementById('header-user-balance');
+					if (headerBalance) {
+						headerBalance.textContent = formatCurrency(data.balance || 0);
+					}
+					const modalBalance = document.getElementById('shop-modal-balance');
+					if (modalBalance) {
+						modalBalance.textContent = formatCurrency(data.balance || 0);
+					}
+					applyCurrentUserCosmetics();
+					updateShopPreviewBox();
+				} catch (e) {}
 			}
 
+			function updateShopPreviewBox() {
+				if (!currentUser) return;
+				const previewBox = document.getElementById('shop-preview-avatar-box');
+				const previewIcon = document.getElementById('shop-preview-avatar-icon');
+				const previewName = document.getElementById('shop-preview-user-name');
+				const previewTitle = document.getElementById('shop-preview-user-title');
+				const previewFrameName = document.getElementById('shop-preview-frame-name');
+
+				const activeFrame = userWalletState.avatar_frame || (currentUser ? currentUser.avatar_frame : '') || '';
+				const activeTitle = userWalletState.custom_title || (currentUser ? currentUser.custom_title : '') || '';
+
+				if (previewIcon) {
+					previewIcon.innerHTML = getAvatarHtml(currentUser.avatar || '👤', '', activeFrame);
+				}
+				if (previewName) {
+					previewName.innerHTML = getUserNameHtml(currentUser.name || 'Người dùng', activeTitle);
+				}
+				if (previewTitle) {
+					previewTitle.innerHTML = getUserTitleHtml(activeTitle);
+				}
+				if (previewFrameName) {
+					const frameObj = SHOP_FRAMES_CATALOG.find(f => f.id === activeFrame);
+					previewFrameName.textContent = frameObj ? frameObj.name : 'Mặc định';
+				}
+			}
+
+			function openShopModal() {
+				const overlay = document.getElementById('shop-modal-overlay');
+				if (!overlay) return;
+				overlay.style.display = 'flex';
+				fetchWalletBalance();
+				switchShopTab(currentShopTab || 'frames');
+			}
+
+			function closeShopModal() {
+				const overlay = document.getElementById('shop-modal-overlay');
+				if (!overlay) return;
+				overlay.style.display = 'none';
+			}
+
+			function switchShopTab(tabName) {
+				currentShopTab = tabName;
+				['frames', 'titles', 'wardrobe', 'history'].forEach(t => {
+					const btn = document.getElementById(`shop-tab-btn-${t}`);
+					if (btn) btn.classList.toggle('active', t === tabName);
+				});
+
+				const body = document.getElementById('shop-modal-body');
+				if (!body) return;
+
+				const owned = userWalletState.owned_items || [];
+				const currentFrame = userWalletState.avatar_frame || (currentUser ? currentUser.avatar_frame : '') || '';
+				const currentTitle = userWalletState.custom_title || (currentUser ? currentUser.custom_title : '') || '';
+				const userBalance = userWalletState.balance || 0;
+
+				if (tabName === 'frames') {
+					let html = '<div class="shop-grid">';
+					SHOP_FRAMES_CATALOG.forEach(f => {
+						const isOwned = owned.includes(f.id);
+						const isEquipped = currentFrame === f.id;
+						let actionBtn = '';
+						if (isEquipped) {
+							actionBtn = `<button class="shop-item-btn equipped" onclick="equipShopItem('frame', '')">✅ Đang Dùng (Tháo)</button>`;
+						} else if (isOwned) {
+							actionBtn = `<button class="shop-item-btn equip" onclick="equipShopItem('frame', '${f.id}')">✨ Trang Bị</button>`;
+						} else {
+							actionBtn = `<button class="shop-item-btn buy" onclick="buyShopItem('${f.id}')">🛒 Mua (${formatCurrency(f.price)})</button>`;
+						}
+
+						html += `
+							<div class="shop-item-card">
+								<div class="shop-item-icon" style="overflow: visible; display: flex; align-items: center; justify-content: center; padding: 0.5rem 0;">
+									<div style="width: 52px; height: 52px; font-size: 1.8rem; display: flex; align-items: center; justify-content: center;">
+										${getAvatarHtml(f.icon, '', f.id)}
+									</div>
+								</div>
+								<div class="shop-item-name">${f.name}</div>
+								<div style="font-size: 0.72rem; color: var(--text-muted);">${f.desc}</div>
+								<div class="shop-item-price">${formatCurrency(f.price)}</div>
+								${actionBtn}
+							</div>
+						`;
+					});
+					html += '</div>';
+					body.innerHTML = html;
+				} else if (tabName === 'titles') {
+					let html = '<div class="shop-grid">';
+					SHOP_TITLES_CATALOG.forEach(t => {
+						const isOwned = owned.includes(t.id);
+						const isEquipped = currentTitle === t.id;
+						let actionBtn = '';
+						if (isEquipped) {
+							actionBtn = `<button class="shop-item-btn equipped" onclick="equipShopItem('title', '')">✅ Đang Dùng (Tháo)</button>`;
+						} else if (isOwned) {
+							actionBtn = `<button class="shop-item-btn equip" onclick="equipShopItem('title', '${t.id}')">✨ Trang Bị</button>`;
+						} else {
+							actionBtn = `<button class="shop-item-btn buy" onclick="buyShopItem('${t.id}')">🛒 Mua (${formatCurrency(t.price)})</button>`;
+						}
+
+						html += `
+							<div class="shop-item-card">
+								<div class="shop-item-icon">${t.icon}</div>
+								<div class="shop-item-name">${getUserTitleHtml(t.id)}</div>
+								<div style="font-size: 0.72rem; color: var(--text-muted);">${t.desc}</div>
+								<div class="shop-item-price">${formatCurrency(t.price)}</div>
+								${actionBtn}
+							</div>
+						`;
+					});
+					html += '</div>';
+					body.innerHTML = html;
+				} else if (tabName === 'wardrobe') {
+					const ownedFrames = SHOP_FRAMES_CATALOG.filter(f => owned.includes(f.id));
+					const ownedTitles = SHOP_TITLES_CATALOG.filter(t => owned.includes(t.id));
+					const totalOwned = ownedFrames.length + ownedTitles.length;
+
+					let html = `
+						<div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+							<div>
+								<div style="font-weight: 800; font-size: 0.95rem; color: #b45309;">✨ Tủ Đồ Cá Nhân Của Bạn</div>
+								<div style="font-size: 0.78rem; color: var(--text-muted);">Đã sở hữu: <strong>${totalOwned}/16</strong> vật phẩm</div>
+							</div>
+							<div style="display: flex; gap: 0.35rem;">
+								${currentFrame ? `<button class="bet-pill-btn" onclick="equipShopItem('frame', '')" title="Bỏ khung">✕ Tháo Khung</button>` : ''}
+								${currentTitle ? `<button class="bet-pill-btn" onclick="equipShopItem('title', '')" title="Bỏ danh hiệu">✕ Tháo Danh Hiệu</button>` : ''}
+							</div>
+						</div>
+					`;
+
+					if (totalOwned === 0) {
+						html += `
+							<div style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
+								<div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎒</div>
+								<div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin-bottom: 0.25rem;">Túi đồ của bạn đang trống!</div>
+								<div style="font-size: 0.82rem; margin-bottom: 1rem;">Hãy khám phá các Khung Avatar và Danh Hiệu VIP đẹp mắt trong Cửa Hàng để trang bị nhé.</div>
+								<button type="button" class="btn btn-primary" onclick="switchShopTab('frames')" style="padding: 0.45rem 1rem; font-size: 0.85rem; width: auto; display: inline-block;">🛒 Mua Khung Avatar</button>
+							</div>
+						`;
+					} else {
+						// Section 1: Frames
+						html += `<div style="font-weight: 800; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">🖼️ Khung Avatar Đã Có (${ownedFrames.length})</div>`;
+						if (ownedFrames.length === 0) {
+							html += `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; font-style: italic;">Chưa sở hữu khung nào. Bạn có thể mở tab "Khung Avatar" để mua.</div>`;
+						} else {
+							html += '<div class="shop-grid" style="margin-bottom: 1.25rem;">';
+							ownedFrames.forEach(f => {
+								const isEquipped = currentFrame === f.id;
+								html += `
+									<div class="shop-item-card" style="${isEquipped ? 'border-color: #10b981; background: rgba(16, 185, 129, 0.08);' : ''}">
+										<div class="shop-item-icon" style="overflow: visible; display: flex; align-items: center; justify-content: center; padding: 0.5rem 0;">
+											<div style="width: 52px; height: 52px; font-size: 1.8rem; display: flex; align-items: center; justify-content: center;">
+												${getAvatarHtml(f.icon, '', f.id)}
+											</div>
+										</div>
+										<div class="shop-item-name">${f.name}</div>
+										${isEquipped
+											? `<button class="shop-item-btn equipped" onclick="equipShopItem('frame', '')">✅ Đang Đeo (Tháo)</button>`
+											: `<button class="shop-item-btn equip" onclick="equipShopItem('frame', '${f.id}')">⚡ Đổi Sang Khung Này</button>`
+										}
+									</div>
+								`;
+							});
+							html += '</div>';
+						}
+
+						// Section 2: Titles
+						html += `<div style="font-weight: 800; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">🏷️ Danh Hiệu VIP Đã Có (${ownedTitles.length})</div>`;
+						if (ownedTitles.length === 0) {
+							html += `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; font-style: italic;">Chưa sở hữu danh hiệu nào. Bạn có thể mở tab "Danh Hiệu VIP" để mua.</div>`;
+						} else {
+							html += '<div class="shop-grid">';
+							ownedTitles.forEach(t => {
+								const isEquipped = currentTitle === t.id;
+								html += `
+									<div class="shop-item-card" style="${isEquipped ? 'border-color: #10b981; background: rgba(16, 185, 129, 0.08);' : ''}">
+										<div class="shop-item-icon">${t.icon}</div>
+										<div class="shop-item-name">${getUserTitleHtml(t.id)}</div>
+										${isEquipped
+											? `<button class="shop-item-btn equipped" onclick="equipShopItem('title', '')">✅ Đang Dùng (Tháo)</button>`
+											: `<button class="shop-item-btn equip" onclick="equipShopItem('title', '${t.id}')">⚡ Đổi Sang Danh Hiệu Này</button>`
+										}
+									</div>
+								`;
+							});
+							html += '</div>';
+						}
+					}
+					body.innerHTML = html;
+				} else if (tabName === 'history') {
+					const txs = userWalletState.transactions || [];
+					if (txs.length === 0) {
+						body.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem;">Chưa có lịch sử giao dịch nào.</div>';
+						return;
+					}
+					let html = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+					txs.forEach(tx => {
+						const isPlus = tx.amount > 0;
+						const color = isPlus ? '#10b981' : '#ef4444';
+						const sign = isPlus ? '+' : '';
+						const reasonMap = {
+							INITIAL_GRANT: '🎁 Cấp vốn ban đầu',
+							ORDER_CASHBACK: '🍚 Tích lũy đặt cơm',
+							ORDER_ADJUST: '🍚 Điều chỉnh đặt cơm',
+							ORDER_CANCEL: '↩️ Hoàn trả đơn hủy',
+							BET_PLACED: '🎲 Đặt cược dự đoán',
+							BET_WON: '🎉 Thắng cược dự đoán',
+							SPECTATE_REWARD: '👀 Thưởng xem trực tiếp',
+							SHIPPER_BOUNTY: '🚗 Thưởng Shipper đi lấy cơm',
+							SHOP_PURCHASE: '🛍️ Mua vật phẩm cửa hàng',
+							VIP_CHEER: '✨ Cổ vũ VIP'
+						};
+						const reasonText = reasonMap[tx.reason] || tx.reason;
+						html += `
+							<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.85rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--panel-border);">
+								<div>
+									<div style="font-weight: 700; font-size: 0.85rem;">${reasonText}</div>
+									<div style="font-size: 0.75rem; color: var(--text-muted);">${new Date(tx.created_at).toLocaleString('vi-VN')}</div>
+								</div>
+								<div style="text-align: right;">
+									<div style="font-weight: 900; font-size: 0.95rem; color: ${color};">${sign}${formatCurrency(tx.amount)}</div>
+									<div style="font-size: 0.75rem; color: var(--text-muted);">Số dư: ${formatCurrency(tx.balance_after)}</div>
+								</div>
+							</div>
+						`;
+					});
+					html += '</div>';
+					body.innerHTML = html;
+				}
+			}
+
+			async function buyShopItem(itemId) {
+				if (!currentUser) return;
+				try {
+					const resp = await fetch('/api/shop/buy', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ itemId })
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						playCoinTing();
+						showToast(`🎉 ${data.message}`, 'success');
+						await fetchWalletBalance();
+						switchShopTab(currentShopTab);
+						applyCurrentUserCosmetics();
+						renderOrdersList();
+					} else {
+						showToast(data.error || 'Giao dịch thất bại.', 'error');
+					}
+				} catch (e) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
+			async function equipShopItem(type, itemId) {
+				if (!currentUser) return;
+				try {
+					const resp = await fetch('/api/shop/equip', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ type, itemId })
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						showToast('✨ ' + data.message, 'success');
+						if (currentUser) {
+							if (type === 'frame') {
+								currentUser.avatar_frame = data.avatar_frame !== undefined ? data.avatar_frame : itemId;
+							} else if (type === 'title') {
+								currentUser.custom_title = data.custom_title !== undefined ? data.custom_title : itemId;
+							}
+						}
+						userWalletState.avatar_frame = currentUser.avatar_frame;
+						userWalletState.custom_title = currentUser.custom_title;
+
+						applyCurrentUserCosmetics();
+						switchShopTab(currentShopTab);
+						await fetchWalletBalance();
+					} else {
+						showToast(data.error || 'Trang bị thất bại.', 'error');
+					}
+				} catch (e) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
+			// ============================================
+			// PREDICTION ARENA & BETTING
+			// ============================================
+			function setBetAmount(amount) {
+				selectedBetAmount = amount;
+				document.querySelectorAll('.bet-pill-btn').forEach(btn => {
+					btn.classList.toggle('active', parseInt(btn.getAttribute('data-amount')) === amount);
+				});
+				const display = document.getElementById('pred-bet-display');
+				if (display) display.textContent = formatCurrency(amount);
+			}
+
+			async function loadRacePredictions() {
+				const candSelect = document.getElementById('pred-candidate-select');
+				const statusDiv = document.getElementById('my-prediction-status');
+				const poolBadge = document.getElementById('prediction-pool-badge');
+				const btnSubmit = document.getElementById('btn-submit-prediction');
+
+				if (!candSelect) return;
+
+				// Populate candidates from today's orders
+				candSelect.innerHTML = '<option value="">-- Chọn thí sinh --</option>';
+				const addedIds = new Set();
+				orders.forEach(o => {
+					if (!addedIds.has(o.user_id)) {
+						addedIds.add(o.user_id);
+						const opt = document.createElement('option');
+						opt.value = o.user_id;
+						opt.textContent = `${o.user_avatar && !o.user_avatar.startsWith('http') ? o.user_avatar : '🦆'} ${o.user_name}`;
+						candSelect.appendChild(opt);
+					}
+				});
+
+				try {
+					const resp = await fetch(`/api/lunch-race/predictions?date=${selectedDate}`);
+					if (!resp.ok) return;
+					const data = await resp.json();
+					userCurrentPrediction = data.myPrediction;
+
+					if (poolBadge) {
+						poolBadge.textContent = `Tổng cược: ${formatCurrency(data.totalPool || 0)} (${data.totalBets || 0} lượt)`;
+					}
+
+					if (userCurrentPrediction) {
+						const rankNames = { 1: '🥇 Top 1 (x3.0)', 2: '🥈 Top 2 (x2.0)', 3: '🥉 Top 3 (x1.5)' };
+						if (statusDiv) {
+							statusDiv.style.display = 'block';
+							statusDiv.innerHTML = `✅ Bạn đã dự đoán: <strong>${userCurrentPrediction.target_name}</strong> về <strong>${rankNames[userCurrentPrediction.predicted_rank]}</strong> (${formatCurrency(userCurrentPrediction.bet_amount)}). Trạng thái: <span style="color: #f59e0b;">${userCurrentPrediction.status}</span>`;
+						}
+						if (btnSubmit) {
+							btnSubmit.disabled = true;
+							btnSubmit.textContent = '🔒 Đã Đặt Cược';
+						}
+					} else {
+						if (statusDiv) statusDiv.style.display = 'none';
+						if (btnSubmit) {
+							btnSubmit.disabled = false;
+							btnSubmit.textContent = `🎲 Đặt Cược (${formatCurrency(selectedBetAmount)})`;
+						}
+					}
+				} catch (e) {}
+			}
+
+			async function submitPrediction() {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để tham gia dự đoán.', 'error');
+					return;
+				}
+				const candSelect = document.getElementById('pred-candidate-select');
+				const rankSelect = document.getElementById('pred-rank-select');
+				const targetId = parseInt(candSelect.value);
+				const rank = parseInt(rankSelect.value);
+
+				if (!targetId || !rank) {
+					showToast('Vui lòng chọn thí sinh dự đoán!', 'error');
+					return;
+				}
+
+				try {
+					const resp = await fetch('/api/lunch-race/predict', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							date: selectedDate,
+							predictedUserId: targetId,
+							predictedRank: rank,
+							betAmount: selectedBetAmount
+						})
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						playCoinTing();
+						showToast(`🎉 ${data.message}`, 'success');
+						await fetchWalletBalance();
+						await loadRacePredictions();
+					} else {
+						showToast(data.error || 'Đặt cược thất bại.', 'error');
+					}
+				} catch (e) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
+			// VIP Cheer FX
+			async function triggerVipCheer(cheerId) {
+				if (!currentUser) {
+					showToast('Vui lòng đăng nhập để sử dụng hiệu ứng VIP!', 'error');
+					return;
+				}
+				try {
+					const resp = await fetch('/api/lunch-race/vip-cheer', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ cheerId })
+					});
+					const data = await resp.json();
+					if (resp.ok) {
+						playCoinTing();
+						showToast(`✨ Đã kích hoạt hiệu ứng VIP!`, 'success');
+						await fetchWalletBalance();
+					} else {
+						showToast(data.error || 'Không thể kích hoạt hiệu ứng VIP.', 'error');
+					}
+				} catch (e) {
+					showToast('Lỗi kết nối máy chủ.', 'error');
+				}
+			}
+
+			// Claim Spectator Bounty
+			async function claimSpectatorReward() {
+				if (!currentUser || isSpectatorRewardClaimed) return;
+				try {
+					const resp = await fetch('/api/lunch-race/spectate-reward', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ date: selectedDate })
+					});
+					const data = await resp.json();
+					if (resp.ok && data.success) {
+						isSpectatorRewardClaimed = true;
+						playCoinTing();
+						showToast(`🪙 ${data.message}`, 'success');
+						await fetchWalletBalance();
+					}
+				} catch (e) {}
+			}
+
+			// ============================================
+			// PODIUM TOP 1-2-3 CELEBRATION & RESULTS
+			// ============================================
 			function showResultsOverlay(losers) {
-				if (!duckRaceResults || !duckRaceLosersContainer) return;
-				duckRaceLosersContainer.innerHTML = '';
+				if (!duckRaceResults) return;
+				const podiumContainer = document.getElementById('podium-top3-container');
+				const losersContainer = document.getElementById('duck-race-losers-container');
+				const predBanner = document.getElementById('race-prediction-result-banner');
+
+				if (losersContainer) losersContainer.innerHTML = '';
+				if (podiumContainer) podiumContainer.innerHTML = '';
 
 				const theme = getActiveRaceTheme();
 				const resultsTitle = document.getElementById('duck-race-results-title');
 				if (resultsTitle) {
 					resultsTitle.textContent = `🏆 KẾT THÚC CUỘC ${theme.name.toUpperCase()}!`;
 				}
-				const resultsSub = document.getElementById('duck-race-results-sub');
-				if (resultsSub) {
-					resultsSub.textContent = `2 người về chót đã lộ diện và sẽ đi lấy cơm hôm nay:`;
+
+				// Top 3 Podium
+				const race = activeRaceData;
+				if (race && race.ducks && podiumContainer) {
+					const sortedByRank = [...race.ducks].sort((a, b) => a.finishRank - b.finishRank);
+					const top1 = sortedByRank[0];
+					const top2 = sortedByRank[1];
+					const top3 = sortedByRank[2];
+
+					const makePodiumStep = (duck, rank, trophy, title) => {
+						if (!duck) return '';
+						return `
+							<div class="podium-step rank-${rank}">
+								<div style="font-size: 1.8rem; margin-bottom: 0.2rem;">${trophy}</div>
+								<div class="avatar-frame-wrapper avatar-frame-${duck.avatarFrame || ''}" style="width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 0.35rem;">
+									${getAvatarHtml(duck.avatar, '', duck.avatarFrame || '')}
+								</div>
+								<div style="font-weight: 800; font-size: 0.85rem; text-align: center; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+									${duck.name}
+								</div>
+								<div class="podium-pillar">
+									<div style="font-size: 1.4rem;">${rank}</div>
+									<div style="font-size: 0.72rem; opacity: 0.9;">${title}</div>
+								</div>
+							</div>
+						`;
+					};
+
+					// Render 2nd (Left), 1st (Center/Tallest), 3rd (Right)
+					podiumContainer.innerHTML = `
+						${makePodiumStep(top2, 2, '🥈', 'Á Quân')}
+						${makePodiumStep(top1, 1, '🥇', 'Quán Quân')}
+						${makePodiumStep(top3, 3, '🥉', 'Quý Quân')}
+					`;
 				}
 
-				losers.forEach(user => {
-					const card = document.createElement('div');
-					card.className = 'duck-loser-card';
-					card.innerHTML = `
-						<div class="duck-loser-avatar">
-							${getAvatarHtml(user.avatar, 'avatar')}
-						</div>
-						<div class="duck-loser-name">${user.name}</div>
-						<div class="duck-loser-tag">🚗 Đi lấy cơm</div>
-					`;
-					duckRaceLosersContainer.appendChild(card);
-				});
+				// Losers (Lunch pickers + 30k Bounty)
+				if (losersContainer && losers) {
+					losers.forEach(user => {
+						const card = document.createElement('div');
+						card.className = 'duck-loser-card';
+						card.innerHTML = `
+							<div class="duck-loser-avatar">
+								${getAvatarHtml(user.avatar, 'avatar')}
+							</div>
+							<div class="duck-loser-name">${user.name}</div>
+							<div class="duck-loser-tag">🚗 Đi lấy cơm (+30k Bounty)</div>
+						`;
+						losersContainer.appendChild(card);
+					});
+				}
+
+				// Check prediction result
+				if (predBanner && userCurrentPrediction && race && race.ducks) {
+					const targetRank = userCurrentPrediction.predicted_rank;
+					const targetUser = userCurrentPrediction.predicted_user_id;
+					const matchDuck = race.ducks.find(d => d.id === targetUser);
+
+					predBanner.style.display = 'block';
+					if (matchDuck && matchDuck.finishRank === targetRank) {
+						const mult = targetRank === 1 ? 3 : (targetRank === 2 ? 2 : 1.5);
+						const wonAmount = Math.floor(userCurrentPrediction.bet_amount * mult);
+						predBanner.style.background = 'rgba(16, 185, 129, 0.18)';
+						predBanner.style.border = '1.5px solid #10b981';
+						predBanner.style.color = '#10b981';
+						predBanner.innerHTML = `🎉 CHÚC MỪNG! Bạn đoán đúng <strong>${userCurrentPrediction.target_name}</strong> về Top ${targetRank} và thắng <strong>+${formatCurrency(wonAmount)}</strong>!`;
+					} else {
+						predBanner.style.background = 'rgba(239, 68, 68, 0.15)';
+						predBanner.style.border = '1.5px solid #ef4444';
+						predBanner.style.color = '#ef4444';
+						predBanner.innerHTML = `😢 Rất tiếc! <strong>${userCurrentPrediction.target_name}</strong> về hạng #${matchDuck ? matchDuck.finishRank : '?'}. Chúc bạn may mắn lần sau!`;
+					}
+				}
+
+				// Trigger Spectator Bounty
+				claimSpectatorReward();
 
 				const isAdmin = currentUser && currentUser.id === 1;
 				const isLocked = activeRaceData && (activeRaceData.isLocked || activeRaceData.isOfficial);
@@ -6735,8 +7794,10 @@
 				loadLunchPickersAndRace();
 			}, 750);
 
-			// Initialize theme on DOM ready
+			// Initialize theme and wallet on DOM ready
 			loadTheme();
+			fetchWalletBalance();
+			loadRacePredictions();
 		</script>
 	</body>
 </html>
