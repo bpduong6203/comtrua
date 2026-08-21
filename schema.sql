@@ -6,7 +6,11 @@ CREATE TABLE IF NOT EXISTS users (
     phone TEXT,
     avatar TEXT DEFAULT '👤',
     default_note TEXT,
-    active INTEGER DEFAULT 1, -- 1: Đang hoạt động, 0: Đã nghỉ/tạm ngưng
+    balance INTEGER DEFAULT 100000, -- Số dư VND (Mặc định cấp 100k)
+    avatar_frame TEXT DEFAULT '',   -- Khung avatar động
+    custom_title TEXT DEFAULT '',   -- Danh hiệu phát sáng
+    owned_items TEXT DEFAULT '[]',  -- Danh sách ID vật phẩm đã sở hữu
+    active INTEGER DEFAULT 1,       -- 1: Đang hoạt động, 0: Đã nghỉ/tạm ngưng
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -91,3 +95,31 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Chèn dữ liệu cài đặt mẫu mặc định ban đầu
 INSERT OR IGNORE INTO settings (key, value) VALUES
 ('order_deadline', '11:00');
+
+-- 6. Bảng dự đoán cuộc đua Top 1-2-3 (Race Predictions)
+CREATE TABLE IF NOT EXISTS race_predictions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    predicted_user_id INTEGER NOT NULL,
+    predicted_rank INTEGER NOT NULL DEFAULT 1,
+    bet_amount INTEGER NOT NULL DEFAULT 10000,
+    payout INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'PENDING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(predicted_user_id) REFERENCES users(id),
+    UNIQUE(date, user_id)
+);
+
+-- 7. Bảng lịch sử biến động số dư VND (Transactions)
+CREATE TABLE IF NOT EXISTS coin_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    metadata TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);

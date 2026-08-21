@@ -12,8 +12,42 @@ async function setupDatabase() {
 			phone TEXT,
 			avatar TEXT DEFAULT '👤',
 			default_note TEXT,
+			balance INTEGER DEFAULT 100000,
+			avatar_frame TEXT DEFAULT '',
+			custom_title TEXT DEFAULT '',
+			owned_items TEXT DEFAULT '[]',
 			active INTEGER DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`).run();
+
+	await env.DB.prepare(`
+		CREATE TABLE IF NOT EXISTS race_predictions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			date TEXT NOT NULL,
+			user_id INTEGER NOT NULL,
+			predicted_user_id INTEGER NOT NULL,
+			predicted_rank INTEGER NOT NULL DEFAULT 1,
+			bet_amount INTEGER NOT NULL DEFAULT 10000,
+			payout INTEGER DEFAULT 0,
+			status TEXT DEFAULT 'PENDING',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id),
+			FOREIGN KEY(predicted_user_id) REFERENCES users(id),
+			UNIQUE(date, user_id)
+		)
+	`).run();
+
+	await env.DB.prepare(`
+		CREATE TABLE IF NOT EXISTS coin_transactions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			amount INTEGER NOT NULL,
+			balance_after INTEGER NOT NULL,
+			reason TEXT NOT NULL,
+			metadata TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id)
 		)
 	`).run();
 
@@ -108,6 +142,8 @@ describe('ComTrua Backend Tests', () => {
 	beforeEach(async () => {
 		await setupDatabase();
 		await env.DB.prepare('PRAGMA foreign_keys = OFF').run();
+		await env.DB.prepare('DELETE FROM coin_transactions').run();
+		await env.DB.prepare('DELETE FROM race_predictions').run();
 		await env.DB.prepare('DELETE FROM payments').run();
 		await env.DB.prepare('DELETE FROM orders').run();
 		await env.DB.prepare('DELETE FROM users').run();
@@ -122,19 +158,23 @@ describe('ComTrua Backend Tests', () => {
 		await env.DB.prepare("INSERT OR IGNORE INTO toppings (id, shop_id, name, price, active) VALUES (5, 1, 'Trứng ốp la', 5000, 1)").run();
 	});
 
-	it('should reject legacy login and require Clerk authentication', async () => {
+	it('should support bypass login with userId or name', async () => {
+		// 1. Create a user
+		await env.DB.prepare("INSERT INTO users (id, name, balance) VALUES (10, 'Nguyễn Văn A', 100000)").run();
+
 		const request = new Request('http://example.com/api/users/login', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name: 'Nguyễn Văn A', password: '123456' })
+			body: JSON.stringify({ userId: 10 })
 		});
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		await waitOnExecutionContext(ctx);
 
-		expect(response.status).toBe(400);
+		expect(response.status).toBe(200);
 		const data = (await response.json()) as any;
-		expect(data.error).toContain('Clerk');
+		expect(data.user.name).toBe('Nguyễn Văn A');
+		expect(data.user.balance).toBe(100000);
 	});
 
 	it('should authenticate and link user with Clerk', async () => {
@@ -384,15 +424,15 @@ describe('ComTrua Backend Tests', () => {
 	it('should exclude users who already picked up lunch earlier in the week', async () => {
 		const { user: admin, sessionCookie } = await createClerkUser('Admin', 'user_clerk_admin');
 
-		await env.DB.prepare("INSERT INTO users (id, name) VALUES (2, 'User B'), (3, 'User C'), (4, 'User D')").run();
+		await env.DB.prepare("INSERT INTO users (id, name) VALUES (20, 'User B'), (30, 'User C'), (40, 'User D')").run();
 
 		const mondayPickers = [
 			{ id: admin.id, name: 'Admin', avatar: '👤' },
-			{ id: 2, name: 'User B', avatar: '👤' }
+			{ id: 20, name: 'User B', avatar: '👤' }
 		];
 		await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('lunch_pickers_2026-07-20', ?)").bind(JSON.stringify(mondayPickers)).run();
 
-		for (const uId of [admin.id, 2, 3, 4]) {
+		for (const uId of [admin.id, 20, 30, 40]) {
 			await env.DB.prepare("INSERT INTO orders (date, user_id, dish_id, dish_name, dish_price) VALUES ('2026-07-21', ?, 1, 'Cơm Sườn', 35000)").bind(uId).run();
 		}
 
@@ -412,6 +452,174 @@ describe('ComTrua Backend Tests', () => {
 		const data = (await response.json()) as any;
 		const pickedIds = data.pickers.map((p: any) => p.id).sort();
 
-		expect(pickedIds).toEqual([3, 4]);
+		expect(pickedIds).toEqual([30, 40]);
+	});
+
+	it('should grant initial 100k balance and add cashback when placing order', async () => {
+		const { user, sessionCookie } = await createClerkUser('Player A', 'clerk_player_a');
+		expect(user.balance).toBe(100000);
+
+		// Place an order for 35,000 + 5,000 topping = 40,000 VND
+		const today = new Date().toISOString().split('T')[0];
+		const orderReq = new Request('http://example.com/api/orders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: sessionCookie || '' },
+			body: JSON.stringify({
+				user_id: user.id,
+				dish_id: 1,
+				date: today,
+				topping_ids: [5]
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(orderReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		// Check wallet balance -> should be 100,000 + 40,000 = 140,000 VND
+		const walletReq = new Request('http://example.com/api/wallet/balance', {
+			headers: { Cookie: sessionCookie || '' }
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(walletReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const wallet = (await response.json()) as any;
+		expect(wallet.balance).toBe(140000);
+		expect(wallet.transactions.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('should allow placing Top 1 prediction bet and buying shop items', async () => {
+		const { user, sessionCookie } = await createClerkUser('Player B', 'clerk_player_b');
+		await env.DB.prepare("INSERT INTO users (id, name) VALUES (10, 'Candidate Ten')").run();
+
+		const today = new Date().toISOString().split('T')[0];
+		// Place bet 20,000 on Candidate Ten as Rank 1
+		const betReq = new Request('http://example.com/api/lunch-race/predict', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: sessionCookie || '' },
+			body: JSON.stringify({
+				date: today,
+				predictedUserId: 10,
+				predictedRank: 1,
+				betAmount: 20000
+			})
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(betReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const betData = (await response.json()) as any;
+		expect(betData.newBalance).toBe(80000);
+
+		// Buy a shop item (Sakura Blossom frame: 40,000)
+		const buyReq = new Request('http://example.com/api/shop/buy', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: sessionCookie || '' },
+			body: JSON.stringify({ itemId: 'sakura_blossom' })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(buyReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const buyData = (await response.json()) as any;
+		expect(buyData.newBalance).toBe(40000);
+		expect(buyData.avatar_frame).toBe('sakura_blossom');
+		expect(buyData.owned_items).toContain('sakura_blossom');
+
+		// Claim spectator reward (+10,000)
+		const rewardReq = new Request('http://example.com/api/lunch-race/spectate-reward', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: sessionCookie || '' },
+			body: JSON.stringify({ date: today })
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(rewardReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+		const rewardData = (await response.json()) as any;
+		expect(rewardData.reward).toBe(10000);
+		expect(rewardData.newBalance).toBe(50000);
+	});
+
+	it('should settle bet winnings (x3.0 multiplier) and grant shipper bounty (+30,000đ) for losers', async () => {
+		const raceDate = '2026-08-22';
+		// Create 2 users: Better (Winner) and Runner/Picker (Loser)
+		await env.DB.prepare('INSERT INTO users (id, name, balance) VALUES (201, "BetterUser", 100000), (202, "FastDuck", 100000), (203, "PickerLoser", 100000)').run();
+
+		// BetterUser logs in and bets 20,000 on FastDuck for Top 1
+		const loginReq = new Request('http://example.com/api/users/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ userId: 201 })
+		});
+		let ctx = createExecutionContext();
+		let response = await worker.fetch(loginReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		const sessionCookie = response.headers.get('set-cookie');
+
+		const betReq = new Request('http://example.com/api/lunch-race/predict', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: sessionCookie || '' },
+			body: JSON.stringify({
+				date: raceDate,
+				predictedUserId: 202,
+				predictedRank: 1,
+				betAmount: 20000
+			})
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(betReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		// Balance is now 80,000
+		const u1 = await env.DB.prepare('SELECT balance FROM users WHERE id = 201').first<{ balance: number }>();
+		expect(u1?.balance).toBe(80000);
+
+		// Admin injects finished race where FastDuck is Rank 1, PickerLoser is Loser
+		const finishedRace = {
+			raceId: `test_race_${Date.now()}`,
+			date: raceDate,
+			startTime: Date.now() - 30000,
+			durationMs: 15000,
+			ducks: [
+				{ id: 202, name: 'FastDuck', finishRank: 1 },
+				{ id: 201, name: 'BetterUser', finishRank: 2 },
+				{ id: 203, name: 'PickerLoser', finishRank: 3 }
+			],
+			losers: [
+				{ id: 203, name: 'PickerLoser', avatar: '🦆' }
+			]
+		};
+
+		await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+			.bind(`lunch_race_${raceDate}`, JSON.stringify(finishedRace))
+			.run();
+
+		// Call GET /api/lunch-race to trigger settlement
+		const settleReq = new Request(`http://example.com/api/lunch-race?date=${raceDate}`, {
+			method: 'GET',
+			headers: { Cookie: sessionCookie || '' }
+		});
+		ctx = createExecutionContext();
+		response = await worker.fetch(settleReq, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		// Verify BetterUser received bet winning payout (+60,000đ = 20,000 * 3.0)
+		const betterAfter = await env.DB.prepare('SELECT balance FROM users WHERE id = 201').first<{ balance: number }>();
+		expect(betterAfter?.balance).toBe(140000); // 80,000 + 60,000
+
+		const betWonTx = await env.DB.prepare('SELECT * FROM coin_transactions WHERE user_id = 201 AND reason = "BET_WON"').first<any>();
+		expect(betWonTx).toBeDefined();
+		expect(betWonTx.amount).toBe(60000);
+
+		// Verify PickerLoser received shipper bounty (+30,000đ)
+		const pickerAfter = await env.DB.prepare('SELECT balance FROM users WHERE id = 203').first<{ balance: number }>();
+		expect(pickerAfter?.balance).toBe(130000); // 100,000 + 30,000
+
+		const bountyTx = await env.DB.prepare('SELECT * FROM coin_transactions WHERE user_id = 203 AND reason = "SHIPPER_BOUNTY"').first<any>();
+		expect(bountyTx).toBeDefined();
+		expect(bountyTx.amount).toBe(30000);
 	});
 });

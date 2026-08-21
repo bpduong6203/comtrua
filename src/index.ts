@@ -178,6 +178,10 @@ interface UserAuth {
 	phone: string | null;
 	avatar: string;
 	default_note: string | null;
+	balance: number;
+	avatar_frame?: string | null;
+	custom_title?: string | null;
+	owned_items?: string | null;
 	active: number;
 	clerk_id?: string | null;
 }
@@ -193,8 +197,84 @@ async function ensureClerkIdColumn(db: D1Database) {
 	}
 }
 
+async function ensureGamificationTables(db: D1Database) {
+	await ensureClerkIdColumn(db);
+	try {
+		await db.prepare('SELECT balance, avatar_frame, custom_title, owned_items FROM users LIMIT 1').first();
+	} catch (e) {
+		try { await db.prepare('ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 100000').run(); } catch (err) {}
+		try { await db.prepare('ALTER TABLE users ADD COLUMN avatar_frame TEXT DEFAULT ""').run(); } catch (err) {}
+		try { await db.prepare('ALTER TABLE users ADD COLUMN custom_title TEXT DEFAULT ""').run(); } catch (err) {}
+		try { await db.prepare('ALTER TABLE users ADD COLUMN owned_items TEXT DEFAULT "[]"').run(); } catch (err) {}
+		try { await db.prepare('UPDATE users SET balance = 100000 WHERE balance IS NULL').run(); } catch (err) {}
+	}
+
+	try {
+		await db.prepare(`
+			CREATE TABLE IF NOT EXISTS race_predictions (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				date TEXT NOT NULL,
+				user_id INTEGER NOT NULL,
+				predicted_user_id INTEGER NOT NULL,
+				predicted_rank INTEGER NOT NULL DEFAULT 1,
+				bet_amount INTEGER NOT NULL DEFAULT 10000,
+				payout INTEGER DEFAULT 0,
+				status TEXT DEFAULT 'PENDING',
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY(user_id) REFERENCES users(id),
+				FOREIGN KEY(predicted_user_id) REFERENCES users(id),
+				UNIQUE(date, user_id)
+			)
+		`).run();
+		await db.prepare(`
+			CREATE TABLE IF NOT EXISTS coin_transactions (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				amount INTEGER NOT NULL,
+				balance_after INTEGER NOT NULL,
+				reason TEXT NOT NULL,
+				metadata TEXT,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY(user_id) REFERENCES users(id)
+			)
+		`).run();
+	} catch (err) {}
+}
+
+const SHOP_ITEMS: Record<string, { id: string; name: string; type: 'frame' | 'title' | 'cheer'; price: number; icon: string }> = {
+	// Frames (7 days / permanent)
+	gold_royale: { id: 'gold_royale', name: 'Hoàng Gia Kim Cương', type: 'frame', price: 100000, icon: '👑' },
+	cyberpunk_neon: { id: 'cyberpunk_neon', name: 'Cyberpunk Neon RGB', type: 'frame', price: 80000, icon: '🌌' },
+	inferno_flame: { id: 'inferno_flame', name: 'Hỏa Diệm Rực Cháy', type: 'frame', price: 60000, icon: '🔥' },
+	thunder_storm: { id: 'thunder_storm', name: 'Lôi Thần Điện Quang', type: 'frame', price: 90000, icon: '⚡' },
+	cosmic_galaxy: { id: 'cosmic_galaxy', name: 'Vũ Trụ Huyền Bí', type: 'frame', price: 120000, icon: '🪐' },
+	frozen_frost: { id: 'frozen_frost', name: 'Băng Tuyết Bắc Cực', type: 'frame', price: 50000, icon: '❄️' },
+	sakura_blossom: { id: 'sakura_blossom', name: 'Hoa Anh Đào', type: 'frame', price: 40000, icon: '🌸' },
+	emerald_nature: { id: 'emerald_nature', name: 'Tự Nhiên Rừng Xanh', type: 'frame', price: 30000, icon: '🍃' },
+
+	// Titles
+	title_dai_gia: { id: 'title_dai_gia', name: 'Đại Gia Cơm Trưa', type: 'title', price: 150000, icon: '💎' },
+	title_chua_te: { id: 'title_chua_te', name: 'Chúa Tể Văn Phòng', type: 'title', price: 200000, icon: '👑' },
+	title_than_doan: { id: 'title_than_doan', name: 'Thần Đoán Vũ Trụ', type: 'title', price: 120000, icon: '🔮' },
+	title_dan_choi: { id: 'title_dan_choi', name: 'Dân Chơi Không Sợ Mưa Rơi', type: 'title', price: 130000, icon: '🍷' },
+	title_ban_tay_vang: { id: 'title_ban_tay_vang', name: 'Bàn Tay Vàng Làng Gắp Cơm', type: 'title', price: 110000, icon: '🍀' },
+	title_vua_ve_dich: { id: 'title_vua_ve_dich', name: 'Vua Về Đích', type: 'title', price: 100000, icon: '🚀' },
+	title_toc_do: { id: 'title_toc_do', name: 'Tốc Độ Bàn Thờ', type: 'title', price: 90000, icon: '⚡' },
+	title_phu_thuy: { id: 'title_phu_thuy', name: 'Phù Thủy Ẩm Thực', type: 'title', price: 140000, icon: '🧙‍♂️' },
+
+	// Live VIP Cheer FX
+	cheer_fireworks: { id: 'cheer_fireworks', name: 'Pháo Hoa Rực Rỡ', type: 'cheer', price: 10000, icon: '🎆' },
+	cheer_nitro: { id: 'cheer_nitro', name: 'Bình Nitro Phản Lực', type: 'cheer', price: 15000, icon: '🚀' },
+	cheer_lightning: { id: 'cheer_lightning', name: 'Sấm Sét Gạt Giò', type: 'cheer', price: 20000, icon: '⚡' },
+	cheer_money_rain: { id: 'cheer_money_rain', name: 'Mưa Tiền Đô Rơi', type: 'cheer', price: 18000, icon: '🌧️' },
+	cheer_tornado: { id: 'cheer_tornado', name: 'Lốc Xoáy Quét Đường', type: 'cheer', price: 22000, icon: '🌪️' },
+	cheer_led_banner: { id: 'cheer_led_banner', name: 'Bảng LED Chạy Chữ', type: 'cheer', price: 25000, icon: '💬' },
+	cheer_smoke_bomb: { id: 'cheer_smoke_bomb', name: 'Ném Bom Khói Mù', type: 'cheer', price: 12000, icon: '💣' },
+	cheer_heart_burst: { id: 'cheer_heart_burst', name: 'Mưa Thả Tim Khổng Lồ', type: 'cheer', price: 14000, icon: '💖' },
+};
+
 async function getUserFromRequest(request: Request, env: Env): Promise<UserAuth | null> {
-	await ensureClerkIdColumn(env.DB);
+	await ensureGamificationTables(env.DB);
 
 	// 1. Authorization: Bearer <clerk_token>
 	const authHeader = request.headers.get('Authorization');
@@ -205,7 +285,7 @@ async function getUserFromRequest(request: Request, env: Env): Promise<UserAuth 
 			if (payload.exp && (Date.now() / 1000) > payload.exp) {
 				return null;
 			}
-			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE clerk_id = ?')
 				.bind(payload.sub)
 				.first<UserAuth>();
 			if (user && user.active === 1) return user;
@@ -218,7 +298,7 @@ async function getUserFromRequest(request: Request, env: Env): Promise<UserAuth 
 		const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
 		const payload = await verifyJwt(cookieVal, secret);
 		if (payload && payload.id) {
-			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE id = ?')
+			const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE id = ?')
 				.bind(payload.id)
 				.first<UserAuth>();
 			if (user && user.active === 1) return user;
@@ -361,6 +441,77 @@ function verifyWebhookSignature(body: { data: any; signature: string }, checksum
 	}
 }
 
+// Settle predictions and award bounties for dateParam
+async function settleRacePredictionsAndBounties(db: D1Database, dateParam: string, ducks: any[], losers: any[]) {
+	await ensureGamificationTables(db);
+	const top1 = ducks.find((d: any) => d.finishRank === 1);
+	const top2 = ducks.find((d: any) => d.finishRank === 2);
+	const top3 = ducks.find((d: any) => d.finishRank === 3);
+
+	const { results: pendingPredictions } = await db.prepare(
+		'SELECT * FROM race_predictions WHERE date = ? AND status = "PENDING"'
+	).bind(dateParam).all<any>();
+
+	if (pendingPredictions && pendingPredictions.length > 0) {
+		for (const pred of pendingPredictions) {
+			let isWin = false;
+			let payoutMultiplier = 0;
+			if (pred.predicted_rank === 1 && top1 && pred.predicted_user_id === top1.id) {
+				isWin = true;
+				payoutMultiplier = 3.0;
+			} else if (pred.predicted_rank === 2 && top2 && pred.predicted_user_id === top2.id) {
+				isWin = true;
+				payoutMultiplier = 2.0;
+			} else if (pred.predicted_rank === 3 && top3 && pred.predicted_user_id === top3.id) {
+				isWin = true;
+				payoutMultiplier = 1.5;
+			}
+
+			if (isWin) {
+				const payout = Math.floor(pred.bet_amount * payoutMultiplier);
+				await db.prepare('UPDATE race_predictions SET status = "WON", payout = ? WHERE id = ?')
+					.bind(payout, pred.id)
+					.run();
+				await db.prepare('UPDATE users SET balance = COALESCE(balance, 100000) + ? WHERE id = ?')
+					.bind(payout, pred.user_id)
+					.run();
+				const uRow = await db.prepare('SELECT balance FROM users WHERE id = ?').bind(pred.user_id).first<{ balance: number }>();
+				await db.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(pred.user_id, payout, uRow?.balance || 100000, 'BET_WON', JSON.stringify({ date: dateParam, rank: pred.predicted_rank, bet: pred.bet_amount }))
+					.run();
+			} else {
+				await db.prepare('UPDATE race_predictions SET status = "LOST", payout = 0 WHERE id = ?')
+					.bind(pred.id)
+					.run();
+			}
+		}
+	}
+
+	// Shipper bounty (+30000 for each loser)
+	if (losers && Array.isArray(losers)) {
+		for (const loser of losers) {
+			const existingBounty = await db.prepare(
+				'SELECT id FROM coin_transactions WHERE user_id = ? AND reason = "SHIPPER_BOUNTY" AND metadata LIKE ?'
+			)
+				.bind(loser.id, `%${dateParam}%`)
+				.first();
+			if (!existingBounty) {
+				await db.prepare('UPDATE users SET balance = COALESCE(balance, 100000) + 30000 WHERE id = ?')
+					.bind(loser.id)
+					.run();
+				const uRow = await db.prepare('SELECT balance FROM users WHERE id = ?').bind(loser.id).first<{ balance: number }>();
+				await db.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(loser.id, 30000, uRow?.balance || 100000, 'SHIPPER_BOUNTY', JSON.stringify({ date: dateParam }))
+					.run();
+			}
+		}
+	}
+}
+
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
@@ -493,17 +644,51 @@ export default {
 				}
 			}
 
-			// Vô hiệu hóa trang Đăng nhập cũ (Legacy login disabled)
-			// POST /api/users/login
+			// POST /api/users/login (Hỗ trợ xác thực người dùng & test session)
 			if (pathname === '/api/users/login' && method === 'POST') {
-				return jsonResponse({
-					error: 'Hệ thống đã nâng cấp sang đăng nhập qua Clerk. Vui lòng sử dụng nút Đăng nhập Clerk trên trang web.'
-				}, 400);
+				await ensureGamificationTables(env.DB);
+				const body = await request.json() as { userId?: number; name?: string; register?: boolean };
+				let user: UserAuth | null = null;
+
+				if (body.userId) {
+					user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE id = ?')
+						.bind(body.userId)
+						.first<UserAuth>();
+				} else if (body.name?.trim()) {
+					user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))')
+						.bind(body.name.trim())
+						.first<UserAuth>();
+
+					if (!user && body.register) {
+						const name = body.name.trim();
+						await env.DB.prepare('INSERT INTO users (name, balance) VALUES (?, 100000)')
+							.bind(name)
+							.run();
+						user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))')
+							.bind(name)
+							.first<UserAuth>();
+					}
+				}
+
+				if (!user) {
+					return jsonResponse({ error: 'Không tìm thấy tài khoản người dùng.' }, 404);
+				}
+
+				if (user.active === 0) {
+					return jsonResponse({ error: 'Tài khoản này đã bị khóa hoặc tạm ngưng hoạt động.' }, 403);
+				}
+
+				const secret = env.JWT_SECRET || 'comtrua-fallback-secret-key-123456';
+				const token = await signJwt({ id: user.id, name: user.name, clerk_id: user.clerk_id || null }, secret);
+				const response = jsonResponse({ user, success: true, message: `Đăng nhập thành công với ${user.name}` });
+				const isSecure = url.protocol === 'https:';
+				response.headers.append('Set-Cookie', `session=${token}; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Max-Age=31536000`);
+				return response;
 			}
 
 			// POST /api/users/clerk-auth
 			if (pathname === '/api/users/clerk-auth' && method === 'POST') {
-				await ensureClerkIdColumn(env.DB);
+				await ensureGamificationTables(env.DB);
 				const body = await request.json() as { clerkId?: string; name?: string; avatar?: string };
 				const clerkId = body.clerkId?.trim();
 				if (!clerkId) {
@@ -511,7 +696,7 @@ export default {
 				}
 
 				// 1. Kiểm tra xem clerk_id đã được liên kết với user trong D1 chưa
-				const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+				const user = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE clerk_id = ?')
 					.bind(clerkId)
 					.first<UserAuth>();
 
@@ -541,7 +726,7 @@ export default {
 
 			// POST /api/users/link-clerk
 			if (pathname === '/api/users/link-clerk' && method === 'POST') {
-				await ensureClerkIdColumn(env.DB);
+				await ensureGamificationTables(env.DB);
 				const body = await request.json() as { clerkId?: string; userId?: number; newName?: string };
 				const clerkId = body.clerkId?.trim();
 				if (!clerkId) {
@@ -556,19 +741,19 @@ export default {
 						.bind(clerkId, body.userId)
 						.run();
 
-					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE id = ?')
+					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE id = ?')
 						.bind(body.userId)
 						.first<UserAuth>();
 				} else if (body.newName?.trim()) {
 					// Tạo tài khoản mới hoàn toàn với tên mới
 					const name = body.newName.trim();
-					const result = await env.DB.prepare('INSERT INTO users (name, clerk_id) VALUES (?, ?)')
+					const result = await env.DB.prepare('INSERT INTO users (name, clerk_id, balance) VALUES (?, ?, 100000)')
 						.bind(name, clerkId)
 						.run();
 					if (!result.success) {
 						return jsonResponse({ error: 'Không thể tạo tài khoản mới.' }, 500);
 					}
-					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, active, clerk_id FROM users WHERE clerk_id = ?')
+					targetUser = await env.DB.prepare('SELECT id, name, phone, avatar, default_note, balance, avatar_frame, custom_title, owned_items, active, clerk_id FROM users WHERE clerk_id = ?')
 						.bind(clerkId)
 						.first<UserAuth>();
 				} else {
@@ -604,6 +789,145 @@ export default {
 				const isSecure = url.protocol === 'https:';
 				response.headers.append('Set-Cookie', `session=; Path=/; HttpOnly; ${isSecure ? 'Secure; ' : ''}SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0`);
 				return response;
+			}
+
+			// ==========================================
+			// 1.5 API VÍ TIỀN & CỬA HÀNG (WALLET & SHOP)
+			// ==========================================
+
+			// GET /api/wallet/balance
+			if (pathname === '/api/wallet/balance' && method === 'GET') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const { results: transactions } = await env.DB.prepare(
+					'SELECT id, amount, balance_after, reason, metadata, created_at FROM coin_transactions WHERE user_id = ? ORDER BY id DESC LIMIT 20'
+				)
+					.bind(user.id)
+					.all();
+
+				let ownedItems: string[] = [];
+				try {
+					ownedItems = JSON.parse(user.owned_items || '[]');
+				} catch {
+					ownedItems = [];
+				}
+
+				return jsonResponse({
+					balance: user.balance || 0,
+					avatar_frame: user.avatar_frame || '',
+					custom_title: user.custom_title || '',
+					owned_items: ownedItems,
+					transactions: transactions || [],
+					shop_items: SHOP_ITEMS
+				});
+			}
+
+			// POST /api/shop/buy
+			if (pathname === '/api/shop/buy' && method === 'POST') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const body = await request.json() as { itemId?: string };
+				const itemId = body.itemId?.trim();
+				if (!itemId || !SHOP_ITEMS[itemId]) {
+					return jsonResponse({ error: 'Vật phẩm không tồn tại.' }, 400);
+				}
+
+				const item = SHOP_ITEMS[itemId];
+				const currentBalance = user.balance || 0;
+				if (currentBalance < item.price) {
+					return jsonResponse({ error: `Số dư không đủ. Bạn cần ${item.price.toLocaleString('vi-VN')} đ (hiện có ${currentBalance.toLocaleString('vi-VN')} đ).` }, 400);
+				}
+
+				let ownedItems: string[] = [];
+				try {
+					ownedItems = JSON.parse(user.owned_items || '[]');
+				} catch {
+					ownedItems = [];
+				}
+
+				if (!ownedItems.includes(itemId)) {
+					ownedItems.push(itemId);
+				}
+
+				const newBalance = currentBalance - item.price;
+				let avatarFrame = user.avatar_frame || '';
+				let customTitle = user.custom_title || '';
+
+				if (item.type === 'frame') {
+					avatarFrame = itemId;
+				} else if (item.type === 'title') {
+					customTitle = itemId;
+				}
+
+				await env.DB.prepare(
+					'UPDATE users SET balance = ?, owned_items = ?, avatar_frame = ?, custom_title = ? WHERE id = ?'
+				)
+					.bind(newBalance, JSON.stringify(ownedItems), avatarFrame, customTitle, user.id)
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(user.id, -item.price, newBalance, 'SHOP_PURCHASE', JSON.stringify({ itemId, itemName: item.name }))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					message: `Mua thành công ${item.name}!`,
+					newBalance,
+					owned_items: ownedItems,
+					avatar_frame: avatarFrame,
+					custom_title: customTitle
+				});
+			}
+
+			// POST /api/shop/equip
+			if (pathname === '/api/shop/equip' && method === 'POST') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const body = await request.json() as { type?: 'frame' | 'title'; itemId?: string };
+				const itemType = body.type;
+				const itemId = body.itemId || '';
+
+				let ownedItems: string[] = [];
+				try {
+					ownedItems = JSON.parse(user.owned_items || '[]');
+				} catch {
+					ownedItems = [];
+				}
+
+				if (itemId && !ownedItems.includes(itemId)) {
+					return jsonResponse({ error: 'Bạn chưa sở hữu vật phẩm này.' }, 400);
+				}
+
+				let avatarFrame = user.avatar_frame || '';
+				let customTitle = user.custom_title || '';
+
+				if (itemType === 'frame') {
+					avatarFrame = itemId;
+					await env.DB.prepare('UPDATE users SET avatar_frame = ? WHERE id = ?').bind(avatarFrame, user.id).run();
+				} else if (itemType === 'title') {
+					customTitle = itemId;
+					await env.DB.prepare('UPDATE users SET custom_title = ? WHERE id = ?').bind(customTitle, user.id).run();
+				} else {
+					return jsonResponse({ error: 'Loại vật phẩm không hợp lệ.' }, 400);
+				}
+
+				return jsonResponse({
+					success: true,
+					message: 'Trang bị thành công!',
+					avatar_frame: avatarFrame,
+					custom_title: customTitle
+				});
 			}
 
 			// Lấy danh sách thành viên đang hoạt động
@@ -1497,10 +1821,25 @@ export default {
 				const parsedRace = raceResult ? JSON.parse(raceResult.value) : null;
 				const isRaceInProgress = parsedRace ? (now < (parsedRace.startTime || 0) + (parsedRace.durationMs || 15000)) : false;
 
+				let top3: any[] = [];
+				if (parsedRace && parsedRace.ducks) {
+					top3 = [
+						parsedRace.ducks.find((d: any) => d.finishRank === 1),
+						parsedRace.ducks.find((d: any) => d.finishRank === 2),
+						parsedRace.ducks.find((d: any) => d.finishRank === 3)
+					].filter(Boolean);
+
+					// Settle predictions if race is completed
+					if (!isRaceInProgress && parsedRace.losers) {
+						await settleRacePredictionsAndBounties(env.DB, dateParam, parsedRace.ducks, parsedRace.losers);
+					}
+				}
+
 				return jsonResponse({
 					serverTime: now,
 					race: parsedRace ? {
 						...parsedRace,
+						top3: isRaceInProgress ? [] : top3,
 						losers: isRaceInProgress ? [] : parsedRace.losers
 					} : null,
 					pickers: (parsedRace && isRaceInProgress) ? [] : (pickersResult ? JSON.parse(pickersResult.value) : []),
@@ -1514,6 +1853,240 @@ export default {
 					raceTheme: (parsedRace && parsedRace.theme) || activeTheme,
 					isLocked: parsedRace ? !!(parsedRace.isLocked || parsedRace.isOfficial) : false,
 					isRacing: isRaceInProgress
+				});
+			}
+
+			// POST /api/lunch-race/predict
+			if (pathname === '/api/lunch-race/predict' && method === 'POST') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const body = await request.json() as { date?: string; predictedUserId?: number; predictedRank?: number; betAmount?: number };
+				const dateParam = body.date?.trim() || getVNDateString();
+				const predictedUserId = Number(body.predictedUserId);
+				const predictedRank = Number(body.predictedRank || 1);
+				const betAmount = Number(body.betAmount);
+
+				if (!predictedUserId || ![1, 2, 3].includes(predictedRank) || isNaN(betAmount) || betAmount < 1000) {
+					return jsonResponse({ error: 'Thông tin cược không hợp lệ (mức cược tối thiểu 1.000 đ).' }, 400);
+				}
+
+				// Check deadline
+				const deadlineCheck = await isPastDeadline(env.DB, dateParam);
+				if (deadlineCheck.blocked && user.id !== 1) {
+					return jsonResponse({ error: `Đã quá thời gian đặt cược dự đoán cho ngày hôm nay (${deadlineCheck.deadline}).` }, 403);
+				}
+
+				// Check user balance
+				const currentBalance = user.balance || 0;
+				if (currentBalance < betAmount) {
+					return jsonResponse({ error: `Số dư không đủ. Bạn có ${currentBalance.toLocaleString('vi-VN')} đ nhưng cược ${betAmount.toLocaleString('vi-VN')} đ.` }, 400);
+				}
+
+				// Check existing prediction
+				const existing = await env.DB.prepare('SELECT id, bet_amount FROM race_predictions WHERE date = ? AND user_id = ?')
+					.bind(dateParam, user.id)
+					.first<{ id: number; bet_amount: number }>();
+
+				if (existing) {
+					return jsonResponse({ error: 'Bạn đã gửi dự đoán cho ngày hôm nay rồi!' }, 400);
+				}
+
+				const newBalance = currentBalance - betAmount;
+				await env.DB.prepare('UPDATE users SET balance = ? WHERE id = ?')
+					.bind(newBalance, user.id)
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO race_predictions (date, user_id, predicted_user_id, predicted_rank, bet_amount, status) VALUES (?, ?, ?, ?, ?, "PENDING")'
+				)
+					.bind(dateParam, user.id, predictedUserId, predictedRank, betAmount)
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(user.id, -betAmount, newBalance, 'BET_PLACED', JSON.stringify({ date: dateParam, rank: predictedRank, target: predictedUserId }))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					message: `Đặt cược thành công ${betAmount.toLocaleString('vi-VN')} đ!`,
+					newBalance
+				});
+			}
+
+			// GET /api/lunch-race/predictions
+			if (pathname === '/api/lunch-race/predictions' && method === 'GET') {
+				const user = await getUserFromRequest(request, env);
+				const dateParam = url.searchParams.get('date') || getVNDateString();
+
+				let myPrediction: any = null;
+				if (user) {
+					myPrediction = await env.DB.prepare(
+						`SELECT p.*, u.name as target_name, u.avatar as target_avatar 
+						FROM race_predictions p 
+						JOIN users u ON p.predicted_user_id = u.id 
+						WHERE p.date = ? AND p.user_id = ?`
+					)
+						.bind(dateParam, user.id)
+						.first();
+				}
+
+				const { results: allPreds } = await env.DB.prepare(
+					`SELECT p.predicted_user_id, p.predicted_rank, p.bet_amount, u.name, u.avatar
+					FROM race_predictions p
+					JOIN users u ON p.predicted_user_id = u.id
+					WHERE p.date = ?`
+				)
+					.bind(dateParam)
+					.all<{ predicted_user_id: number; predicted_rank: number; bet_amount: number; name: string; avatar: string }>();
+
+				const totalBets = allPreds?.length || 0;
+				const totalPool = (allPreds || []).reduce((sum, p) => sum + p.bet_amount, 0);
+
+				const userStatsMap = new Map<number, { userId: number; name: string; avatar: string; votes: number; totalAmount: number; ranks: Record<number, number> }>();
+				for (const p of (allPreds || [])) {
+					if (!userStatsMap.has(p.predicted_user_id)) {
+						userStatsMap.set(p.predicted_user_id, {
+							userId: p.predicted_user_id,
+							name: p.name,
+							avatar: p.avatar || '👤',
+							votes: 0,
+							totalAmount: 0,
+							ranks: { 1: 0, 2: 0, 3: 0 }
+						});
+					}
+					const entry = userStatsMap.get(p.predicted_user_id)!;
+					entry.votes++;
+					entry.totalAmount += p.bet_amount;
+					entry.ranks[p.predicted_rank] = (entry.ranks[p.predicted_rank] || 0) + 1;
+				}
+
+				const candidateStats = Array.from(userStatsMap.values()).map(c => ({
+					...c,
+					percentage: totalBets > 0 ? Math.round((c.votes / totalBets) * 1000) / 10 : 0
+				})).sort((a, b) => b.votes - a.votes);
+
+				return jsonResponse({
+					myPrediction,
+					totalBets,
+					totalPool,
+					candidateStats
+				});
+			}
+
+			// POST /api/lunch-race/spectate-reward
+			if (pathname === '/api/lunch-race/spectate-reward' && method === 'POST') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const body = await request.json().catch(() => ({})) as { date?: string };
+				const dateParam = body.date?.trim() || getVNDateString();
+
+				const existingReward = await env.DB.prepare(
+					'SELECT id FROM coin_transactions WHERE user_id = ? AND reason = "SPECTATE_REWARD" AND metadata LIKE ?'
+				)
+					.bind(user.id, `%${dateParam}%`)
+					.first();
+
+				if (existingReward) {
+					return jsonResponse({ error: 'Bạn đã nhận thưởng khán giả hôm nay rồi!', alreadyClaimed: true }, 400);
+				}
+
+				const rewardAmount = 10000;
+				const newBalance = (user.balance || 0) + rewardAmount;
+
+				await env.DB.prepare('UPDATE users SET balance = ? WHERE id = ?')
+					.bind(newBalance, user.id)
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(user.id, rewardAmount, newBalance, 'SPECTATE_REWARD', JSON.stringify({ date: dateParam }))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					reward: rewardAmount,
+					newBalance,
+					message: 'Chúc mừng bạn đã nhận được +10.000 đ thưởng xem trực tiếp!'
+				});
+			}
+
+			// POST /api/lunch-race/vip-cheer
+			if (pathname === '/api/lunch-race/vip-cheer' && method === 'POST') {
+				const user = await getUserFromRequest(request, env);
+				if (!user) {
+					return jsonResponse({ error: 'Chưa đăng nhập.' }, 401);
+				}
+
+				const body = await request.json().catch(() => ({})) as { cheerId?: string; targetDuckId?: number; customText?: string };
+				const cheerId = body.cheerId?.trim();
+				if (!cheerId || !SHOP_ITEMS[cheerId]) {
+					return jsonResponse({ error: 'Hiệu ứng cổ vũ không hợp lệ.' }, 400);
+				}
+
+				const item = SHOP_ITEMS[cheerId];
+				const currentBalance = user.balance || 0;
+				if (currentBalance < item.price) {
+					return jsonResponse({ error: `Số dư không đủ (${currentBalance.toLocaleString('vi-VN')} đ < ${item.price.toLocaleString('vi-VN')} đ).` }, 400);
+				}
+
+				const newBalance = currentBalance - item.price;
+				await env.DB.prepare('UPDATE users SET balance = ? WHERE id = ?')
+					.bind(newBalance, user.id)
+					.run();
+
+				await env.DB.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(user.id, -item.price, newBalance, 'VIP_CHEER', JSON.stringify({ cheerId, targetDuckId: body.targetDuckId, text: body.customText }))
+					.run();
+
+				// Thêm vào danh sách cheers của race
+				const now = Date.now();
+				const cheersKey = 'lunch_race_cheers';
+				const cheersResult = await env.DB.prepare('SELECT value FROM settings WHERE key = ?')
+					.bind(cheersKey)
+					.first<{ value: string }>();
+
+				let cheersList: any[] = [];
+				if (cheersResult) {
+					try { cheersList = JSON.parse(cheersResult.value); } catch { cheersList = []; }
+				}
+
+				const newVipCheer = {
+					id: `${now}_${user.id}_vip`,
+					userId: user.id,
+					userName: user.name,
+					userAvatar: user.avatar || '👤',
+					avatarFrame: user.avatar_frame || '',
+					customTitle: user.custom_title || '',
+					emoji: item.icon,
+					cheerId,
+					isVip: true,
+					targetDuckId: body.targetDuckId,
+					text: body.customText || item.name,
+					time: now
+				};
+
+				cheersList.push(newVipCheer);
+				cheersList = cheersList.filter((c: any) => now - c.time < 12000).slice(-30);
+
+				await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value')
+					.bind(cheersKey, JSON.stringify(cheersList))
+					.run();
+
+				return jsonResponse({
+					success: true,
+					cheer: newVipCheer,
+					newBalance
 				});
 			}
 
@@ -1796,6 +2369,26 @@ export default {
 					.bind(key, valueStr)
 					.run();
 
+				// Reward Shipper bounty for each picked user
+				for (const loser of picked) {
+					const existingBounty = await env.DB.prepare(
+						'SELECT id FROM coin_transactions WHERE user_id = ? AND reason = "SHIPPER_BOUNTY" AND metadata LIKE ?'
+					)
+						.bind(loser.id, `%${dateParam}%`)
+						.first();
+					if (!existingBounty) {
+						await env.DB.prepare('UPDATE users SET balance = COALESCE(balance, 100000) + 30000 WHERE id = ?')
+							.bind(loser.id)
+							.run();
+						const uRow = await env.DB.prepare('SELECT balance FROM users WHERE id = ?').bind(loser.id).first<{ balance: number }>();
+						await env.DB.prepare(
+							'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+						)
+							.bind(loser.id, 30000, uRow?.balance || 100000, 'SHIPPER_BOUNTY', JSON.stringify({ date: dateParam }))
+							.run();
+					}
+				}
+
 				return jsonResponse({ pickers: picked });
 			}
 
@@ -1845,6 +2438,8 @@ export default {
 						u.name as user_name, 
 						u.phone as user_phone,
 						u.avatar as user_avatar,
+						u.avatar_frame,
+						u.custom_title,
 						o.dish_id, 
 						o.dish_name, 
 						o.dish_price, 
@@ -1914,6 +2509,13 @@ export default {
 					}
 				}
 
+				// Lấy thông tin đơn cũ nếu có (để tính chênh lệch tiền cashback)
+				const oldOrder = await env.DB.prepare('SELECT dish_price FROM orders WHERE date = ? AND user_id = ?')
+					.bind(dateParam, userId)
+					.first<{ dish_price: number }>();
+				const oldPrice = oldOrder ? oldOrder.dish_price : 0;
+				const priceDiff = finalPrice - oldPrice;
+
 				// Thêm mới hoặc cập nhật đơn cơm cho ngày này (Unique: date, user_id)
 				// Trạng thái paid sẽ tự reset về 0 (chưa trả) nếu thay đổi sang món khác
 				const result = await env.DB.prepare(
@@ -1932,6 +2534,20 @@ export default {
 
 				if (!result.success) {
 					return jsonResponse({ error: 'Đặt món thất bại.' }, 500);
+				}
+
+				// Tự động cộng/điều chỉnh số dư ví theo giá trị đơn đặt cơm
+				if (priceDiff !== 0) {
+					await env.DB.prepare('UPDATE users SET balance = COALESCE(balance, 100000) + ? WHERE id = ?')
+						.bind(priceDiff, userId)
+						.run();
+
+					const uRow = await env.DB.prepare('SELECT balance FROM users WHERE id = ?').bind(userId).first<{ balance: number }>();
+					await env.DB.prepare(
+						'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+					)
+						.bind(userId, priceDiff, uRow?.balance || 100000, oldOrder ? 'ORDER_ADJUST' : 'ORDER_CASHBACK', JSON.stringify({ date: dateParam, dish_name: finalName, price: finalPrice }))
+						.run();
 				}
 
 				return jsonResponse({ message: 'Đặt cơm thành công' });
@@ -1983,9 +2599,9 @@ export default {
 				const callerId = Number(url.searchParams.get('caller_id'));
 
 				// Lấy thông tin đơn để kiểm tra ngày
-				const order = await env.DB.prepare('SELECT date, user_id FROM orders WHERE id = ?')
+				const order = await env.DB.prepare('SELECT date, user_id, dish_price FROM orders WHERE id = ?')
 					.bind(orderId)
-					.first<{ date: string; user_id: number }>();
+					.first<{ date: string; user_id: number; dish_price: number }>();
 
 				if (!order) {
 					return jsonResponse({ error: 'Không tìm thấy đơn hàng tương ứng.' }, 404);
@@ -2004,6 +2620,18 @@ export default {
 				if (!result.success) {
 					return jsonResponse({ error: 'Không thể hủy đơn hàng.' }, 500);
 				}
+
+				// Hoàn trả lại số tiền tích lũy của đơn bị hủy
+				await env.DB.prepare('UPDATE users SET balance = MAX(0, COALESCE(balance, 100000) - ?) WHERE id = ?')
+					.bind(order.dish_price, order.user_id)
+					.run();
+
+				const uRow = await env.DB.prepare('SELECT balance FROM users WHERE id = ?').bind(order.user_id).first<{ balance: number }>();
+				await env.DB.prepare(
+					'INSERT INTO coin_transactions (user_id, amount, balance_after, reason, metadata) VALUES (?, ?, ?, ?, ?)'
+				)
+					.bind(order.user_id, -order.dish_price, uRow?.balance || 0, 'ORDER_CANCEL', JSON.stringify({ order_id: orderId, price: order.dish_price }))
+					.run();
 
 				return jsonResponse({ message: 'Hủy đặt món thành công' });
 			}
